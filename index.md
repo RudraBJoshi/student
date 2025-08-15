@@ -51,7 +51,6 @@ Hi! My name is Rudra Joshi.
     <span style="color: #000000ff">CSP_Notes</span>
 </a>
 
-</a>
 <a href="./ols.html" class="button small" style="background-color: #cdb79aff">
     <span style="color: #000000ff">Online Linux Subsystem</span>
 </a>
