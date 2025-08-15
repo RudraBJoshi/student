@@ -6,7 +6,7 @@ hide: true
 
 ### Me and Team
 
-Hi! My name is [Your Full Name].
+Hi! My name is Rudra Joshi.
 
 | Role         | Name     | Repo Location                       | Stream                | Repo Name |
 |--------------|----------|-------------------------------------|-----------------------|-----------|
@@ -39,13 +39,15 @@ Hi! My name is [Your Full Name].
 
 ### Class Progress
 
-<a href="{{site.baseurl}}/snake" class="button small" style="background-color: #6b4bd3ff">
+<a href="{{site.baseurl}}/snake" class="button small" style="background-color: #0a588cff">
     Snake Game
 </a>
-<a href="{{site.baseurl}}/turtle" class="button small" style="background-color: #2A7DB1">
-    <span style="color: #000000">Turtle</span>
+<a href="{{site.baseurl}}/turtle" class="button small" style="background-color: #cb790fff">
+    <span style="color: #6fd588ff">Turtle</span>
 </a>
-
+<a href="https://docs.google.com/document/d/1yHE_GjLgFemubKXLpskEQ1dmn6pDgNpuAjAL7sr-7L4/edit?tab=t.0" class="button small" style="background-color: #cdb79aff">
+    <span style="color: #000000ff">CSP_Notes</span>
+</a>
 <br>
 
 <!-- Contact Section -->
