@@ -50,7 +50,8 @@ Hi! My name is Rudra Joshi.
 <a href="https://docs.google.com/document/d/1yHE_GjLgFemubKXLpskEQ1dmn6pDgNpuAjAL7sr-7L4/edit?tab=t.0" class="button small" style="background-color: #cdb79aff">
     <span style="color: #000000ff">CSP_Notes</span>
 </a>
-<br>
+
+
 
 <!-- Contact Section -->
 ### Get in Touch
