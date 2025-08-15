@@ -1,6 +1,6 @@
 ---
 layout: base
-title: I'm [Your Full Name]
+title: I'm Rudra Joshi
 hide: true
 ---
 
@@ -35,7 +35,7 @@ Hi! My name is Rudra Joshi.
     <span style="color: #FFFFFF">VSCODE</span>
 </a>
 <a href="https://www.markdownguide.org/cheat-sheet" class="button small" style="background-color: #000000ff">
-    <span style="color: #FFFFFF">VSCODE</span>
+    <span style="color: #FFFFFF">Markdown</span>
 </a>
 <br>
 
@@ -49,6 +49,11 @@ Hi! My name is Rudra Joshi.
 </a>
 <a href="https://docs.google.com/document/d/1yHE_GjLgFemubKXLpskEQ1dmn6pDgNpuAjAL7sr-7L4/edit?tab=t.0" class="button small" style="background-color: #cdb79aff">
     <span style="color: #000000ff">CSP_Notes</span>
+</a>
+
+</a>
+<a href="./ols.html" class="button small" style="background-color: #cdb79aff">
+    <span style="color: #000000ff">Online Linux Subsystem</span>
 </a>
 
 
