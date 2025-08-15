@@ -37,7 +37,7 @@ Hi! My name is Rudra Joshi.
 
 <br>
 
-### Class Progress
+### Class progress
 
 <a href="{{site.baseurl}}/snake" class="button small" style="background-color: #0a588cff">
     Snake Game
