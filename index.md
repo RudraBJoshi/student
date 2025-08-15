@@ -34,7 +34,9 @@ Hi! My name is Rudra Joshi.
 <a href="https://vscode.dev/" class="button small" style="background-color: #d38a4bff">
     <span style="color: #FFFFFF">VSCODE</span>
 </a>
-
+<a href="https://www.markdownguide.org/cheat-sheet" class="button small" style="background-color: #000000ff">
+    <span style="color: #FFFFFF">VSCODE</span>
+</a>
 <br>
 
 ### Class progress
