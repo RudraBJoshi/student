@@ -61,7 +61,7 @@ Where I lived:
     var http_source = "https://upload.wikimedia.org/wikipedia/commons/";
     var living_in_the_world = [
         {"flag": "0/01/Flag_of_California.svg", "greeting": "I never moved from here", "description": "California - forever"},
-        {"flag": "0/01/India.svg", "greeting": "I dont exactly live here but I visit annually for 2 weeks", "description": "India"},
+        {"flag": "4/41/Flag_of_India.svg", "greeting": "I dont exactly live here but I visit annually for 2 weeks", "description": "India"},
        
     ];
 
