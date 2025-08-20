@@ -105,9 +105,18 @@ Where I lived:
 
 ### Culture, Family, and Fun
 
-Everything for me, as for many others, revolves around family and faith.
+In my life I care about 3 things: Religion, Family, and Experience.
 
 - I come from a line of Gujarati Brahmins and I believe in Hindu Faith
 - I live with my sister, my parents, and my maternal grandparents
+- I travelled to 8 countries:
+    - ![USA](https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f1fa-1f1f8.png) United States  
+    - ![Canada](https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f1e8-1f1e6.png) Canada  
+    - ![Mexico](https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f1f2-1f1fd.png) Mexico  
+    - ![Costa Rica](https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f1e8-1f1f7.png) Costa Rica  
+    - ![UAE](https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f1e6-1f1ea.png) United Arab Emirates  
+    - ![India](https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f1ee-1f1f3.png) India  
+    - ![Switzerland](https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f1e8-1f1ed.png) Switzerland  
+    - ![France](https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f1eb-1f1f7.png) France  
 
 
