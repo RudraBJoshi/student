@@ -107,7 +107,7 @@ Binary Joke: In this CSP class there are 10 types of people in your class. Peopl
 
 Everything for me, as for many others, revolves around family and faith.
 
-- I come from a line Gujarati Brahmins and I believe in Hindu Faith
+- I come from a line of Gujarati Brahmins and I believe in Hindu Faith
 - I live with my sister, my parents, and my maternal grandparents
 
 
