@@ -109,6 +109,5 @@ Everything for me, as for many others, revolves around family and faith.
 
 - I come from a line Gujarati Brahmins and I believe in Hindu Faith
 - I live with my sister, my parents, and my maternal grandparents
-<coment>
-</comment>
+
 
