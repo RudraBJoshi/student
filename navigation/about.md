@@ -142,31 +142,31 @@ In my life I care about 3 things: Religion, Family, and Experience.
 <div class="carousel" id="landscapes" aria-roledescription="carousel">
   <div class="carousel__track">
     <figure class="carousel__slide" aria-roledescription="slide" aria-label="1 of 7">
-      <img src="https://commons.wikimedia.org/wiki/Special:FilePath/Toronto_Skyline_Summer_2020.jpg?width=1600" alt="Toronto skyline with CN Tower" loading="lazy">
+      <img src="https://upload.wikimedia.org/wikipedia/commons/1/12/Toronto_-_ON_-_Skyline10.jpg" alt="Toronto skyline with CN Tower" loading="lazy">
       <figcaption class="carousel__caption">Toronto</figcaption>
     </figure>
     <figure class="carousel__slide" aria-roledescription="slide" aria-label="2 of 7">
-      <img src="https://commons.wikimedia.org/wiki/Special:FilePath/Dubai_landscape_from_the_Burj_Khalifa_4.jpg?width=1600" alt="Dubai skyline from Burj Khalifa" loading="lazy">
+      <img src="https://upload.wikimedia.org/wikipedia/commons/4/43/Dubai_skyline_2015_%28crop%29.jpg" alt="Dubai skyline with Burj Khalifa" loading="lazy">
       <figcaption class="carousel__caption">Dubai</figcaption>
     </figure>
     <figure class="carousel__slide" aria-roledescription="slide" aria-label="3 of 7">
-      <img src="https://commons.wikimedia.org/wiki/Special:FilePath/Cloud_Forest_at_Monteverde.JPG?width=1600" alt="Monteverde Cloud Forest canopy" loading="lazy">
+      <img src="https://upload.wikimedia.org/wikipedia/commons/d/d9/Cloud_Forest_at_Monteverde.JPG" alt="Monteverde Cloud Forest canopy" loading="lazy">
       <figcaption class="carousel__caption">Monteverde</figcaption>
     </figure>
     <figure class="carousel__slide" aria-roledescription="slide" aria-label="4 of 7">
-      <img src="https://commons.wikimedia.org/wiki/Special:FilePath/Tour_Eiffel_Wikimedia_Commons.jpg?width=1600" alt="Eiffel Tower in Paris" loading="lazy">
+      <img src="https://upload.wikimedia.org/wikipedia/commons/a/a8/Tour_Eiffel_Wikimedia_Commons.jpg" alt="Eiffel Tower in Paris" loading="lazy">
       <figcaption class="carousel__caption">Paris</figcaption>
     </figure>
     <figure class="carousel__slide" aria-roledescription="slide" aria-label="5 of 7">
-      <img src="https://commons.wikimedia.org/wiki/Special:FilePath/Summit_of_Jungfrau_reveals_itself_from_the_clouds_in_2012_August.jpg?width=1600" alt="Jungfrau summit, Swiss Alps" loading="lazy">
+      <img src="https://upload.wikimedia.org/wikipedia/commons/b/b1/Summit_of_Jungfrau_reveals_itself_from_the_clouds_in_2012_August.jpg" alt="Jungfrau summit, Swiss Alps" loading="lazy">
       <figcaption class="carousel__caption">Jungfrau</figcaption>
     </figure>
     <figure class="carousel__slide" aria-roledescription="slide" aria-label="6 of 7">
-      <img src="https://commons.wikimedia.org/wiki/Special:FilePath/Taj-Mahal.jpg?width=1600" alt="Taj Mahal reflected in pool" loading="lazy">
+      <img src="https://upload.wikimedia.org/wikipedia/commons/d/da/Taj-Mahal.jpg" alt="Taj Mahal reflected in pool" loading="lazy">
       <figcaption class="carousel__caption">Taj Mahal</figcaption>
     </figure>
     <figure class="carousel__slide" aria-roledescription="slide" aria-label="7 of 7">
-      <img src="https://commons.wikimedia.org/wiki/Special:FilePath/Chichen_Itza_3.jpg?width=1600" alt="El Castillo pyramid at Chichén Itzá" loading="lazy">
+      <img src="https://upload.wikimedia.org/wikipedia/commons/5/51/Chichen_Itza_3.jpg" alt="El Castillo pyramid at Chichén Itzá" loading="lazy">
       <figcaption class="carousel__caption">Chichén Itzá</figcaption>
     </figure>
   </div>
@@ -216,3 +216,4 @@ In my life I care about 3 things: Religion, Family, and Experience.
   update();
 })();
 </script>
+
