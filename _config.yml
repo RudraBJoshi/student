@@ -15,6 +15,7 @@ minima:
 plugins:
   - jekyll-remote-theme
   - jekyll-include-cache
+  - jekyll-redirect-from
 header_pages:
   - navigation/blog.md
   - navigation/search.md

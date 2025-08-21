@@ -2,6 +2,9 @@
 layout: base
 title: I'm Rudra Joshi
 hide: true
+permalink: /student/
+redirect_from:
+  - /
 ---
 
 ### Me and Team
