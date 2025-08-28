@@ -5,7 +5,7 @@ github_username: jm1021
 github_repo: "student" 
 baseurl: "/student" 
 future: true
-remote_theme: jekyll/minima
+remote_theme: pages-themes/[email protected]
 minima:
   skin: dark
   social_links:
