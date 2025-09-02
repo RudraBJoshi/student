@@ -1,5 +1,5 @@
 ---
-layout: base
+layout: default
 title: I'm Rudra Joshi
 hide: true
 permalink: /student/
@@ -13,7 +13,7 @@ Hi! My name is Rudra Joshi.
 
 | Role         | Name     | Repo Location                       | Stream                | Repo Name |
 |--------------|----------|-------------------------------------|-----------------------|-----------|
-| Scrum Master | John     | github.com/jm1021/student           | upstream (OCS fork)   | student   |
+| Scrum Master | Akhil     | github.com/jm1021/student           | upstream (OCS fork)   | student   |
 | Scrummer     | Torin    | github.com/torin/student            | downstream (fork)     | student   |
 | Scrummer     | Avantika | github.com/avantika/student         | downstream (fork)     | student   |
 | Scrummer     | Aadit    | github.com/aaadit/student           | downstream (fork)     | student   |
@@ -57,6 +57,8 @@ Hi! My name is Rudra Joshi.
 <a href="./ols.html" class="button small" style="background-color: #cdb79aff">
     <span style="color: #000000ff">Online Linux Subsystem</span>
 </a>
+
+
 
 
 
