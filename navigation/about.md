@@ -1,11 +1,11 @@
 ---
-layout: post
+layout: default
 title: About
 permalink: /about/
 comments: true
 ---
 
-## As a conversation Starter
+## Intro
 Hi, My name is Rudra Joshi and I am 15 years old!
 
 Binary Joke: In this AP CSP class there are 10 types of people in your class. People who code code code, and people who kill kill time. 
