@@ -2,7 +2,7 @@
 layout: default
 title: Background with Object
 description: Use JavaScript to have an in motion background.
-sprite: images/platformer/sprites/image-removebg-preview (6).png
+sprite: images/platformer/sprites/SR-71.png
 background: images/platformer/backgrounds/6dxam0d4mgh81.jpg
 permalink: /background5
 ---
