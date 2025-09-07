@@ -2,8 +2,8 @@
 layout: default
 title: Background with Object
 description: Use JavaScript to have an in motion background.
-sprite: images/platformer/sprites/flying-ufo.png
-background: images/platformer/sprites/image_2025-09-07_133844240.png
+sprite: images/platformer/sprites/image_2025-09-07_133844240.png
+background: images/platformer/backgrounds/6dxam0d4mgh81.jpg
 permalink: /background5
 ---
 
