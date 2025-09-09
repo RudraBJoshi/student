@@ -5,7 +5,7 @@ description: Use JavaScript to have an in motion background.
 # Images used in this demo
 sprite: images/platformer/sprites/SR-71.png
 background: images/platformer/backgrounds/6dxam0d4mgh81.jpg
-permalink: /background5
+permalink: /background
 ---
 
 <!-- The canvas is like our “game screen.” Everything will be drawn here -->
