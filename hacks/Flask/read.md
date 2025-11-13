@@ -18,7 +18,10 @@ permalink: /api/read
       <tr>
           <th>First Name</th>
           <th>Last Name</th>
+          <th>DOB</th>
           <th>Residence</th>
+          <th>Email</th>
+          <th>Owns Cars</th>
       </tr>
   </thead>
   <tbody id="result">
@@ -63,15 +66,28 @@ permalink: /api/read
             const tr = document.createElement("tr");
             const firstname = document.createElement("td");
             const lastname = document.createElement("td");
+            const dob = document.createElement("td");
             const residence = document.createElement("td");
+            const email = document.createElement("td");
+            const cars = document.createElement("td");
+            
             // data is specific to the API
             firstname.innerHTML = row.FirstName; 
-            lastname.innerHTML = row.LastName; 
-            residence.innerHTML = row.Residence; 
+            lastname.innerHTML = row.LastName;
+            dob.innerHTML = row.DOB;
+            residence.innerHTML = row.Residence;
+            email.innerHTML = row.Email;
+            // format the cars array as a comma-separated list
+            cars.innerHTML = row.Owns_Cars ? row.Owns_Cars.join(", ") : "None";
+            
             // this builds each td into tr
             tr.appendChild(firstname);
             tr.appendChild(lastname);
+            tr.appendChild(dob);
             tr.appendChild(residence);
+            tr.appendChild(email);
+            tr.appendChild(cars);
+            
             // add HTML to container
             resultContainer.appendChild(tr);
           }
