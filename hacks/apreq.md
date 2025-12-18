@@ -2,6 +2,7 @@
 layout: default
 title: "Login System: AP CSP Component A Requirements"
 description: "Documentation demonstrating how the dual-database authentication system meets all AP Computer Science Principles Component A requirements"
+permalink: /apreqs
 ---
 
 # Login System: AP CSP Component A Requirements
@@ -352,67 +353,3 @@ return render_template("login.html", error=error, next=next_page)
 
 ---
 
-## Database Schema Architecture
-
-The dual-database authentication system integrates with a comprehensive relational database structure designed for the parallel computing education platform:
-
-![Database Schema Diagram](image.png)
-
-### Schema Overview
-
-The database architecture consists of six interconnected tables that support user authentication, progress tracking, and educational content management:
-
-**Core Authentication Tables:**
-- **users** - Main user authentication table storing credentials and profile information
-- **room_members** - Junction table linking users to educational rooms they've joined
-
-**Progress Tracking Tables:**
-- **user_progress** - Individual student progress through course modules and lessons
-- **room_progress** - Aggregate progress metrics for entire classroom groups
-
-**Content Management Tables:**
-- **rooms** - Educational spaces (classrooms/courses) containing lessons and members
-- **glossary** - Technical terminology and definitions for parallel computing concepts
-
-### Table Relationships
-
-The schema implements several key relationships:
-
-1. **Users → Rooms** (Many-to-Many via room_members)
-   - Students can join multiple rooms
-   - Rooms can contain multiple students
-   - Enables classroom-based learning groups
-
-2. **Rooms → User Progress** (One-to-Many)
-   - Each room tracks individual student progress
-   - Supports personalized learning paths within group contexts
-
-3. **Rooms → Room Progress** (One-to-Many)
-   - Aggregate metrics for instructor dashboards
-   - Tracks overall classroom advancement
-
-4. **Rooms → Glossary** (One-to-Many)
-   - Context-specific terminology for each course module
-   - Educational reference material tied to curriculum
-
-### Authentication Integration
-
-The dual-database system extends this schema by:
-- Maintaining the **users** table as the primary authentication source
-- Querying the legacy Quest database when users aren't found in the main system
-- Automatically synchronizing Quest users into the **users** table upon first login
-- Preserving all relational integrity with room_members and progress tracking tables
-
-This architecture ensures seamless migration from the legacy system while maintaining full access to the platform's educational features and progress tracking capabilities.
-
-
-
-**Intended Purpose:**
-The dual-database authentication system allows users to log in to the parallel computing education platform using credentials from either the main application database or the legacy Quest database, with automatic synchronization on first login.
-
-**How Requirements Support Purpose:**
-- **Input:** Captures user credentials
-- **Collections:** Manages multiple user accounts across two databases
-- **Procedures:** Modularizes authentication and sync logic
-- **Algorithm:** Implements fallback authentication with migration
-- **Output:** Provides appropriate feedback and navigation
