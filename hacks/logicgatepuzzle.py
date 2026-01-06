@@ -2,29 +2,29 @@ import random
 
 # ==================== LOGIC GATES ====================
 def AND(a, b):
-    return a and b
+    return 1 if a and b else 0
 
 def OR(a, b):
-    return a or b
+    return 1 if a or b else 0
 
 def NOT(a):
-    return not a
+    return 0 if a else 1
 
 def XOR(a, b):
-    return a != b
+    return 1 if a != b else 0
 
 def NAND(a, b):
-    return not (a and b)
+    return 0 if a and b else 1
 
 def NOR(a, b):
-    return not (a or b)
+    return 0 if a or b else 1
 
 # ==================== MAZE CELL ====================
 class Cell:
     def __init__(self, row, col):
         self.row = row
         self.col = col
-        self.walls = {'N': True, 'S': True, 'E': True, 'W': True}
+        self.walls = {'N': 1, 'S': 1, 'E': 1, 'W': 1}
         self.visited = False
         self.puzzle = None  # Complex logic puzzle
 
@@ -57,9 +57,9 @@ def generate_maze(width, height):
             direction, next_cell = random.choice(neighbors)
             
             # Remove walls
-            current.walls[direction] = False
+            current.walls[direction] = 0
             opposite = {'N': 'S', 'S': 'N', 'E': 'W', 'W': 'E'}
-            next_cell.walls[opposite[direction]] = False
+            next_cell.walls[opposite[direction]] = 0
             
             # Add complex puzzle
             add_complex_puzzle(current)
@@ -88,10 +88,10 @@ def add_complex_puzzle(cell):
     puzzle_type = random.choice(puzzle_types)
     
     # Generate random inputs
-    a = random.choice([True, False])
-    b = random.choice([True, False])
-    c = random.choice([True, False])
-    d = random.choice([True, False])
+    a = random.choice([1, 0])
+    b = random.choice([1, 0])
+    c = random.choice([1, 0])
+    d = random.choice([1, 0])
     
     if puzzle_type == 'chained_2':
         # Example: (A AND B) XOR C
@@ -228,7 +228,7 @@ def solve_puzzle(cell):
     puzzle = cell.puzzle
     
     print(f"\n{'='*60}")
-    print("⚡ COMPLEX LOGIC GATE PUZZLE ⚡")
+    print("COMPLEX LOGIC GATE PUZZLE")
     print(f"{'='*60}")
     print(f"\nPuzzle Type: {puzzle['type'].upper()}")
     print(f"\n{puzzle['expression']}")
@@ -236,25 +236,25 @@ def solve_puzzle(cell):
     print(f"\n{'='*60}")
     
     # Give hint option
-    hint = input("\nWant a hint? (y/n): ").strip().lower()
-    if hint == 'y':
+    hint = input("\nWant a hint? (0/1): ").strip()
+    if hint == '1':
         print("\n HINT: Work through each step carefully!")
         print("   Remember:")
-        print("   - AND: Both must be True")
-        print("   - OR: At least one must be True")
-        print("   - XOR: Exactly one must be True")
+        print("   - AND: Both must be 1")
+        print("   - OR: At least one must be 1")
+        print("   - XOR: Exactly one must be 1")
         print("   - NOT: Flips the value")
         print("   - NAND: Opposite of AND")
         print("   - NOR: Opposite of OR")
     
-    answer = input("\nYour answer (True/False or T/F): ").strip().upper()
-    user_answer = answer in ['TRUE', 'T', '1']
+    answer = input("\nYour answer (1/0): ").strip()
+    user_answer = int(answer) if answer in ['0', '1'] else -1
     
     if user_answer == puzzle['answer']:
-        print(f"\n✓ CORRECT!")
+        print(f"\nCORRECT!")
         return True
     else:
-        print(f"\n✗ WRONG! The correct answer is {puzzle['answer']}")
+        print(f"\nWRONG! The correct answer is {puzzle['answer']}")
         print("You've been sent back to the start!")
         return False
 
@@ -270,12 +270,12 @@ def play_game():
     print("- Wrong answer = back to start!")
     print("- Commands: N/S/E/W or 'quit'")
     print("\nGate Reference:")
-    print("  AND: True if BOTH inputs are True")
-    print("  OR: True if AT LEAST ONE input is True")
-    print("  XOR: True if EXACTLY ONE input is True")
-    print("  NOT: Flips the input")
-    print("  NAND: NOT(AND) - False only if both True")
-    print("  NOR: NOT(OR) - True only if both False")
+    print("  AND: 1 if BOTH inputs are 1")
+    print("  OR: 1 if AT LEAST ONE input is 1")
+    print("  XOR: 1 if EXACTLY ONE input is 1")
+    print("  NOT: Flips the value (1->0, 0->1)")
+    print("  NAND: 0 only if both inputs are 1")
+    print("  NOR: 1 only if both inputs are 0")
     
     width, height = 5, 5
     maze = generate_maze(width, height)
@@ -286,7 +286,7 @@ def play_game():
     
     while player_pos != (height-1, width-1):
         display_maze(maze, player_pos, width, height)
-        print(f"\n📍 Position: {player_pos} | 🚶 Moves: {moves} | ✓ Puzzles: {puzzles_solved}")
+        print(f"\nPosition: {player_pos} | Moves: {moves} | Puzzles: {puzzles_solved}")
         
         # Get valid moves
         r, c = player_pos
@@ -301,7 +301,7 @@ def play_game():
             valid.append('W')
         
         print(f"Valid moves: {', '.join(valid)}")
-        direction = input("➤ Move: ").strip().upper()
+        direction = input("> Move: ").strip().upper()
         
         if direction == 'QUIT':
             print("\nThanks for playing!")
