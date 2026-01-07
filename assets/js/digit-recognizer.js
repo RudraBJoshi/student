@@ -283,6 +283,9 @@ class DigitRecognizer {
         const modal = document.getElementById('cnn-visualization-modal');
         if (!modal) return;
 
+        // Update the pixel grid with current canvas data
+        this.createPixelGrid();
+
         const imageData = this.canvas.toDataURL('image/png');
 
         try {
@@ -391,6 +394,34 @@ class DigitRecognizer {
                 `;
                 featureGrid.appendChild(predictionDisplay);
             }
+        }
+
+        // Update button states
+        this.updateButtonStates();
+    }
+
+    updateButtonStates() {
+        if (!this.cnnData) return;
+
+        const prevBtn = document.getElementById('prev-layer-btn');
+        const nextBtn = document.getElementById('next-layer-btn');
+        const playBtn = document.getElementById('play-btn');
+
+        const totalLayers = this.cnnData.layers.length + 1;
+
+        if (prevBtn) {
+            prevBtn.disabled = this.currentLayerIndex === 0;
+            prevBtn.style.opacity = this.currentLayerIndex === 0 ? 0.5 : 1;
+        }
+
+        if (nextBtn) {
+            nextBtn.disabled = this.currentLayerIndex === totalLayers - 1;
+            nextBtn.style.opacity = this.currentLayerIndex === totalLayers - 1 ? 0.5 : 1;
+        }
+
+        if (playBtn) {
+            playBtn.disabled = false;
+            playBtn.style.opacity = 1;
         }
     }
 
@@ -644,9 +675,240 @@ class DigitRecognizer {
             this.playInterval = null;
         }
     }
+
+    // Interactive Challenge Functions
+    initInteractiveChallenges() {
+        this.initializePixelGrid();
+        this.updateQuestProgress(0);
+    }
+
+    initializePixelGrid() {
+        const pixelGrid = document.getElementById('pixel-grid');
+        if (!pixelGrid) return;
+
+        pixelGrid.innerHTML = '';
+        for (let i = 0; i < 28 * 28; i++) {
+            const pixel = document.createElement('div');
+            pixel.className = 'pixel empty';
+            pixel.dataset.value = '0';
+            pixel.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+
+            pixel.addEventListener('mouseover', (e) => {
+                document.getElementById('pixel-value').textContent = 'Draw a digit first!';
+                e.target.style.transform = 'scale(1.1)';
+            });
+
+            pixel.addEventListener('mouseout', (e) => {
+                e.target.style.transform = 'scale(1)';
+            });
+
+            pixelGrid.appendChild(pixel);
+        }
+    }
+
+    createPixelGrid() {
+        const pixelGrid = document.getElementById('pixel-grid');
+        if (!pixelGrid) return;
+
+        // Get actual pixel data from canvas (like digit_api.py does)
+        const pixelData = this.getCanvasPixelData();
+        pixelGrid.innerHTML = '';
+
+        for (let i = 0; i < 28 * 28; i++) {
+            const pixel = document.createElement('div');
+            pixel.className = 'pixel';
+            pixel.dataset.value = pixelData[i];
+            pixel.style.backgroundColor = `rgb(${pixelData[i]}, ${pixelData[i]}, ${pixelData[i]})`;
+
+            pixel.addEventListener('mouseover', (e) => {
+                const value = e.target.dataset.value;
+                document.getElementById('pixel-value').textContent = `Pixel value: ${value} (0-255)`;
+                e.target.style.transform = 'scale(1.2)';
+            });
+
+            pixel.addEventListener('mouseout', (e) => {
+                e.target.style.transform = 'scale(1)';
+            });
+
+            pixelGrid.appendChild(pixel);
+        }
+    }
+
+    getCanvasPixelData() {
+        // Create a temporary canvas to resize to 28x28 (like digit_api.py)
+        const tempCanvas = document.createElement('canvas');
+        const tempCtx = tempCanvas.getContext('2d');
+        tempCanvas.width = 28;
+        tempCanvas.height = 28;
+
+        // Draw the main canvas onto the temp canvas (resizing to 28x28)
+        tempCtx.drawImage(this.canvas, 0, 0, 28, 28);
+
+        // Get image data
+        const imageData = tempCtx.getImageData(0, 0, 28, 28);
+        const data = imageData.data;
+
+        // Convert to grayscale (like digit_api.py preprocessing)
+        const grayscalePixels = [];
+        for (let i = 0; i < data.length; i += 4) {
+            // Get RGB values
+            const r = data[i];
+            const g = data[i + 1];
+            const b = data[i + 2];
+
+            // Convert to grayscale using luminance formula
+            const gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
+            grayscalePixels.push(gray);
+        }
+
+        return grayscalePixels;
+    }
+
+    updateQuestProgress(challengeNumber) {
+        const progressBar = document.getElementById('quest-progress-bar');
+        const progressText = document.getElementById('quest-progress-text');
+
+        if (!progressBar || !progressText) return;
+
+        const progress = (challengeNumber / 5) * 100;
+        progressBar.style.width = `${progress}%`;
+
+        const messages = [
+            "Ready to begin!",
+            "Challenge 1 Complete! 🎨",
+            "Challenge 2 Complete! 🔍",
+            "Challenge 3 Complete! 🏊",
+            "Challenge 4 Complete! 🧠",
+            "Quest Complete! 🎉"
+        ];
+
+        progressText.textContent = messages[challengeNumber] || "Ready to begin!";
+    }
+}
+
+// Global functions for HTML onclick handlers
+function nextChallenge(currentChallenge) {
+    const currentCard = document.getElementById(`challenge-${currentChallenge}`);
+    const nextCard = document.getElementById(`challenge-${currentChallenge + 1}`);
+
+    if (currentCard && nextCard) {
+        currentCard.classList.remove('active');
+        currentCard.classList.add('completed');
+        nextCard.classList.add('active');
+        nextCard.classList.remove('locked');
+
+        // Update status indicators
+        const currentStatus = currentCard.querySelector('.challenge-status');
+        const nextStatus = nextCard.querySelector('.challenge-status');
+
+        if (currentStatus) currentStatus.textContent = '✅ COMPLETED';
+        if (nextStatus) nextStatus.textContent = '🔍 ACTIVE';
+
+        // Update quest progress
+        if (window.recognizer) {
+            window.recognizer.updateQuestProgress(currentChallenge);
+        }
+    }
+}
+
+function checkPatternAnswer(answer) {
+    const feedback = document.getElementById('pattern-feedback');
+    const nextBtn = document.getElementById('challenge-2-next');
+
+    if (!feedback || !nextBtn) return;
+
+    if (answer === 'edges') {
+        feedback.innerHTML = '🎉 <strong>Correct!</strong> Conv2D layers look for edges, curves, and basic patterns first!';
+        feedback.className = 'pattern-feedback correct';
+        nextBtn.classList.remove('hidden');
+    } else {
+        feedback.innerHTML = '❌ Not quite! Try again - what do the first layers typically detect?';
+        feedback.className = 'pattern-feedback incorrect';
+    }
+}
+
+function checkPoolingAnswer(answer) {
+    const feedback = document.getElementById('pooling-feedback');
+    const nextBtn = document.getElementById('challenge-3-next');
+
+    if (!feedback || !nextBtn) return;
+
+    if (answer === 'strongest') {
+        feedback.innerHTML = '🎉 <strong>Perfect!</strong> MaxPooling keeps the strongest signals and reduces noise!';
+        feedback.className = 'pooling-feedback correct';
+        nextBtn.classList.remove('hidden');
+    } else {
+        feedback.innerHTML = '❌ Think about it - pooling wants to preserve the most important information!';
+        feedback.className = 'pooling-feedback incorrect';
+    }
+}
+
+function checkMathAnswer() {
+    const input = document.getElementById('math-answer');
+    const feedback = document.getElementById('math-feedback');
+    const nextBtn = document.getElementById('challenge-4-next');
+
+    if (!input || !feedback || !nextBtn) return;
+
+    const answer = input.value.trim();
+    const correctAnswer = '32768'; // 128 * 128 * 2
+
+    if (answer === correctAnswer || answer === '32,768') {
+        feedback.innerHTML = '🎉 <strong>Amazing!</strong> That\'s 32,768 connections - that\'s a lot of learning power!';
+        feedback.className = 'math-feedback correct';
+        nextBtn.classList.remove('hidden');
+    } else {
+        feedback.innerHTML = `❌ Not quite! Hint: 128 × 128 = 16,384, then × 2 = ?`;
+        feedback.className = 'math-feedback incorrect';
+    }
+}
+
+function restartQuest() {
+    // Reset all challenges
+    for (let i = 1; i <= 5; i++) {
+        const card = document.getElementById(`challenge-${i}`);
+        if (card) {
+            card.classList.remove('active', 'completed', 'locked');
+            if (i === 1) {
+                card.classList.add('active');
+                const status = card.querySelector('.challenge-status');
+                if (status) status.textContent = '🔍 ACTIVE';
+            } else {
+                card.classList.add('locked');
+                const status = card.querySelector('.challenge-status');
+                if (status) status.textContent = '⏳ LOCKED';
+            }
+        }
+    }
+
+    // Reset feedback and inputs
+    const feedbacks = ['pattern-feedback', 'pooling-feedback', 'math-feedback'];
+    feedbacks.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.innerHTML = '';
+            el.className = el.className.replace(' correct', '').replace(' incorrect', '');
+        }
+    });
+
+    const mathInput = document.getElementById('math-answer');
+    if (mathInput) mathInput.value = '';
+
+    const nextBtns = ['challenge-2-next', 'challenge-3-next', 'challenge-4-next'];
+    nextBtns.forEach(id => {
+        const btn = document.getElementById(id);
+        if (btn) btn.classList.add('hidden');
+    });
+
+    // Reset progress
+    if (window.recognizer) {
+        window.recognizer.updateQuestProgress(0);
+    }
 }
 
 // Initialize when page loads
 document.addEventListener('DOMContentLoaded', () => {
-    new DigitRecognizer();
+    const recognizer = new DigitRecognizer();
+    window.recognizer = recognizer; // Make it globally accessible
+    recognizer.initInteractiveChallenges();
 });

@@ -77,6 +77,12 @@ permalink: /digitrecog
                 <button id="close-viz-btn" class="close-btn">✕</button>
             </div>
 
+            <div class="viz-controls">
+                <button id="prev-layer-btn" class="viz-btn">◀ PREV</button>
+                <button id="play-btn" class="viz-btn viz-btn-primary">▶ PLAY</button>
+                <button id="next-layer-btn" class="viz-btn">NEXT ▶</button>
+            </div>
+
             <div class="layer-progress">
                 <div id="layer-progress-bar" class="layer-progress-bar"></div>
                 <div id="layer-counter" class="layer-counter">Layer 0 / 0</div>
@@ -95,41 +101,173 @@ permalink: /digitrecog
                 <!-- Dynamically filled with feature maps -->
             </div>
 
-            <div class="viz-controls">
-                <button id="prev-layer-btn" class="viz-btn">◀ PREV</button>
-                <button id="play-btn" class="viz-btn viz-btn-primary">▶ PLAY</button>
-                <button id="next-layer-btn" class="viz-btn">NEXT ▶</button>
-            </div>
-
             <div class="sequential-explanation">
-                <h4>🔄 Sequential Computing Flow</h4>
-                <div class="flow-diagram">
-                    <div class="flow-step">
-                        <div class="flow-icon">📥</div>
-                        <div class="flow-label">Input</div>
-                        <div class="flow-desc">28×28 pixels</div>
+                <h4>🧠 CNN ADVENTURE: Sequential Computing Quest</h4>
+
+                <div class="lesson-content">
+                    <div class="quest-intro">
+                        <div class="quest-badge">🎯 QUEST OBJECTIVE</div>
+                        <p><strong>Master sequential computing!</strong> Watch your digit transform through each CNN layer and learn why order matters in neural networks.</p>
+                        <div class="quest-progress">
+                            <div class="progress-bar" id="quest-progress-bar"></div>
+                            <div class="progress-text" id="quest-progress-text">Ready to begin!</div>
+                        </div>
                     </div>
-                    <div class="flow-arrow">→</div>
-                    <div class="flow-step">
-                        <div class="flow-icon">🔍</div>
-                        <div class="flow-label">Conv Layers</div>
-                        <div class="flow-desc">Find patterns</div>
+
+                    <div class="interactive-challenges">
+                        <div class="challenge-card active" id="challenge-1">
+                            <div class="challenge-header">
+                                <div class="challenge-icon">🎨</div>
+                                <div class="challenge-title">Challenge 1: The Input Mystery</div>
+                                <div class="challenge-status">🔍 ACTIVE</div>
+                            </div>
+                            <div class="challenge-content">
+                                <p><strong>What happens first?</strong> Your drawing gets converted to a 28×28 grid of numbers (0-255), just like the <code>digit_api.py</code> processes it. Each pixel becomes a grayscale value!</p>
+                                <div class="pixel-demo">
+                                    <div class="pixel-grid" id="pixel-grid">
+                                        <!-- Pixels will be generated here -->
+                                    </div>
+                                    <div class="pixel-info">
+                                        <div class="pixel-value" id="pixel-value">Hover over pixels!</div>
+                                        <div class="pixel-fact">💡 <strong>Fact:</strong> Dark pixels = low numbers, Light pixels = high numbers. This is exactly how <code>digit_api.py</code> sees your drawing!</div>
+                                    </div>
+                                </div>
+                                <button class="challenge-btn" onclick="nextChallenge(1)">✅ Got it! Next Challenge</button>
+                            </div>
+                        </div>
+
+                        <div class="challenge-card" id="challenge-2">
+                            <div class="challenge-header">
+                                <div class="challenge-icon">🔍</div>
+                                <div class="challenge-title">Challenge 2: Pattern Hunters</div>
+                                <div class="challenge-status">⏳ LOCKED</div>
+                            </div>
+                            <div class="challenge-content">
+                                <p><strong>Conv2D layers are detectives!</strong> They scan your image with 32 different "filters" looking for patterns like edges, curves, and shapes.</p>
+                                <div class="pattern-game">
+                                    <div class="pattern-question">👀 Can you spot the pattern?</div>
+                                    <div class="pattern-options">
+                                        <button class="pattern-option" onclick="checkPatternAnswer('edges')">Edges</button>
+                                        <button class="pattern-option" onclick="checkPatternAnswer('colors')">Colors</button>
+                                        <button class="pattern-option" onclick="checkPatternAnswer('shapes')">Shapes</button>
+                                        <button class="pattern-option" onclick="checkPatternAnswer('size')">Size</button>
+                                    </div>
+                                    <div class="pattern-feedback" id="pattern-feedback"></div>
+                                </div>
+                                <button class="challenge-btn hidden" id="challenge-2-next" onclick="nextChallenge(2)">🚀 Next Challenge</button>
+                            </div>
+                        </div>
+
+                        <div class="challenge-card" id="challenge-3">
+                            <div class="challenge-header">
+                                <div class="challenge-icon">🏊</div>
+                                <div class="challenge-title">Challenge 3: Size Matters</div>
+                                <div class="challenge-status">⏳ LOCKED</div>
+                            </div>
+                            <div class="challenge-content">
+                                <p><strong>MaxPooling shrinks the image!</strong> It keeps the strongest patterns and discards noise. Your 28×28 image becomes smaller but smarter.</p>
+                                <div class="pooling-demo">
+                                    <div class="before-pool">
+                                        <div class="pool-grid">
+                                            <div class="pool-cell active">8</div>
+                                            <div class="pool-cell active">3</div>
+                                            <div class="pool-cell">1</div>
+                                            <div class="pool-cell">6</div>
+                                            <div class="pool-cell active">9</div>
+                                            <div class="pool-cell active">2</div>
+                                            <div class="pool-cell">4</div>
+                                            <div class="pool-cell">7</div>
+                                        </div>
+                                        <div class="pool-label">BEFORE: 4×4 grid</div>
+                                    </div>
+                                    <div class="pool-arrow">→</div>
+                                    <div class="after-pool">
+                                        <div class="pool-grid small">
+                                            <div class="pool-cell max">8</div>
+                                            <div class="pool-cell max">9</div>
+                                        </div>
+                                        <div class="pool-label">AFTER: 2×2 grid (max values only!)</div>
+                                    </div>
+                                </div>
+                                <div class="pooling-question">🤔 <strong>Why keep the maximum?</strong></div>
+                                <div class="pooling-options">
+                                    <button class="pooling-option" onclick="checkPoolingAnswer('strongest')">Keeps strongest signals</button>
+                                    <button class="pooling-option" onclick="checkPoolingAnswer('average')">Takes average of all</button>
+                                    <button class="pooling-option" onclick="checkPoolingAnswer('random')">Picks randomly</button>
+                                </div>
+                                <div class="pooling-feedback" id="pooling-feedback"></div>
+                                <button class="challenge-btn hidden" id="challenge-3-next" onclick="nextChallenge(3)">⚡ Next Challenge</button>
+                            </div>
+                        </div>
+
+                        <div class="challenge-card" id="challenge-4">
+                            <div class="challenge-header">
+                                <div class="challenge-icon">🧠</div>
+                                <div class="challenge-title">Challenge 4: Brain Power</div>
+                                <div class="challenge-status">⏳ LOCKED</div>
+                            </div>
+                            <div class="challenge-content">
+                                <p><strong>Dense layers connect everything!</strong> They take all the patterns and decide "This looks like a 7!" by learning from thousands of examples.</p>
+                                <div class="brain-teaser">
+                                    <div class="neuron-demo">
+                                        <div class="neuron-inputs">
+                                            <div class="neuron-input">👁️ Edge detector</div>
+                                            <div class="neuron-input">🔄 Curve finder</div>
+                                            <div class="neuron-input">📏 Size checker</div>
+                                            <div class="neuron-input">🎯 Shape matcher</div>
+                                        </div>
+                                        <div class="neuron-brain">🧠</div>
+                                        <div class="neuron-output">7️⃣</div>
+                                    </div>
+                                    <div class="brain-question">🎲 <strong>Quick Math:</strong> If each dense layer has 128 neurons, and there are 2 dense layers, how many total connections exist?</div>
+                                    <input type="text" class="math-answer" id="math-answer" placeholder="Calculate: 128 × 128 × 2 = ?">
+                                    <button class="check-math-btn" onclick="checkMathAnswer()">Check Answer</button>
+                                    <div class="math-feedback" id="math-feedback"></div>
+                                </div>
+                                <button class="challenge-btn hidden" id="challenge-4-next" onclick="nextChallenge(4)">🏆 Final Challenge</button>
+                            </div>
+                        </div>
+
+                        <div class="challenge-card" id="challenge-5">
+                            <div class="challenge-header">
+                                <div class="challenge-icon">🎯</div>
+                                <div class="challenge-title">Challenge 5: The Grand Finale</div>
+                                <div class="challenge-status">⏳ LOCKED</div>
+                            </div>
+                            <div class="challenge-content">
+                                <p><strong>You've mastered sequential computing!</strong> Data flows through layers in order: Input → Conv → Pool → Conv → Pool → Conv → Dense → Dense → Output</p>
+                                <div class="final-sequence">
+                                    <div class="sequence-flow">
+                                        <div class="seq-step" data-step="1">📥 Input</div>
+                                        <div class="seq-arrow">→</div>
+                                        <div class="seq-step" data-step="2">🔍 Conv2D</div>
+                                        <div class="seq-arrow">→</div>
+                                        <div class="seq-step" data-step="3">🏊 Pool</div>
+                                        <div class="seq-arrow">→</div>
+                                        <div class="seq-step" data-step="4">🔍 Conv2D</div>
+                                        <div class="seq-arrow">→</div>
+                                        <div class="seq-step" data-step="5">🏊 Pool</div>
+                                        <div class="seq-arrow">→</div>
+                                        <div class="seq-step" data-step="6">🔍 Conv2D</div>
+                                        <div class="seq-arrow">→</div>
+                                        <div class="seq-step" data-step="7">📏 Flatten</div>
+                                        <div class="seq-arrow">→</div>
+                                        <div class="seq-step" data-step="8">🧠 Dense</div>
+                                        <div class="seq-arrow">→</div>
+                                        <div class="seq-step" data-step="9">🧠 Dense</div>
+                                        <div class="seq-arrow">→</div>
+                                        <div class="seq-step" data-step="10">🎯 Output</div>
+                                    </div>
+                                </div>
+                                <div class="final-message">
+                                    <div class="celebration">🎉 CONGRATULATIONS! 🎉</div>
+                                    <p>You now understand why CNNs process data <strong>sequentially</strong> - each layer builds on the previous one, creating increasingly sophisticated representations of your digit!</p>
+                                    <div class="final-tip">💡 <strong>Pro Tip:</strong> Try drawing different digits and watch how the patterns change through each layer!</div>
+                                </div>
+                                <button class="challenge-btn" onclick="restartQuest()">🔄 Try Again</button>
+                            </div>
+                        </div>
                     </div>
-                    <div class="flow-arrow">→</div>
-                    <div class="flow-step">
-                        <div class="flow-icon">🧠</div>
-                        <div class="flow-label">Dense Layers</div>
-                        <div class="flow-desc">Combine features</div>
-                    </div>
-                    <div class="flow-arrow">→</div>
-                    <div class="flow-step">
-                        <div class="flow-icon">🎯</div>
-                        <div class="flow-label">Output</div>
-                        <div class="flow-desc">0-9 prediction</div>
-                    </div>
-                </div>
-                <div class="key-concept">
-                    <strong>Key Concept:</strong> Data moves through ONE layer at a time, each layer transforms the data before passing it to the next!
                 </div>
             </div>
         </div>
