@@ -4,12 +4,11 @@ from tensorflow.keras import layers
 import numpy as np
 from PIL import Image, ImageDraw, ImageTk
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, messagebox
 import os
 from scipy import ndimage
 import json
 from datetime import datetime
-from tkinter import messagebox
 
 MODEL_PATH = 'mnist_model_enhanced.keras'
 CORRECTIONS_PATH = 'user_corrections.json'
@@ -21,9 +20,9 @@ def create_augmented_training():
     
     # Data augmentation
     data_augmentation = keras.Sequential([
-        layers.RandomRotation(0.1),  # Rotate up to 10 degrees
-        layers.RandomTranslation(0.1, 0.1),  # Shift up to 10%
-        layers.RandomZoom(0.1),  # Zoom in/out up to 10%
+        layers.RandomRotation(0.1),
+        layers.RandomTranslation(0.1, 0.1),
+        layers.RandomZoom(0.1),
     ])
     
     return (x_train, y_train), (x_test, y_test), data_augmentation
@@ -31,10 +30,8 @@ def create_augmented_training():
 def create_enhanced_model():
     """Create a deeper, more robust model"""
     model = keras.Sequential([
-        # Input reshaping
         layers.Reshape((28, 28, 1), input_shape=(28, 28)),
         
-        # Convolutional layers (better for spatial patterns)
         layers.Conv2D(32, (3, 3), activation='relu', padding='same'),
         layers.MaxPooling2D((2, 2)),
         layers.Dropout(0.25),
@@ -46,7 +43,6 @@ def create_enhanced_model():
         layers.Conv2D(64, (3, 3), activation='relu', padding='same'),
         layers.Dropout(0.25),
         
-        # Dense layers
         layers.Flatten(),
         layers.Dense(128, activation='relu'),
         layers.Dropout(0.5),
@@ -76,18 +72,16 @@ else:
         metrics=['accuracy']
     )
     
-    # Train with augmentation
     print("\nTraining enhanced CNN model...")
     history = model.fit(
         x_train.reshape(-1, 28, 28, 1),
         y_train,
-        epochs=10,  # More epochs for better learning
+        epochs=10,
         batch_size=128,
         validation_split=0.1,
         verbose=1
     )
     
-    # Evaluate
     test_loss, test_acc = model.evaluate(x_test.reshape(-1, 28, 28, 1), y_test, verbose=0)
     print(f"\nTest accuracy: {test_acc:.4f}")
     
@@ -119,16 +113,80 @@ def save_correction(digit_image, predicted, actual):
     
     print(f"Correction saved: {predicted} → {actual}")
 
+def should_merge_components(comp1, comp2, img_shape):
+    """Determine if two components should be merged into one digit"""
+    bbox1 = comp1['bbox']
+    bbox2 = comp2['bbox']
+    
+    # Get bounding box coordinates
+    r1min, r1max, c1min, c1max = bbox1
+    r2min, r2max, c2min, c2max = bbox2
+    
+    # Calculate centers
+    center1_x = (c1min + c1max) / 2
+    center1_y = (r1min + r1max) / 2
+    center2_x = (c2min + c2max) / 2
+    center2_y = (r2min + r2max) / 2
+    
+    # Calculate dimensions
+    width1 = c1max - c1min
+    height1 = r1max - r1min
+    width2 = c2max - c2min
+    height2 = r2max - r2min
+    
+    avg_width = (width1 + width2) / 2
+    avg_height = (height1 + height2) / 2
+    
+    # Calculate distances
+    horizontal_dist = abs(center1_x - center2_x)
+    vertical_dist = abs(center1_y - center2_y)
+    
+    # Calculate overlap
+    x_overlap = max(0, min(c1max, c2max) - max(c1min, c2min))
+    y_overlap = max(0, min(r1max, r2max) - max(r1min, r2min))
+    
+    # Merge conditions:
+    # 1. Components significantly overlap
+    if x_overlap > avg_width * 0.3 and y_overlap > avg_height * 0.3:
+        return True
+    
+    # 2. Components are very close horizontally and aligned vertically
+    if horizontal_dist < avg_width * 0.8 and vertical_dist < avg_height * 0.5:
+        return True
+    
+    # 3. Components are close vertically and aligned horizontally (for digits like 4, 7)
+    if vertical_dist < avg_height * 0.8 and horizontal_dist < avg_width * 0.5:
+        return True
+    
+    # 4. One component is very small (likely part of the same digit)
+    if (width1 < avg_width * 0.3 or width2 < avg_width * 0.3) and horizontal_dist < avg_width:
+        return True
+    
+    return False
+
+def merge_bboxes(bbox1, bbox2):
+    """Merge two bounding boxes"""
+    r1min, r1max, c1min, c1max = bbox1
+    r2min, r2max, c2min, c2max = bbox2
+    
+    return (
+        min(r1min, r2min),
+        max(r1max, r2max),
+        min(c1min, c2min),
+        max(c1max, c2max)
+    )
+
 def find_connected_components(img_array, threshold=250):
-    """Find separate digits in the image using connected components"""
+    """Find separate digits with intelligent merging of multi-stroke digits"""
     binary = img_array < threshold
     labeled, num_features = ndimage.label(binary)
     
-    components = []
+    # First pass: collect all components
+    raw_components = []
     for i in range(1, num_features + 1):
         rows, cols = np.where(labeled == i)
         
-        if len(rows) < 20:
+        if len(rows) < 15:  # Filter tiny noise
             continue
         
         rmin, rmax = rows.min(), rows.max()
@@ -136,8 +194,53 @@ def find_connected_components(img_array, threshold=250):
         
         width = cmax - cmin
         height = rmax - rmin
-        if width < 15 or height < 15:
+        
+        if width < 10 or height < 10:
             continue
+        
+        raw_components.append({
+            'bbox': (rmin, rmax, cmin, cmax),
+            'center_x': (cmin + cmax) / 2,
+            'center_y': (rmin + rmax) / 2,
+            'width': width,
+            'height': height,
+            'merged': False
+        })
+    
+    # Second pass: merge components that belong to the same digit
+    merged_components = []
+    used = set()
+    
+    for i, comp1 in enumerate(raw_components):
+        if i in used:
+            continue
+        
+        current_bbox = comp1['bbox']
+        merge_group = [i]
+        
+        # Find all components that should merge with this one
+        changed = True
+        while changed:
+            changed = False
+            for j, comp2 in enumerate(raw_components):
+                if j in used or j in merge_group:
+                    continue
+                
+                # Check if should merge with current merged bbox
+                temp_comp1 = {'bbox': current_bbox, 'width': 0, 'height': 0}
+                
+                if should_merge_components(temp_comp1, comp2, img_array.shape):
+                    current_bbox = merge_bboxes(current_bbox, comp2['bbox'])
+                    merge_group.append(j)
+                    changed = True
+        
+        # Mark all merged components as used
+        used.update(merge_group)
+        
+        # Add padding to final bbox
+        rmin, rmax, cmin, cmax = current_bbox
+        width = cmax - cmin
+        height = rmax - rmin
         
         padding = max(int(0.15 * max(width, height)), 10)
         rmin = max(0, rmin - padding)
@@ -145,15 +248,17 @@ def find_connected_components(img_array, threshold=250):
         cmin = max(0, cmin - padding)
         cmax = min(img_array.shape[1], cmax + padding)
         
-        components.append({
+        merged_components.append({
             'bbox': (rmin, rmax, cmin, cmax),
-            'center_x': (cmin + cmax) // 2,
-            'width': width,
-            'height': height
+            'center_x': (cmin + cmax) / 2,
+            'width': cmax - cmin,
+            'height': rmax - rmin
         })
     
-    components.sort(key=lambda x: x['center_x'])
-    return components
+    # Sort left to right
+    merged_components.sort(key=lambda x: x['center_x'])
+    
+    return merged_components
 
 def preprocess_digit(img_array, bbox):
     """Preprocess a single digit to MNIST format"""
@@ -188,7 +293,7 @@ class EnhancedDigitRecognizerApp:
         
         self.canvas_size = 500
         self.brush_size = 12
-        self.confidence_threshold = 0.6  # Flag predictions below 60%
+        self.confidence_threshold = 0.6
         
         # Main container
         main_container = ttk.Frame(root)
@@ -207,8 +312,8 @@ class EnhancedDigitRecognizerApp:
         
         # Drawing canvas
         ttk.Label(left_frame, text="Draw multiple digits:", font=("Arial", 14, "bold")).pack()
-        ttk.Label(left_frame, text="Space digits apart for best results", 
-                 font=("Arial", 9), foreground='gray').pack()
+        ttk.Label(left_frame, text="✓ Multi-stroke digits now supported!", 
+                 font=("Arial", 9), foreground='green').pack()
         
         self.canvas = tk.Canvas(left_frame, width=self.canvas_size, height=self.canvas_size, 
                                 bg='white', cursor='cross', relief=tk.SUNKEN, borderwidth=2)
@@ -229,11 +334,11 @@ class EnhancedDigitRecognizerApp:
         brush_frame.pack(pady=5)
         ttk.Label(brush_frame, text="Brush size:").pack(side=tk.LEFT, padx=5)
         self.brush_scale = ttk.Scale(brush_frame, from_=5, to=20, orient=tk.HORIZONTAL,
-                             command=self.update_brush_size)
+                                     command=self.update_brush_size)
         self.brush_scale.pack(side=tk.LEFT, padx=5)
         self.brush_label = ttk.Label(brush_frame, text=f"{self.brush_size}")
         self.brush_label.pack(side=tk.LEFT)
-        self.brush_scale.set(self.brush_size)  # ← MOVED HERE, AFTER label is created
+        self.brush_scale.set(self.brush_size)  # Set after label is created
         
         # Stats
         stats_frame = ttk.LabelFrame(left_frame, text="Statistics", padding=10)
@@ -346,12 +451,20 @@ class EnhancedDigitRecognizerApp:
     def submit_correction(self, dialog, processed_img, predicted, actual):
         """Submit a correction"""
         save_correction(processed_img, predicted, actual)
+        
+        # Update the result label temporarily
+        original_text = self.confidence_label.cget("text")
+        self.confidence_label.config(
+            text=f"✓ Correction saved: {predicted} → {actual}",
+            foreground='green'
+        )
+        
+        # Reset after 3 seconds
+        self.root.after(3000, lambda: self.confidence_label.config(text=original_text))
+        
         dialog.destroy()
         
-        # Show confirmation
-        messagebox.showinfo("Correction Saved", 
-                              f"Thanks! Correction saved: {predicted} → {actual}\n"
-                              f"This will help improve the model.")
+        print(f"Correction saved: {predicted} → {actual}")
     
     def predict_all(self):
         for widget in self.scrollable_frame.winfo_children():
