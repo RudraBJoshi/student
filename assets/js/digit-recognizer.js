@@ -778,7 +778,7 @@ function initPixelChallenge() {
             }
 
             renderPixelGrid(sampledPixels);
-            status.textContent = `Your digit's pixels! Find one > 180`;
+            status.textContent = `Your digit's pixels! Find one > 150`;
         };
         img.src = window.cnnVisualizationData.input_image;
     } else {
@@ -816,16 +816,16 @@ function renderPixelGrid(pixels) {
             cell.textContent = value;
             cell.style.background = intensity > 0.5 ? '#e3f2fd' : '#f8f9fa';
 
-            if (value > 180 && !foundHighPixel) {
+            if (value > 150 && !foundHighPixel) {
                 foundHighPixel = true;
                 highPixelCount++;
                 document.getElementById('challenge-1-status').textContent = `Found it! Value: ${value} ✓ (${highPixelCount} found)`;
                 document.getElementById('challenge-1-status').className = 'challenge-status correct';
-            } else if (value > 180) {
+            } else if (value > 150) {
                 highPixelCount++;
                 document.getElementById('challenge-1-status').textContent = `Another one! Value: ${value} ✓ (${highPixelCount} found)`;
             } else if (!foundHighPixel) {
-                document.getElementById('challenge-1-status').textContent = `${value} - Keep looking for > 180!`;
+                document.getElementById('challenge-1-status').textContent = `${value} - Keep looking for > 150!`;
                 document.getElementById('challenge-1-status').className = 'challenge-status';
             }
         });
