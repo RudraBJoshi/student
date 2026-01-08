@@ -283,9 +283,6 @@ class DigitRecognizer {
         const modal = document.getElementById('cnn-visualization-modal');
         if (!modal) return;
 
-        // Update the pixel grid with current canvas data
-        this.createPixelGrid();
-
         const imageData = this.canvas.toDataURL('image/png');
 
         try {
@@ -300,8 +297,15 @@ class DigitRecognizer {
             if (data.success) {
                 this.cnnData = data;
                 this.currentLayerIndex = 0;
+
+                // Store data globally for challenges
+                window.cnnVisualizationData = data;
+
                 this.renderCNNVisualization();
                 modal.classList.add('active');
+
+                // Initialize first challenge with real data
+                setTimeout(initPixelChallenge, 100);
             } else {
                 alert('Error: ' + (data.error || 'Draw a digit first!'));
             }
@@ -345,7 +349,7 @@ class DigitRecognizer {
             const description = this.getLayerDescription(null);
             layerTitle.textContent = 'INPUT';
             layerDescription.textContent = description.text;
-            visualExplainer.innerHTML = this.createVisualExplainer(description.visual, null);
+            visualExplainer.innerHTML = this.createVisualExplainer(description.visual);
 
             const inputContainer = document.createElement('div');
             inputContainer.className = 'feature-map-large';
@@ -359,7 +363,7 @@ class DigitRecognizer {
             const description = this.getLayerDescription(layer);
             layerTitle.textContent = layer.layer_name.toUpperCase();
             layerDescription.textContent = description.text;
-            visualExplainer.innerHTML = this.createVisualExplainer(description.visual, layer);
+            visualExplainer.innerHTML = this.createVisualExplainer(description.visual);
 
             if (layer.type === 'conv') {
                 layer.feature_maps.forEach((featureMap, idx) => {
@@ -425,7 +429,7 @@ class DigitRecognizer {
         }
     }
 
-    createVisualExplainer(type, layer) {
+    createVisualExplainer(type) {
         switch(type) {
             case 'input':
                 return `
@@ -650,7 +654,7 @@ class DigitRecognizer {
         this.isPlaying = true;
         const playBtn = document.getElementById('play-btn');
         if (playBtn) {
-            playBtn.innerHTML = '⏸ PAUSE';
+            playBtn.innerHTML = 'Pause';
         }
 
         this.playInterval = setInterval(() => {
@@ -667,7 +671,7 @@ class DigitRecognizer {
         this.isPlaying = false;
         const playBtn = document.getElementById('play-btn');
         if (playBtn) {
-            playBtn.innerHTML = '▶ PLAY';
+            playBtn.innerHTML = 'Play';
         }
 
         if (this.playInterval) {
@@ -678,233 +682,580 @@ class DigitRecognizer {
 
     // Interactive Challenge Functions
     initInteractiveChallenges() {
-        this.initializePixelGrid();
-        this.updateQuestProgress(0);
-    }
-
-    initializePixelGrid() {
-        const pixelGrid = document.getElementById('pixel-grid');
-        if (!pixelGrid) return;
-
-        pixelGrid.innerHTML = '';
-        for (let i = 0; i < 28 * 28; i++) {
-            const pixel = document.createElement('div');
-            pixel.className = 'pixel empty';
-            pixel.dataset.value = '0';
-            pixel.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
-
-            pixel.addEventListener('mouseover', (e) => {
-                document.getElementById('pixel-value').textContent = 'Draw a digit first!';
-                e.target.style.transform = 'scale(1.1)';
-            });
-
-            pixel.addEventListener('mouseout', (e) => {
-                e.target.style.transform = 'scale(1)';
-            });
-
-            pixelGrid.appendChild(pixel);
-        }
-    }
-
-    createPixelGrid() {
-        const pixelGrid = document.getElementById('pixel-grid');
-        if (!pixelGrid) return;
-
-        // Get actual pixel data from canvas (like digit_api.py does)
-        const pixelData = this.getCanvasPixelData();
-        pixelGrid.innerHTML = '';
-
-        for (let i = 0; i < 28 * 28; i++) {
-            const pixel = document.createElement('div');
-            pixel.className = 'pixel';
-            pixel.dataset.value = pixelData[i];
-            pixel.style.backgroundColor = `rgb(${pixelData[i]}, ${pixelData[i]}, ${pixelData[i]})`;
-
-            pixel.addEventListener('mouseover', (e) => {
-                const value = e.target.dataset.value;
-                document.getElementById('pixel-value').textContent = `Pixel value: ${value} (0-255)`;
-                e.target.style.transform = 'scale(1.2)';
-            });
-
-            pixel.addEventListener('mouseout', (e) => {
-                e.target.style.transform = 'scale(1)';
-            });
-
-            pixelGrid.appendChild(pixel);
-        }
-    }
-
-    getCanvasPixelData() {
-        // Create a temporary canvas to resize to 28x28 (like digit_api.py)
-        const tempCanvas = document.createElement('canvas');
-        const tempCtx = tempCanvas.getContext('2d');
-        tempCanvas.width = 28;
-        tempCanvas.height = 28;
-
-        // Draw the main canvas onto the temp canvas (resizing to 28x28)
-        tempCtx.drawImage(this.canvas, 0, 0, 28, 28);
-
-        // Get image data
-        const imageData = tempCtx.getImageData(0, 0, 28, 28);
-        const data = imageData.data;
-
-        // Convert to grayscale (like digit_api.py preprocessing)
-        const grayscalePixels = [];
-        for (let i = 0; i < data.length; i += 4) {
-            // Get RGB values
-            const r = data[i];
-            const g = data[i + 1];
-            const b = data[i + 2];
-
-            // Convert to grayscale using luminance formula
-            const gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
-            grayscalePixels.push(gray);
-        }
-
-        return grayscalePixels;
-    }
-
-    updateQuestProgress(challengeNumber) {
-        const progressBar = document.getElementById('quest-progress-bar');
-        const progressText = document.getElementById('quest-progress-text');
-
-        if (!progressBar || !progressText) return;
-
-        const progress = (challengeNumber / 5) * 100;
-        progressBar.style.width = `${progress}%`;
-
-        const messages = [
-            "Ready to begin!",
-            "Challenge 1 Complete! 🎨",
-            "Challenge 2 Complete! 🔍",
-            "Challenge 3 Complete! 🏊",
-            "Challenge 4 Complete! 🧠",
-            "Quest Complete! 🎉"
-        ];
-
-        progressText.textContent = messages[challengeNumber] || "Ready to begin!";
+        // Simplified - no progress tracking needed
     }
 }
 
-// Global functions for HTML onclick handlers
-function nextChallenge(currentChallenge) {
-    const currentCard = document.getElementById(`challenge-${currentChallenge}`);
-    const nextCard = document.getElementById(`challenge-${currentChallenge + 1}`);
+// Global slideshow state
+let currentSlide = 1;
+const totalSlides = 5;
 
-    if (currentCard && nextCard) {
-        currentCard.classList.remove('active');
-        currentCard.classList.add('completed');
-        nextCard.classList.add('active');
-        nextCard.classList.remove('locked');
+// Slideshow navigation functions
+function showSlide(slideNumber) {
+    // Hide all slides
+    for (let i = 1; i <= totalSlides; i++) {
+        const slide = document.getElementById(`slide-${i}`);
+        const dot = document.querySelector(`[data-slide="${i}"]`);
+        if (slide) slide.classList.remove('active');
+        if (dot) dot.classList.remove('active');
+    }
 
-        // Update status indicators
-        const currentStatus = currentCard.querySelector('.challenge-status');
-        const nextStatus = nextCard.querySelector('.challenge-status');
+    // Show current slide
+    const currentSlideEl = document.getElementById(`slide-${slideNumber}`);
+    const currentDot = document.querySelector(`[data-slide="${slideNumber}"]`);
+    if (currentSlideEl) currentSlideEl.classList.add('active');
+    if (currentDot) currentDot.classList.add('active');
 
-        if (currentStatus) currentStatus.textContent = '✅ COMPLETED';
-        if (nextStatus) nextStatus.textContent = '🔍 ACTIVE';
+    // Update button states
+    const prevBtn = document.querySelector('.prev-btn');
+    const nextBtn = document.querySelector('.next-btn');
 
-        // Update quest progress
-        if (window.recognizer) {
-            window.recognizer.updateQuestProgress(currentChallenge);
+    if (prevBtn) prevBtn.disabled = slideNumber === 1;
+    if (nextBtn) {
+        if (slideNumber === totalSlides) {
+            nextBtn.textContent = 'Restart';
+        } else {
+            nextBtn.textContent = 'Next →';
         }
     }
+
+    currentSlide = slideNumber;
 }
 
-function checkPatternAnswer(answer) {
-    const feedback = document.getElementById('pattern-feedback');
-    const nextBtn = document.getElementById('challenge-2-next');
-
-    if (!feedback || !nextBtn) return;
-
-    if (answer === 'edges') {
-        feedback.innerHTML = '🎉 <strong>Correct!</strong> Conv2D layers look for edges, curves, and basic patterns first!';
-        feedback.className = 'pattern-feedback correct';
-        nextBtn.classList.remove('hidden');
+function nextSlide() {
+    if (currentSlide === totalSlides) {
+        // Restart from beginning
+        showSlide(1);
     } else {
-        feedback.innerHTML = '❌ Not quite! Try again - what do the first layers typically detect?';
-        feedback.className = 'pattern-feedback incorrect';
+        showSlide(currentSlide + 1);
     }
 }
 
-function checkPoolingAnswer(answer) {
-    const feedback = document.getElementById('pooling-feedback');
-    const nextBtn = document.getElementById('challenge-3-next');
+function prevSlide() {
+    if (currentSlide > 1) {
+        showSlide(currentSlide - 1);
+    }
+}
 
-    if (!feedback || !nextBtn) return;
+// Interactive Challenge Functions
+let pixelData = [];
+let foundHighPixel = false;
+let highPixelCount = 0;
 
-    if (answer === 'strongest') {
-        feedback.innerHTML = '🎉 <strong>Perfect!</strong> MaxPooling keeps the strongest signals and reduces noise!';
-        feedback.className = 'pooling-feedback correct';
-        nextBtn.classList.remove('hidden');
+function initPixelChallenge() {
+    const grid = document.getElementById('mini-pixel-grid');
+    const status = document.getElementById('challenge-1-status');
+    if (!grid) return;
+
+    grid.innerHTML = '';
+    pixelData = [];
+    foundHighPixel = false;
+    highPixelCount = 0;
+
+    // Use real drawn digit if available
+    if (window.cnnVisualizationData && window.cnnVisualizationData.input_image) {
+        // Convert base64 image to pixel data
+        const img = new Image();
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = 28;
+            canvas.height = 28;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, 28, 28);
+            const imageData = ctx.getImageData(0, 0, 28, 28);
+
+            // Sample 5x5 grid from the 28x28 image (every ~5.6 pixels)
+            const sampledPixels = [];
+            for (let y = 0; y < 5; y++) {
+                for (let x = 0; x < 5; x++) {
+                    const srcX = Math.floor(x * 5.6);
+                    const srcY = Math.floor(y * 5.6);
+                    const idx = (srcY * 28 + srcX) * 4;
+                    // Get grayscale value (assuming it's already grayscale)
+                    const value = 255 - imageData.data[idx]; // Invert because our canvas is black on white
+                    sampledPixels.push(value);
+                }
+            }
+
+            renderPixelGrid(sampledPixels);
+            status.textContent = `Your digit's pixels! Find one > 180`;
+        };
+        img.src = window.cnnVisualizationData.input_image;
     } else {
-        feedback.innerHTML = '❌ Think about it - pooling wants to preserve the most important information!';
-        feedback.className = 'pooling-feedback incorrect';
-    }
-}
-
-function checkMathAnswer() {
-    const input = document.getElementById('math-answer');
-    const feedback = document.getElementById('math-feedback');
-    const nextBtn = document.getElementById('challenge-4-next');
-
-    if (!input || !feedback || !nextBtn) return;
-
-    const answer = input.value.trim();
-    const correctAnswer = '32768'; // 128 * 128 * 2
-
-    if (answer === correctAnswer || answer === '32,768') {
-        feedback.innerHTML = '🎉 <strong>Amazing!</strong> That\'s 32,768 connections - that\'s a lot of learning power!';
-        feedback.className = 'math-feedback correct';
-        nextBtn.classList.remove('hidden');
-    } else {
-        feedback.innerHTML = `❌ Not quite! Hint: 128 × 128 = 16,384, then × 2 = ?`;
-        feedback.className = 'math-feedback incorrect';
-    }
-}
-
-function restartQuest() {
-    // Reset all challenges
-    for (let i = 1; i <= 5; i++) {
-        const card = document.getElementById(`challenge-${i}`);
-        if (card) {
-            card.classList.remove('active', 'completed', 'locked');
-            if (i === 1) {
-                card.classList.add('active');
-                const status = card.querySelector('.challenge-status');
-                if (status) status.textContent = '🔍 ACTIVE';
+        // Fallback: Generate random grid
+        const sampledPixels = [];
+        const hasHighPixel = Math.random() > 0.3;
+        for (let i = 0; i < 25; i++) {
+            let value;
+            if (i === 12 && hasHighPixel) {
+                value = Math.floor(Math.random() * 55) + 201;
             } else {
-                card.classList.add('locked');
-                const status = card.querySelector('.challenge-status');
-                if (status) status.textContent = '⏳ LOCKED';
+                value = Math.floor(Math.random() * 256);
+            }
+            sampledPixels.push(value);
+        }
+        renderPixelGrid(sampledPixels);
+        status.textContent = 'Click pixels to explore!';
+    }
+}
+
+function renderPixelGrid(pixels) {
+    const grid = document.getElementById('mini-pixel-grid');
+    grid.innerHTML = '';
+
+    pixels.forEach((value) => {
+        const cell = document.createElement('div');
+        cell.className = 'pixel-cell';
+        const intensity = value / 255;
+        cell.style.background = `rgb(${value}, ${value}, ${value})`;
+
+        cell.addEventListener('click', () => {
+            if (cell.classList.contains('revealed')) return;
+
+            cell.classList.add('revealed');
+            cell.textContent = value;
+            cell.style.background = intensity > 0.5 ? '#e3f2fd' : '#f8f9fa';
+
+            if (value > 180 && !foundHighPixel) {
+                foundHighPixel = true;
+                highPixelCount++;
+                document.getElementById('challenge-1-status').textContent = `Found it! Value: ${value} ✓ (${highPixelCount} found)`;
+                document.getElementById('challenge-1-status').className = 'challenge-status correct';
+            } else if (value > 180) {
+                highPixelCount++;
+                document.getElementById('challenge-1-status').textContent = `Another one! Value: ${value} ✓ (${highPixelCount} found)`;
+            } else if (!foundHighPixel) {
+                document.getElementById('challenge-1-status').textContent = `${value} - Keep looking for > 180!`;
+                document.getElementById('challenge-1-status').className = 'challenge-status';
+            }
+        });
+
+        grid.appendChild(cell);
+    });
+}
+
+function initFilterChallenge() {
+    const preview = document.getElementById('filter-preview');
+    if (!preview) return;
+
+    preview.innerHTML = '';
+
+    // Show actual feature maps from the first conv layer if available
+    if (window.cnnVisualizationData && window.cnnVisualizationData.layers) {
+        // Find first conv layer
+        const convLayer = window.cnnVisualizationData.layers.find(l => l.type === 'conv');
+        if (convLayer && convLayer.feature_maps) {
+            // Show first 8 feature maps
+            const maps = convLayer.feature_maps.slice(0, 8);
+            maps.forEach(mapUrl => {
+                const img = document.createElement('img');
+                img.src = mapUrl;
+                img.alt = 'Feature map';
+                preview.appendChild(img);
+            });
+        }
+    }
+}
+
+function checkFilter(type, element) {
+    const status = document.getElementById('challenge-2-status');
+    const buttons = document.querySelectorAll('.filter-option');
+
+    // Clear previous attempts
+    buttons.forEach(btn => {
+        btn.classList.remove('correct', 'incorrect');
+    });
+
+    if (type === 'vertical') {
+        status.textContent = 'Correct! Vertical filters detect vertical edges like │';
+        status.className = 'challenge-status correct';
+        element.classList.add('correct');
+    } else {
+        status.textContent = 'Not quite! Think about which direction the lines go. Try again!';
+        status.className = 'challenge-status incorrect';
+        element.classList.add('incorrect');
+    }
+}
+
+let poolingValues = [];
+let poolingAnswer = 0;
+
+function initPoolingChallenge() {
+    const grid = document.getElementById('pool-grid');
+    const input = document.getElementById('pool-answer');
+    const status = document.getElementById('challenge-3-status');
+
+    if (!grid) return;
+
+    // Generate 4 random values (0-9)
+    poolingValues = [];
+    for (let i = 0; i < 4; i++) {
+        poolingValues.push(Math.floor(Math.random() * 10));
+    }
+    poolingAnswer = Math.max(...poolingValues);
+
+    // Render grid
+    grid.innerHTML = '';
+    poolingValues.forEach(value => {
+        const cell = document.createElement('div');
+        cell.className = 'pool-cell';
+        cell.textContent = value;
+        grid.appendChild(cell);
+    });
+
+    // Reset input
+    input.value = '';
+    input.style.borderColor = '#ddd';
+    status.textContent = 'Enter the max value';
+    status.className = 'challenge-status';
+}
+
+function checkPooling() {
+    const input = document.getElementById('pool-answer');
+    const status = document.getElementById('challenge-3-status');
+    const answer = parseInt(input.value);
+
+    if (!answer || isNaN(answer)) {
+        status.textContent = 'Enter a number!';
+        status.className = 'challenge-status';
+        input.style.borderColor = '#ddd';
+        return;
+    }
+
+    if (answer === poolingAnswer) {
+        status.textContent = `Perfect! Max of {${poolingValues.join(',')}} = ${poolingAnswer} ✓`;
+        status.className = 'challenge-status correct';
+        input.style.borderColor = '#27ae60';
+
+        // Generate new challenge after 2 seconds
+        setTimeout(() => {
+            initPoolingChallenge();
+            status.textContent = 'Try another one!';
+        }, 2000);
+    } else {
+        status.textContent = `Try again! Hint: Look for the biggest number.`;
+        status.className = 'challenge-status incorrect';
+        input.style.borderColor = '#e74c3c';
+    }
+}
+
+let neuronsCorrect = false;
+let leftNeurons = 0;
+let rightNeurons = 0;
+let correctConnections = 0;
+
+function initNeuronChallenge() {
+    // Random number of neurons (2-5 on left, 2-5 on right)
+    leftNeurons = Math.floor(Math.random() * 4) + 2;  // 2-5
+    rightNeurons = Math.floor(Math.random() * 4) + 2; // 2-5
+    correctConnections = leftNeurons * rightNeurons;
+
+    neuronsCorrect = false;
+
+    // Update question
+    const question = document.getElementById('neuron-question');
+    if (question) {
+        question.textContent = `Dense layers connect EVERY neuron. How many connections from ${leftNeurons} to ${rightNeurons}?`;
+    }
+
+    // Render neurons
+    const visual = document.getElementById('neuron-visual');
+    if (!visual) return;
+
+    visual.innerHTML = '';
+
+    // Left layer
+    const leftLayer = document.createElement('div');
+    leftLayer.className = 'neuron-layer';
+    for (let i = 0; i < leftNeurons; i++) {
+        const neuron = document.createElement('div');
+        neuron.className = 'neuron';
+        neuron.textContent = '●';
+        leftLayer.appendChild(neuron);
+    }
+    visual.appendChild(leftLayer);
+
+    // Connection space
+    const connectionSpace = document.createElement('div');
+    connectionSpace.className = 'connection-space';
+    connectionSpace.id = 'connection-canvas';
+    visual.appendChild(connectionSpace);
+
+    // Right layer
+    const rightLayer = document.createElement('div');
+    rightLayer.className = 'neuron-layer';
+    for (let i = 0; i < rightNeurons; i++) {
+        const neuron = document.createElement('div');
+        neuron.className = 'neuron';
+        neuron.textContent = '●';
+        rightLayer.appendChild(neuron);
+    }
+    visual.appendChild(rightLayer);
+
+    // Generate answer options (correct answer + 2 wrong ones)
+    const answers = new Set([correctConnections]);
+    while (answers.size < 3) {
+        const wrong = correctConnections + Math.floor(Math.random() * 10) - 5;
+        if (wrong > 0) answers.add(wrong);
+    }
+    const shuffled = Array.from(answers).sort(() => Math.random() - 0.5);
+
+    // Render buttons
+    const answersDiv = document.getElementById('neuron-answers');
+    if (answersDiv) {
+        answersDiv.innerHTML = '';
+        shuffled.forEach(num => {
+            const btn = document.createElement('button');
+            btn.className = 'answer-btn';
+            btn.textContent = num;
+            btn.onclick = () => checkNeurons(num, btn);
+            answersDiv.appendChild(btn);
+        });
+    }
+
+    // Reset status
+    const status = document.getElementById('challenge-4-status');
+    if (status) {
+        status.textContent = 'Count carefully!';
+        status.className = 'challenge-status';
+    }
+}
+
+function checkNeurons(answer, element) {
+    const status = document.getElementById('challenge-4-status');
+    const buttons = document.querySelectorAll('.answer-btn');
+
+    // Clear previous attempts
+    buttons.forEach(btn => btn.classList.remove('correct', 'incorrect'));
+
+    if (answer === correctConnections) {
+        status.textContent = `Correct! ${leftNeurons} × ${rightNeurons} = ${correctConnections} connections ✓`;
+        status.className = 'challenge-status correct';
+        element.classList.add('correct');
+        if (!neuronsCorrect) {
+            drawConnections();
+            neuronsCorrect = true;
+        }
+
+        // Generate new challenge after 2 seconds
+        setTimeout(() => {
+            initNeuronChallenge();
+            status.textContent = 'Try another one!';
+        }, 2500);
+    } else {
+        status.textContent = `Not quite! Hint: Multiply ${leftNeurons} × ${rightNeurons}. Try again!`;
+        status.className = 'challenge-status incorrect';
+        element.classList.add('incorrect');
+    }
+}
+
+function drawConnections() {
+    const canvas = document.getElementById('connection-canvas');
+    if (!canvas) return;
+
+    // Clear any existing SVG
+    canvas.innerHTML = '';
+
+    // Create SVG for connections
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('width', '80');
+    svg.setAttribute('height', '150');
+    svg.style.position = 'absolute';
+    svg.style.top = '0';
+    svg.style.left = '0';
+
+    // Calculate positions based on number of neurons
+    const leftPositions = [];
+    const rightPositions = [];
+    const leftSpacing = 150 / (leftNeurons + 1);
+    const rightSpacing = 150 / (rightNeurons + 1);
+
+    for (let i = 0; i < leftNeurons; i++) {
+        leftPositions.push((i + 1) * leftSpacing);
+    }
+    for (let i = 0; i < rightNeurons; i++) {
+        rightPositions.push((i + 1) * rightSpacing);
+    }
+
+    // Draw all connections
+    leftPositions.forEach(y1 => {
+        rightPositions.forEach(y2 => {
+            const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            line.setAttribute('x1', '0');
+            line.setAttribute('y1', y1);
+            line.setAttribute('x2', '80');
+            line.setAttribute('y2', y2);
+            line.setAttribute('stroke', '#3498db');
+            line.setAttribute('stroke-width', '1.5');
+            line.setAttribute('opacity', '0.6');
+            svg.appendChild(line);
+        });
+    });
+
+    canvas.appendChild(svg);
+}
+
+let speedDigit = null;
+
+function initSpeedChallenge() {
+    const canvas = document.getElementById('speed-canvas');
+    const optionsDiv = document.getElementById('speed-options');
+    const status = document.getElementById('challenge-5-status');
+
+    if (!canvas || !optionsDiv) return;
+
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = 'white';
+    ctx.fillRect(0, 0, 140, 140);
+
+    // Use the actual drawn digit if available
+    if (window.cnnVisualizationData) {
+        speedDigit = window.cnnVisualizationData.predicted_digit;
+
+        // Draw the user's actual digit
+        const img = new Image();
+        img.onload = () => {
+            ctx.drawImage(img, 0, 0, 140, 140);
+        };
+        img.src = window.cnnVisualizationData.input_image;
+
+        status.textContent = "What digit did YOU draw?";
+    } else {
+        // Fallback: Generate random digit
+        speedDigit = Math.floor(Math.random() * 10);
+        ctx.fillStyle = 'black';
+        ctx.font = 'bold 80px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(speedDigit, 70, 70);
+
+        status.textContent = "What digit is this?";
+    }
+
+    // Create answer buttons (0-9) but only show 5 random including correct
+    const allDigits = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+    const wrongDigits = allDigits.filter(d => d !== speedDigit);
+    const shuffled = wrongDigits.sort(() => Math.random() - 0.5).slice(0, 4);
+    const options = [...shuffled, speedDigit].sort(() => Math.random() - 0.5);
+
+    optionsDiv.innerHTML = '';
+    options.forEach(digit => {
+        const btn = document.createElement('button');
+        btn.className = 'speed-digit';
+        btn.textContent = digit;
+        btn.onclick = () => checkSpeed(digit);
+        optionsDiv.appendChild(btn);
+    });
+}
+
+function checkSpeed(guess) {
+    const status = document.getElementById('challenge-5-status');
+    const buttons = document.querySelectorAll('.speed-digit');
+
+    // Clear previous attempts
+    buttons.forEach(btn => btn.classList.remove('correct', 'incorrect'));
+
+    if (guess === speedDigit) {
+        const confidence = window.cnnVisualizationData ?
+            (window.cnnVisualizationData.confidence * 100).toFixed(1) :
+            '95';
+
+        status.textContent = `Perfect! The network was ${confidence}% confident it's a ${speedDigit} ✓`;
+        status.className = 'challenge-status correct';
+        buttons.forEach(btn => {
+            if (parseInt(btn.textContent) === speedDigit) {
+                btn.classList.add('correct');
+            }
+        });
+
+        // Show probabilities if available
+        if (window.cnnVisualizationData && window.cnnVisualizationData.all_probabilities) {
+            const probs = window.cnnVisualizationData.all_probabilities;
+            const top3 = probs
+                .map((p, i) => ({ digit: i, prob: p }))
+                .sort((a, b) => b.prob - a.prob)
+                .slice(0, 3);
+
+            setTimeout(() => {
+                status.textContent = `Top 3: ${top3.map(t => `${t.digit}(${(t.prob*100).toFixed(0)}%)`).join(', ')}`;
+            }, 2000);
+        }
+    } else {
+        status.textContent = `Not quite! Try again!`;
+        status.className = 'challenge-status incorrect';
+        buttons.forEach(btn => {
+            if (parseInt(btn.textContent) === guess) {
+                btn.classList.add('incorrect');
+            }
+        });
+    }
+}
+
+// Modified showSlide to initialize challenges
+const originalShowSlide = showSlide;
+function showSlide(slideNumber) {
+    // Call original
+    for (let i = 1; i <= totalSlides; i++) {
+        const slide = document.getElementById(`slide-${i}`);
+        const dot = document.querySelector(`[data-slide="${i}"]`);
+        if (slide) slide.classList.remove('active');
+        if (dot) dot.classList.remove('active');
+    }
+
+    const currentSlideEl = document.getElementById(`slide-${slideNumber}`);
+    const currentDot = document.querySelector(`[data-slide="${slideNumber}"]`);
+    if (currentSlideEl) currentSlideEl.classList.add('active');
+    if (currentDot) currentDot.classList.add('active');
+
+    const prevBtn = document.querySelector('.prev-btn');
+    const nextBtn = document.querySelector('.next-btn');
+
+    if (prevBtn) prevBtn.disabled = slideNumber === 1;
+    if (nextBtn) {
+        if (slideNumber === totalSlides) {
+            nextBtn.textContent = 'Restart';
+        } else {
+            nextBtn.textContent = 'Next →';
+        }
+    }
+
+    currentSlide = slideNumber;
+
+    // Initialize challenges when entering their slide
+    if (slideNumber === 1) {
+        setTimeout(initPixelChallenge, 100);
+    } else if (slideNumber === 2) {
+        setTimeout(initFilterChallenge, 100);
+    } else if (slideNumber === 3) {
+        setTimeout(initPoolingChallenge, 100);
+    } else if (slideNumber === 4) {
+        setTimeout(initNeuronChallenge, 100);
+    } else if (slideNumber === 5) {
+        setTimeout(initSpeedChallenge, 100);
+    }
+}
+
+// Add click handlers to progress dots and keyboard navigation
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.progress-dot').forEach(dot => {
+        dot.addEventListener('click', () => {
+            const slideNum = parseInt(dot.getAttribute('data-slide'));
+            showSlide(slideNum);
+        });
+    });
+
+    // Keyboard navigation (left/right arrows) when modal is open
+    document.addEventListener('keydown', (e) => {
+        const modal = document.getElementById('cnn-visualization-modal');
+        if (modal && modal.classList.contains('active')) {
+            if (e.key === 'ArrowRight') {
+                nextSlide();
+            } else if (e.key === 'ArrowLeft') {
+                prevSlide();
             }
         }
-    }
-
-    // Reset feedback and inputs
-    const feedbacks = ['pattern-feedback', 'pooling-feedback', 'math-feedback'];
-    feedbacks.forEach(id => {
-        const el = document.getElementById(id);
-        if (el) {
-            el.innerHTML = '';
-            el.className = el.className.replace(' correct', '').replace(' incorrect', '');
-        }
     });
-
-    const mathInput = document.getElementById('math-answer');
-    if (mathInput) mathInput.value = '';
-
-    const nextBtns = ['challenge-2-next', 'challenge-3-next', 'challenge-4-next'];
-    nextBtns.forEach(id => {
-        const btn = document.getElementById(id);
-        if (btn) btn.classList.add('hidden');
-    });
-
-    // Reset progress
-    if (window.recognizer) {
-        window.recognizer.updateQuestProgress(0);
-    }
-}
+});
 
 // Initialize when page loads
 document.addEventListener('DOMContentLoaded', () => {

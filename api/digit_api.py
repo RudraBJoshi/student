@@ -15,7 +15,7 @@ app = Flask(__name__)
 CORS(app)
 
 # Load ultimate model
-MODEL_PATH = 'mnist_model_enhanced.keras'
+MODEL_PATH = 'best_model.keras'
 print("Loading model...")
 model = keras.models.load_model(MODEL_PATH)
 print("Model loaded!")
@@ -30,137 +30,181 @@ if ensemble_models:
     print(f"✓ Loaded {len(ensemble_models)} ensemble models")
 
 def find_connected_components(img_array, threshold=250):
-    """Find separate digits with intelligent merging"""
-    binary = img_array < threshold
-    labeled, num_features = ndimage.label(binary)
-    
-    raw_components = []
-    for i in range(1, num_features + 1):
-        rows, cols = np.where(labeled == i)
-        
-        if len(rows) < 15:
-            continue
-        
-        rmin, rmax = rows.min(), rows.max()
-        cmin, cmax = cols.min(), cols.max()
-        
-        width = cmax - cmin
-        height = rmax - rmin
-        
-        if width < 10 or height < 10:
-            continue
-        
-        raw_components.append({
-            'bbox': (rmin, rmax, cmin, cmax),
-            'center_x': (cmin + cmax) / 2,
-            'center_y': (rmin + rmax) / 2,
-            'width': width,
-            'height': height
-        })
-    
-    # Merge nearby components
-    merged_components = []
-    used = set()
-    
-    for i, comp1 in enumerate(raw_components):
-        if i in used:
-            continue
-        
-        current_bbox = comp1['bbox']
-        merge_group = [i]
-        
-        changed = True
-        while changed:
-            changed = False
-            for j, comp2 in enumerate(raw_components):
-                if j in used or j in merge_group:
-                    continue
-                
-                r1min, r1max, c1min, c1max = current_bbox
-                r2min, r2max, c2min, c2max = comp2['bbox']
-                
-                horiz_dist = abs((c1min + c1max)/2 - (c2min + c2max)/2)
-                vert_dist = abs((r1min + r1max)/2 - (r2min + r2max)/2)
-                avg_width = ((c1max - c1min) + (c2max - c2min)) / 2
-                avg_height = ((r1max - r1min) + (r2max - r2min)) / 2
-                
-                if horiz_dist < avg_width * 0.8 and vert_dist < avg_height * 0.8:
-                    current_bbox = (
-                        min(r1min, r2min),
-                        max(r1max, r2max),
-                        min(c1min, c2min),
-                        max(c1max, c2max)
-                    )
-                    merge_group.append(j)
-                    changed = True
-        
-        used.update(merge_group)
-        
-        rmin, rmax, cmin, cmax = current_bbox
-        width = cmax - cmin
-        height = rmax - rmin
-        
-        padding = max(int(0.15 * max(width, height)), 10)
-        rmin = max(0, rmin - padding)
-        rmax = min(img_array.shape[0], rmax + padding)
-        cmin = max(0, cmin - padding)
-        cmax = min(img_array.shape[1], cmax + padding)
-        
-        merged_components.append({
-            'bbox': (rmin, rmax, cmin, cmax),
-            'center_x': (cmin + cmax) / 2
-        })
-    
-    merged_components.sort(key=lambda x: x['center_x'])
-    return merged_components
+    """Find separate digits using projection-based segmentation"""
+    # Binarize
+    binary = (img_array < threshold).astype(np.uint8) * 255
+
+    # Try horizontal projection to find digit boundaries
+    horizontal_projection = np.sum(binary, axis=0)
+
+    # Find valleys in projection (gaps between digits)
+    # Use a very sensitive threshold to catch even small gaps
+    max_projection = np.max(horizontal_projection)
+    threshold_proj = max_projection * 0.05  # Very low threshold to catch tiny gaps
+
+    # Find segments where projection is below threshold (gaps)
+    is_gap = horizontal_projection < threshold_proj
+
+    # Find transitions from digit to gap and gap to digit
+    transitions = np.diff(is_gap.astype(int))
+    digit_starts = np.where(transitions == -1)[0] + 1
+    digit_ends = np.where(transitions == 1)[0] + 1
+
+    # Handle edge cases
+    if len(horizontal_projection) > 0 and horizontal_projection[0] > threshold_proj:
+        digit_starts = np.concatenate([[0], digit_starts])
+    if len(horizontal_projection) > 0 and horizontal_projection[-1] > threshold_proj:
+        digit_ends = np.concatenate([digit_ends, [len(horizontal_projection)]])
+
+    # Create components from projection segments
+    components = []
+
+    if len(digit_starts) > 0 and len(digit_ends) > 0:
+        # Match starts with ends
+        for start, end in zip(digit_starts, digit_ends[:len(digit_starts)]):
+            if end - start < 10:  # Too narrow
+                continue
+
+            # Find vertical bounds within this horizontal segment
+            segment = binary[:, start:end]
+            vertical_projection = np.sum(segment, axis=1)
+
+            rows_with_content = np.where(vertical_projection > 0)[0]
+            if len(rows_with_content) == 0:
+                continue
+
+            rmin = rows_with_content[0]
+            rmax = rows_with_content[-1]
+
+            if rmax - rmin < 10:  # Too short
+                continue
+
+            # Add padding
+            width = end - start
+            height = rmax - rmin
+            padding = max(int(0.15 * max(width, height)), 10)
+
+            rmin = max(0, rmin - padding)
+            rmax = min(img_array.shape[0], rmax + padding)
+            cmin = max(0, start - padding)
+            cmax = min(img_array.shape[1], end + padding)
+
+            components.append({
+                'bbox': (rmin, rmax, cmin, cmax),
+                'center_x': (cmin + cmax) / 2
+            })
+
+    # Fallback to connected components if projection fails
+    if len(components) == 0:
+        labeled, num_features = ndimage.label(binary)
+
+        for i in range(1, num_features + 1):
+            rows, cols = np.where(labeled == i)
+
+            if len(rows) < 15:
+                continue
+
+            rmin, rmax = rows.min(), rows.max()
+            cmin, cmax = cols.min(), cols.max()
+
+            width = cmax - cmin
+            height = rmax - rmin
+
+            if width < 10 or height < 10:
+                continue
+
+            padding = max(int(0.15 * max(width, height)), 10)
+            rmin = max(0, rmin - padding)
+            rmax = min(img_array.shape[0], rmax + padding)
+            cmin = max(0, cmin - padding)
+            cmax = min(img_array.shape[1], cmax + padding)
+
+            components.append({
+                'bbox': (rmin, rmax, cmin, cmax),
+                'center_x': (cmin + cmax) / 2
+            })
+
+    components.sort(key=lambda x: x['center_x'])
+    return components
 
 def advanced_preprocess_digit(img_array, bbox):
-    """Enhanced preprocessing"""
+    """Enhanced preprocessing with rotation correction and thinning"""
     rmin, rmax, cmin, cmax = bbox
     cropped = img_array[rmin:rmax, cmin:cmax]
-    
-    # Adaptive thresholding
-    cropped = cv2.adaptiveThreshold(
-        cropped, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
-        cv2.THRESH_BINARY, 11, 2
-    )
-    
+
+    # Binary threshold (simple, not adaptive - works better for thick strokes)
+    _, cropped = cv2.threshold(cropped, 127, 255, cv2.THRESH_BINARY)
+
     cropped = 255 - cropped
-    
-    # Find actual content
+
+    # Detect and correct rotation using moments (conservative approach)
     coords = cv2.findNonZero(cropped)
     if coords is None:
         return np.zeros((28, 28))
-    
+
+    # Calculate the angle of rotation using image moments
+    moments = cv2.moments(coords)
+    if moments['mu02'] != 0 and moments['mu20'] != 0:
+        # Calculate the orientation angle
+        angle = 0.5 * np.arctan2(2 * moments['mu11'], moments['mu20'] - moments['mu02'])
+        angle_degrees = np.degrees(angle)
+
+        # Normalize angle to [-45, 45] range to avoid over-rotation
+        # This prevents rotating upright digits
+        while angle_degrees > 45:
+            angle_degrees -= 90
+        while angle_degrees < -45:
+            angle_degrees += 90
+
+        # Only correct if angle is significant (> 10 degrees) and reasonable
+        # Increased threshold to avoid rotating nearly-upright digits
+        if abs(angle_degrees) > 10 and abs(angle_degrees) < 45:
+            # Get rotation matrix
+            center = (cropped.shape[1] // 2, cropped.shape[0] // 2)
+            rotation_matrix = cv2.getRotationMatrix2D(center, angle_degrees, 1.0)
+
+            # Apply rotation
+            cropped = cv2.warpAffine(cropped, rotation_matrix, (cropped.shape[1], cropped.shape[0]),
+                                    flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT, borderValue=0)
+
+    # Morphological thinning to handle thick strokes
+    kernel = np.ones((2, 2), np.uint8)
+    cropped = cv2.erode(cropped, kernel, iterations=1)
+
+    # Find content after rotation
+    coords = cv2.findNonZero(cropped)
+    if coords is None:
+        return np.zeros((28, 28))
+
     x, y, w, h = cv2.boundingRect(coords)
     cropped = cropped[y:y+h, x:x+w]
-    
+
     height, width = cropped.shape
-    
-    # Resize maintaining aspect ratio
+
+    # MNIST digits are roughly square, so we make ours similar
     if height > width:
         new_height = 20
         new_width = max(1, int(20 * width / height))
     else:
         new_width = 20
         new_height = max(1, int(20 * height / width))
-    
+
     resized = cv2.resize(cropped, (new_width, new_height), interpolation=cv2.INTER_AREA)
-    
-    # Center in 28x28
+
+    # Center in 28x28 with proper MNIST-style centering
     final = np.zeros((28, 28), dtype=np.uint8)
     y_offset = (28 - new_height) // 2
     x_offset = (28 - new_width) // 2
     final[y_offset:y_offset+new_height, x_offset:x_offset+new_width] = resized
-    
-    # Smooth like MNIST
-    final = cv2.GaussianBlur(final, (3, 3), 0.5)
-    
-    # Normalize
+
+    # Apply slight blur to match MNIST smoothness
+    final = cv2.GaussianBlur(final, (3, 3), 0.8)
+
+    # Normalize to 0-1 range
     final = final.astype(np.float32) / 255.0
     if final.max() > 0:
         final = (final - final.min()) / (final.max() - final.min())
-    
+
     return final
 
 def predict_with_tta(image, num_augmentations=8):
