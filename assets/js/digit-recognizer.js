@@ -301,7 +301,7 @@ class DigitRecognizer {
                 // Store data globally for challenges
                 window.cnnVisualizationData = data;
 
-                this.renderCNNVisualization();
+                // No need to render feature grid anymore - challenges handle their own rendering
                 modal.classList.add('active');
 
                 // Initialize first challenge with real data
@@ -324,84 +324,8 @@ class DigitRecognizer {
     }
 
     renderCNNVisualization() {
-        if (!this.cnnData) return;
-
-        const layerTitle = document.getElementById('layer-title');
-        const layerDescription = document.getElementById('layer-description');
-        const featureGrid = document.getElementById('feature-grid');
-        const progressBar = document.getElementById('layer-progress-bar');
-        const layerCounter = document.getElementById('layer-counter');
-        const visualExplainer = document.getElementById('visual-explainer');
-
-        // Total layers = input (index 0) + actual model layers
-        const totalLayers = this.cnnData.layers.length + 1;
-
-        // Update progress
-        const progress = ((this.currentLayerIndex + 1) / totalLayers) * 100;
-        progressBar.style.width = `${progress}%`;
-        layerCounter.textContent = `Layer ${this.currentLayerIndex + 1} / ${totalLayers}`;
-
-        // Render feature maps
-        featureGrid.innerHTML = '';
-
-        if (this.currentLayerIndex === 0) {
-            // Show input
-            const description = this.getLayerDescription(null);
-            layerTitle.textContent = 'INPUT';
-            layerDescription.textContent = description.text;
-            visualExplainer.innerHTML = this.createVisualExplainer(description.visual);
-
-            const inputContainer = document.createElement('div');
-            inputContainer.className = 'feature-map-large';
-            const img = document.createElement('img');
-            img.src = this.cnnData.input_image;
-            inputContainer.appendChild(img);
-            featureGrid.appendChild(inputContainer);
-        } else {
-            // Show actual layer (index - 1 because we added input at index 0)
-            const layer = this.cnnData.layers[this.currentLayerIndex - 1];
-            const description = this.getLayerDescription(layer);
-            layerTitle.textContent = layer.layer_name.toUpperCase();
-            layerDescription.textContent = description.text;
-            visualExplainer.innerHTML = this.createVisualExplainer(description.visual);
-
-            if (layer.type === 'conv') {
-                layer.feature_maps.forEach((featureMap, idx) => {
-                    const mapContainer = document.createElement('div');
-                    mapContainer.className = 'feature-map';
-                    mapContainer.style.animationDelay = `${idx * 0.05}s`;
-
-                    const img = document.createElement('img');
-                    img.src = featureMap;
-                    img.alt = `Feature ${idx}`;
-
-                    const label = document.createElement('div');
-                    label.className = 'feature-label';
-                    label.textContent = `Filter ${idx + 1}`;
-
-                    mapContainer.appendChild(img);
-                    mapContainer.appendChild(label);
-                    featureGrid.appendChild(mapContainer);
-                });
-            } else if (layer.type === 'dense') {
-                const barChart = this.createDenseLayerVisualization(layer.values);
-                featureGrid.appendChild(barChart);
-            }
-
-            // Show final prediction if on last layer
-            if (this.currentLayerIndex === this.cnnData.layers.length) {
-                const predictionDisplay = document.createElement('div');
-                predictionDisplay.className = 'final-prediction';
-                predictionDisplay.innerHTML = `
-                    <div class="prediction-digit">${this.cnnData.predicted_digit}</div>
-                    <div class="prediction-confidence">${(this.cnnData.confidence * 100).toFixed(1)}% confident</div>
-                `;
-                featureGrid.appendChild(predictionDisplay);
-            }
-        }
-
-        // Update button states
-        this.updateButtonStates();
+        // This function is no longer used - challenges handle their own rendering
+        return;
     }
 
     updateButtonStates() {
@@ -744,6 +668,7 @@ let highPixelCount = 0;
 
 function initPixelChallenge() {
     const grid = document.getElementById('mini-pixel-grid');
+    const canvas28 = document.getElementById('digit-28x28');
     const status = document.getElementById('challenge-1-status');
     if (!grid) return;
 
@@ -757,6 +682,15 @@ function initPixelChallenge() {
         // Convert base64 image to pixel data
         const img = new Image();
         img.onload = () => {
+            // Draw 28x28 preview
+            if (canvas28) {
+                const ctx28 = canvas28.getContext('2d');
+                ctx28.fillStyle = 'white';
+                ctx28.fillRect(0, 0, 200, 200);
+                ctx28.drawImage(img, 0, 0, 200, 200);
+            }
+
+            // Sample for 5x5 grid
             const canvas = document.createElement('canvas');
             canvas.width = 28;
             canvas.height = 28;
@@ -783,6 +717,17 @@ function initPixelChallenge() {
         img.src = window.cnnVisualizationData.input_image;
     } else {
         // Fallback: Generate random grid
+        if (canvas28) {
+            const ctx28 = canvas28.getContext('2d');
+            ctx28.fillStyle = 'white';
+            ctx28.fillRect(0, 0, 200, 200);
+            ctx28.fillStyle = 'black';
+            ctx28.font = 'bold 100px Arial';
+            ctx28.textAlign = 'center';
+            ctx28.textBaseline = 'middle';
+            ctx28.fillText('?', 100, 100);
+        }
+
         const sampledPixels = [];
         const hasHighPixel = Math.random() > 0.3;
         for (let i = 0; i < 25; i++) {

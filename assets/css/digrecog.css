@@ -584,58 +584,7 @@ body {
     margin-top: 8px;
 }
 
-/* Feature Grid */
-.feature-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-    gap: 15px;
-    margin-bottom: 30px;
-    min-height: 200px;
-}
-
-.feature-map-large {
-    grid-column: 1 / -1;
-    display: flex;
-    justify-content: center;
-}
-
-.feature-map-large img {
-    width: 200px;
-    height: 200px;
-    border: 2px solid #3498db;
-    border-radius: 4px;
-    image-rendering: pixelated;
-    background: #fff;
-}
-
-.feature-map {
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    padding: 8px;
-    background: #fff;
-    transition: all 0.2s;
-}
-
-.feature-map:hover {
-    border-color: #3498db;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.feature-map img {
-    width: 100%;
-    height: auto;
-    border-radius: 4px;
-    image-rendering: pixelated;
-    display: block;
-}
-
-.feature-label {
-    text-align: center;
-    color: #555;
-    font-size: 0.8rem;
-    margin-top: 5px;
-    font-weight: 500;
-}
+/* Feature Grid - Removed: challenges now handle their own rendering */
 
 /* Dense Layer Visualization */
 .dense-layer-viz {
@@ -944,10 +893,7 @@ body {
         font-size: 1.3rem;
     }
 
-    .feature-grid {
-        grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
-        gap: 10px;
-    }
+    /* .feature-grid removed - no longer used */
 
     .viz-controls {
         flex-direction: column;
@@ -979,18 +925,9 @@ body {
     margin-top: 0;
 }
 
-/* Visualization Layout - Side by side */
-.viz-layout {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 30px;
-    align-items: start;
-}
-
-@media (max-width: 968px) {
-    .viz-layout {
-        grid-template-columns: 1fr;
-    }
+/* Full width slideshow */
+.sequential-explanation-full {
+    width: 100%;
 }
 
 /* Slide Detail Sections */
@@ -1019,6 +956,7 @@ body {
     padding: 12px 16px;
     margin-bottom: 20px;
     border-radius: 4px;
+    text-align: center;
 }
 
 .concept-intro p {
@@ -1068,12 +1006,41 @@ body {
     padding: 20px;
 }
 
+.pixel-visualization {
+    display: flex;
+    gap: 40px;
+    justify-content: center;
+    align-items: flex-start;
+    margin: 20px 0;
+    flex-wrap: wrap;
+}
+
+.digit-preview-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+#digit-28x28 {
+    border: 2px solid #ddd;
+    border-radius: 4px;
+    background: white;
+    width: 200px;
+    height: 200px;
+}
+
+.preview-label {
+    font-size: 0.9rem;
+    color: #7f8c8d;
+    font-weight: 500;
+}
+
 .mini-pixel-grid {
     display: grid;
     grid-template-columns: repeat(5, 1fr);
-    gap: 4px;
-    max-width: 250px;
-    margin: 20px auto;
+    gap: 6px;
+    width: 200px;
 }
 
 .pixel-cell {
