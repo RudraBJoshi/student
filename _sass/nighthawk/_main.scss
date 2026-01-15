@@ -11,6 +11,8 @@
 @import "materials/main.scss";
 @import "elements/main.scss";
 
+// Ubuntu Terminal Theme Global Styles
+@import url('https://fonts.googleapis.com/css2?family=Ubuntu+Mono:wght@400;700&display=swap');
 
 html,
 body,
@@ -18,4 +20,70 @@ input,
 textarea,
 select {
     background-color: $background;
+    font-family: 'Ubuntu Mono', 'Courier New', monospace;
+}
+
+// Terminal-style scrollbar
+::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background: $terminal-bg;
+}
+
+::-webkit-scrollbar-thumb {
+    background: $ubuntu-purple;
+    border-radius: 5px;
+
+    &:hover {
+        background: $ubuntu-orange;
+    }
+}
+
+// Global link styling
+a {
+    color: $ubuntu-orange;
+    text-decoration: none;
+
+    &:hover {
+        color: $lightBlue1;
+        text-decoration: underline;
+    }
+}
+
+// Headings with terminal feel
+h1, h2, h3, h4, h5, h6 {
+    color: $ubuntu-orange;
+    font-family: 'Ubuntu Mono', 'Courier New', monospace;
+}
+
+// Code blocks terminal style
+code, pre {
+    background-color: $terminal-bg-light;
+    color: #eeeeec;
+    font-family: 'Ubuntu Mono', 'Courier New', monospace;
+    border-radius: 4px;
+}
+
+pre {
+    padding: 15px;
+    border-left: 3px solid $ubuntu-orange;
+}
+
+// Selection highlighting
+::selection {
+    background-color: $ubuntu-purple;
+    color: #ffffff;
+}
+
+// Blockquotes
+blockquote {
+    border-left: 4px solid $ubuntu-green;
+    background-color: $terminal-bg-light;
+    padding: 10px 20px;
+    margin: 10px 0;
+    font-style: italic;
+    color: $gray1;
 }

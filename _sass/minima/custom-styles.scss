@@ -1,1 +1,170 @@
 @import "nighthawk/main";
+
+// ========================================
+// Ubuntu Terminal Theme for Minima
+// ========================================
+
+// Override minima's default colors with Ubuntu palette
+$brand-color: #e95420 !default;        // Ubuntu orange
+$brand-color-light: #729fcf !default;  // Light blue for hover
+$brand-color-dark: #c4a000 !default;   // Yellow
+
+$site-title-color: #e95420 !default;
+
+$text-color: #eeeeec !default;
+$background-color: #300a24 !default;   // Ubuntu aubergine
+$code-background-color: #3c1130 !default;
+
+$grey-color: #888a85 !default;
+$grey-color-light: #555753 !default;
+$grey-color-dark: #babdb6 !default;
+
+$table-text-color: #eeeeec !default;
+$table-zebra-color: #3c1130 !default;
+$table-header-bg-color: #4a1942 !default;
+$table-header-border: #e95420 !default;
+$table-border-color: #75507b !default;
+
+// Minima wrapper/container override
+.wrapper {
+    max-width: calc(1000px - (30px * 2));
+}
+
+// Override minima header
+.site-header {
+    background-color: #3c1130;
+    border-top: none;
+    border-bottom: 2px solid #e95420;
+    font-family: 'Ubuntu Mono', 'Courier New', monospace;
+}
+
+.site-title {
+    color: #e95420 !important;
+    font-family: 'Ubuntu Mono', 'Courier New', monospace;
+    font-weight: bold;
+
+    &::before {
+        content: "$ ";
+        color: #4e9a06;
+    }
+
+    &:visited {
+        color: #e95420 !important;
+    }
+}
+
+.site-nav {
+    background-color: #3c1130;
+    border: 1px solid #75507b;
+    border-radius: 5px;
+
+    .page-link {
+        color: #eeeeec;
+        font-family: 'Ubuntu Mono', 'Courier New', monospace;
+
+        &:hover {
+            color: #e95420;
+        }
+    }
+
+    @media screen and (min-width: 600px) {
+        background-color: transparent;
+        border: none;
+    }
+}
+
+// Override minima footer
+.site-footer {
+    background-color: #3c1130;
+    border-top: 2px solid #e95420;
+    font-family: 'Ubuntu Mono', 'Courier New', monospace;
+}
+
+.footer-heading {
+    color: #e95420;
+}
+
+.contact-list, .social-media-list {
+    a {
+        color: #eeeeec;
+
+        &:hover {
+            color: #e95420;
+        }
+    }
+}
+
+// Override minima content
+.page-content {
+    background-color: #300a24;
+}
+
+.post-title, .post-header h1 {
+    color: #e95420;
+    font-family: 'Ubuntu Mono', 'Courier New', monospace;
+}
+
+.post-meta {
+    color: #888a85;
+    font-family: 'Ubuntu Mono', 'Courier New', monospace;
+}
+
+.post-link {
+    color: #e95420;
+
+    &:hover {
+        color: #729fcf;
+    }
+}
+
+// Tables
+table {
+    border-collapse: collapse;
+    border: 1px solid #75507b;
+
+    th {
+        background-color: #4a1942;
+        border-bottom: 2px solid #e95420;
+        color: #e95420;
+        font-family: 'Ubuntu Mono', 'Courier New', monospace;
+    }
+
+    td {
+        border: 1px solid #75507b;
+    }
+
+    tr:nth-child(even) {
+        background-color: #3c1130;
+    }
+}
+
+// Buttons styled like terminal
+button, .button, input[type="submit"] {
+    background-color: #3c1130;
+    color: #eeeeec;
+    border: 1px solid #e95420;
+    font-family: 'Ubuntu Mono', 'Courier New', monospace;
+    padding: 8px 16px;
+    cursor: pointer;
+    border-radius: 4px;
+
+    &:hover {
+        background-color: #e95420;
+        color: #300a24;
+    }
+}
+
+// Form inputs terminal style
+input[type="text"], input[type="email"], input[type="password"], textarea {
+    background-color: #3c1130;
+    color: #eeeeec;
+    border: 1px solid #75507b;
+    font-family: 'Ubuntu Mono', 'Courier New', monospace;
+    padding: 8px;
+    border-radius: 4px;
+
+    &:focus {
+        border-color: #e95420;
+        outline: none;
+    }
+}
