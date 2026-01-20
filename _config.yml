@@ -1,9 +1,9 @@
 title: Open Coding 
 description: "Class of 2026"
-owner_name: John Mortensen
-github_username: jm1021 
+owner_name: Rydra Joshi
+github_username: RudraBJoshi 
 github_repo: "student" 
-baseurl: "/student" 
+baseurl: "/" 
 future: true
 remote_theme: jekyll/minima
 plugins:
