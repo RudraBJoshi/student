@@ -3,11 +3,9 @@ description: "Class of 2026"
 owner_name: Rudra Joshi
 github_username: RudraBJoshi 
 github_repo: "student" 
-baseurl: "/" 
+baseurl: "/student" 
 future: true
 remote_theme: jekyll/minima
-plugins:
-  - jekyll-remote-theme
 minima:
   skin: dark
   social_links:
