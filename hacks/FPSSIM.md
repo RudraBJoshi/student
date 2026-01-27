@@ -755,28 +755,34 @@ permalink: /FPSSIM/
 
     const RECAPTCHA_SITE_KEY = '6LdnmVcsAAAAACWepOoMh_mH2mu5ghsCih1KLohI';
 
-    const verifyCaptcha = async () => {
+    const verifyCaptcha = () => {
       setCaptchaLoading(true);
       setCaptchaError('');
 
-      try {
-        const token = await window.grecaptcha.enterprise.execute(RECAPTCHA_SITE_KEY, { action: 'LOGIN' });
-
-        if (token) {
-          // For client-side only apps, we trust the token was generated
-          // In production, you'd verify this token on your backend
-          sessionStorage.setItem('fps_captcha_verified', 'true');
-          setCaptchaVerified(true);
-          showToast('Verification successful!', 'success');
-        } else {
-          setCaptchaError('Verification failed. Please try again.');
-        }
-      } catch (error) {
-        console.error('reCAPTCHA error:', error);
-        setCaptchaError('Verification failed. Please try again.');
+      // Check if grecaptcha is loaded
+      if (!window.grecaptcha || !window.grecaptcha.enterprise) {
+        setCaptchaError('reCAPTCHA not loaded yet. Please wait and try again.');
+        setCaptchaLoading(false);
+        return;
       }
 
-      setCaptchaLoading(false);
+      window.grecaptcha.enterprise.ready(async () => {
+        try {
+          const token = await window.grecaptcha.enterprise.execute(RECAPTCHA_SITE_KEY, { action: 'LOGIN' });
+
+          if (token) {
+            sessionStorage.setItem('fps_captcha_verified', 'true');
+            setCaptchaVerified(true);
+            showToast('Verification successful!', 'success');
+          } else {
+            setCaptchaError('Verification failed. Please try again.');
+          }
+        } catch (error) {
+          console.error('reCAPTCHA error:', error);
+          setCaptchaError('Verification failed. Please try again.');
+        }
+        setCaptchaLoading(false);
+      });
     };
 
     // Assignment state
