@@ -266,6 +266,50 @@ permalink: /FPSSIM/
     border-radius: 8px;
     margin-bottom: 20px;
   }
+  .password-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+  }
+  .password-box {
+    background: #2a2a2a;
+    padding: 30px;
+    border-radius: 12px;
+    text-align: center;
+    max-width: 350px;
+    width: 90%;
+  }
+  .password-box h3 {
+    color: #4a9eff;
+    margin-top: 0;
+  }
+  .password-box input {
+    width: 100%;
+    padding: 12px;
+    margin: 15px 0;
+    border: 2px solid #444;
+    border-radius: 6px;
+    background: #333;
+    color: #fff;
+    font-size: 16px;
+    text-align: center;
+    box-sizing: border-box;
+  }
+  .password-box input.error {
+    border-color: #dc3545;
+  }
+  .password-error {
+    color: #dc3545;
+    font-size: 14px;
+    margin-bottom: 10px;
+  }
 </style>
 
 <div id="fps-root"></div>
@@ -273,6 +317,11 @@ permalink: /FPSSIM/
 {% raw %}
 <script type="text/babel">
   const { useState, useEffect, useCallback } = React;
+
+  // ============================================
+  // ADMIN PASSWORD - CHANGE THIS!
+  // ============================================
+  const ADMIN_PASSWORD = "fps2026";
 
   // ============================================
   // MAIN APP COMPONENT
@@ -284,6 +333,31 @@ permalink: /FPSSIM/
     const [loading, setLoading] = useState(false);
     const [selectedSubmission, setSelectedSubmission] = useState(null);
     const [firebaseReady, setFirebaseReady] = useState(window.firebaseReady || false);
+    const [adminAuthenticated, setAdminAuthenticated] = useState(false);
+    const [showPasswordPrompt, setShowPasswordPrompt] = useState(false);
+    const [passwordInput, setPasswordInput] = useState('');
+    const [passwordError, setPasswordError] = useState(false);
+
+    const handleAdminAccess = () => {
+      if (adminAuthenticated) {
+        setActiveTab('admin');
+      } else {
+        setShowPasswordPrompt(true);
+        setPasswordError(false);
+        setPasswordInput('');
+      }
+    };
+
+    const verifyPassword = () => {
+      if (passwordInput === ADMIN_PASSWORD) {
+        setAdminAuthenticated(true);
+        setShowPasswordPrompt(false);
+        setActiveTab('admin');
+        setPasswordInput('');
+      } else {
+        setPasswordError(true);
+      }
+    };
 
     // Form state
     const [teamInfo, setTeamInfo] = useState({
@@ -430,11 +504,39 @@ permalink: /FPSSIM/
           </button>
           <button
             className={`fps-tab ${activeTab === 'admin' ? 'active' : ''}`}
-            onClick={() => setActiveTab('admin')}
+            onClick={handleAdminAccess}
           >
-            Admin Panel ({submissions.length})
+            Admin Panel {adminAuthenticated && `(${submissions.length})`}
           </button>
         </div>
+
+        {/* PASSWORD PROMPT MODAL */}
+        {showPasswordPrompt && (
+          <div className="password-modal" onClick={() => setShowPasswordPrompt(false)}>
+            <div className="password-box" onClick={e => e.stopPropagation()}>
+              <h3>Admin Access</h3>
+              <p style={{ color: '#aaa', marginBottom: 15 }}>Enter password to access admin panel</p>
+              {passwordError && <div className="password-error">Incorrect password</div>}
+              <input
+                type="password"
+                className={passwordError ? 'error' : ''}
+                value={passwordInput}
+                onChange={e => setPasswordInput(e.target.value)}
+                onKeyPress={e => e.key === 'Enter' && verifyPassword()}
+                placeholder="Password"
+                autoFocus
+              />
+              <div>
+                <button className="fps-btn fps-btn-primary" onClick={verifyPassword}>
+                  Unlock
+                </button>
+                <button className="fps-btn fps-btn-danger" onClick={() => setShowPasswordPrompt(false)}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* SIMULATION PANEL */}
         <div className={`fps-panel ${activeTab === 'simulation' ? 'active' : ''}`}>
