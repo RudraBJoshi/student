@@ -752,37 +752,53 @@ permalink: /FPSSIM/
     });
     const [captchaLoading, setCaptchaLoading] = useState(false);
     const [captchaError, setCaptchaError] = useState('');
+    const [recaptchaReady, setRecaptchaReady] = useState(false);
 
     const RECAPTCHA_SITE_KEY = '6LdnmVcsAAAAACWepOoMh_mH2mu5ghsCih1KLohI';
 
-    const verifyCaptcha = () => {
-      setCaptchaLoading(true);
-      setCaptchaError('');
+    // Poll for reCAPTCHA to be ready
+    useEffect(() => {
+      let attempts = 0;
+      const maxAttempts = 20; // 10 seconds max
 
-      // Check if grecaptcha is loaded
-      if (!window.grecaptcha || !window.grecaptcha.enterprise) {
-        setCaptchaError('reCAPTCHA not loaded yet. Please wait and try again.');
-        setCaptchaLoading(false);
+      const checkRecaptcha = () => {
+        attempts++;
+        if (window.grecaptcha && window.grecaptcha.enterprise) {
+          window.grecaptcha.enterprise.ready(() => {
+            setRecaptchaReady(true);
+          });
+        } else if (attempts < maxAttempts) {
+          setTimeout(checkRecaptcha, 500);
+        }
+      };
+
+      checkRecaptcha();
+    }, []);
+
+    const verifyCaptcha = async () => {
+      if (!recaptchaReady) {
+        setCaptchaError('reCAPTCHA still loading. Please wait...');
         return;
       }
 
-      window.grecaptcha.enterprise.ready(async () => {
-        try {
-          const token = await window.grecaptcha.enterprise.execute(RECAPTCHA_SITE_KEY, { action: 'LOGIN' });
+      setCaptchaLoading(true);
+      setCaptchaError('');
 
-          if (token) {
-            sessionStorage.setItem('fps_captcha_verified', 'true');
-            setCaptchaVerified(true);
-            showToast('Verification successful!', 'success');
-          } else {
-            setCaptchaError('Verification failed. Please try again.');
-          }
-        } catch (error) {
-          console.error('reCAPTCHA error:', error);
+      try {
+        const token = await window.grecaptcha.enterprise.execute(RECAPTCHA_SITE_KEY, { action: 'LOGIN' });
+
+        if (token) {
+          sessionStorage.setItem('fps_captcha_verified', 'true');
+          setCaptchaVerified(true);
+          showToast('Verification successful!', 'success');
+        } else {
           setCaptchaError('Verification failed. Please try again.');
         }
-        setCaptchaLoading(false);
-      });
+      } catch (error) {
+        console.error('reCAPTCHA error:', error);
+        setCaptchaError('Verification failed. Please try again.');
+      }
+      setCaptchaLoading(false);
     };
 
     // Assignment state
@@ -1251,7 +1267,9 @@ permalink: /FPSSIM/
             <h2>FPS Simulator</h2>
             <p>Please verify you're human to continue</p>
 
-            {captchaLoading ? (
+            {!recaptchaReady ? (
+              <div className="captcha-loading">Loading reCAPTCHA...</div>
+            ) : captchaLoading ? (
               <div className="captcha-loading">Verifying...</div>
             ) : (
               <button
@@ -1265,7 +1283,7 @@ permalink: /FPSSIM/
             {captchaError && <div className="captcha-error">{captchaError}</div>}
 
             <p style={{ marginTop: 20, fontSize: 12, color: '#666' }}>
-              Protected by reCAPTCHA
+              Protected by reCAPTCHA Enterprise
             </p>
           </div>
         </div>
