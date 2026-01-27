@@ -4,6 +4,8 @@ title: "Future Problem Solvers (FPS) Simulator"
 permalink: /FPSSIM/
 ---
 
+### Automating the Future Problem Solvers Simulation Process With a simple Web App
+
 <!-- React CDN -->
 <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
@@ -2022,3 +2024,4 @@ permalink: /FPSSIM/
   root.render(<App />);
 </script>
 {% endraw %}
+
