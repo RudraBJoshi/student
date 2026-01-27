@@ -824,8 +824,22 @@ permalink: /FPSSIM/
 
               <h4 style={{ color: '#4a9eff', marginTop: 20 }}>Action Steps</h4>
               {actionPlan.steps.map((step, i) => (
-                <div key={i} style={{ background: '#333', padding: 15, borderRadius: 8, marginBottom: 10 }}>
-                  <label className="fps-label">Step {i + 1}</label>
+                <div key={i} style={{ background: '#333', padding: 15, borderRadius: 8, marginBottom: 10, position: 'relative' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <label className="fps-label">Step {i + 1}</label>
+                    {actionPlan.steps.length > 1 && (
+                      <button
+                        onClick={() => {
+                          const newSteps = actionPlan.steps.filter((_, idx) => idx !== i);
+                          setActionPlan({...actionPlan, steps: newSteps});
+                        }}
+                        style={{ background: 'none', border: 'none', color: '#dc3545', cursor: 'pointer', fontSize: 18 }}
+                        title="Remove step"
+                      >
+                        ×
+                      </button>
+                    )}
+                  </div>
                   <div className="fps-grid" style={{ gridTemplateColumns: '2fr 1fr 1fr' }}>
                     <input
                       className="fps-input"
@@ -860,6 +874,16 @@ permalink: /FPSSIM/
                   </div>
                 </div>
               ))}
+              <button
+                className="fps-btn fps-btn-primary"
+                onClick={() => setActionPlan({
+                  ...actionPlan,
+                  steps: [...actionPlan.steps, { action: '', who: '', when: '' }]
+                })}
+                style={{ marginBottom: 15 }}
+              >
+                + Add Step
+              </button>
 
               <h4 style={{ color: '#4a9eff', marginTop: 20 }}>How does this solution address the UP?</h4>
               <textarea
