@@ -18,6 +18,7 @@ permalink: /FPSSIM/
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-app.js";
   import { getFirestore, collection, addDoc, getDocs, updateDoc, deleteDoc, doc, onSnapshot, orderBy, query, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js";
+  import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-auth.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyCdXPLmJjGeLoL7zBAhpZeCXcwcdJxSawY",
@@ -30,10 +31,14 @@ permalink: /FPSSIM/
 
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
+  const auth = getAuth(app);
+  const googleProvider = new GoogleAuthProvider();
 
   // Expose to global scope for React component
   window.firebaseDB = db;
+  window.firebaseAuth = auth;
   window.firebaseHelpers = { collection, addDoc, getDocs, updateDoc, deleteDoc, doc, onSnapshot, orderBy, query, serverTimestamp };
+  window.authHelpers = { signInWithPopup, GoogleAuthProvider: googleProvider, signOut, onAuthStateChanged };
   window.firebaseReady = true;
   window.dispatchEvent(new Event('firebase-ready'));
 </script>
@@ -568,9 +573,9 @@ permalink: /FPSSIM/
   const { useState, useEffect, useCallback } = React;
 
   // ============================================
-  // ADMIN PASSWORD - CHANGE THIS!
+  // SUPER ADMIN - Cannot be removed
   // ============================================
-  const ADMIN_PASSWORD = "fps2026";
+  const SUPER_ADMIN = "rudraj2022@gmail.com";
 
   // ============================================
   // MAIN APP COMPONENT
@@ -582,10 +587,11 @@ permalink: /FPSSIM/
     const [loading, setLoading] = useState(false);
     const [selectedSubmission, setSelectedSubmission] = useState(null);
     const [firebaseReady, setFirebaseReady] = useState(window.firebaseReady || false);
-    const [adminAuthenticated, setAdminAuthenticated] = useState(false);
-    const [showPasswordPrompt, setShowPasswordPrompt] = useState(false);
-    const [passwordInput, setPasswordInput] = useState('');
-    const [passwordError, setPasswordError] = useState(false);
+    const [currentUser, setCurrentUser] = useState(null);
+    const [isAdmin, setIsAdmin] = useState(false);
+    const [authLoading, setAuthLoading] = useState(false);
+    const [adminEmails, setAdminEmails] = useState([SUPER_ADMIN]);
+    const [newAdminEmail, setNewAdminEmail] = useState('');
 
     // Assignment state
     const [assignments, setAssignments] = useState([]);
@@ -633,24 +639,133 @@ permalink: /FPSSIM/
       setSearchResults(results);
     };
 
-    const handleAdminAccess = () => {
-      if (adminAuthenticated) {
-        setActiveTab('admin');
-      } else {
-        setShowPasswordPrompt(true);
-        setPasswordError(false);
-        setPasswordInput('');
+    // Load admin emails from Firestore
+    useEffect(() => {
+      if (!firebaseReady || !window.firebaseDB) return;
+
+      const { collection, onSnapshot } = window.firebaseHelpers;
+      const db = window.firebaseDB;
+
+      const unsubscribe = onSnapshot(collection(db, 'fps_admins'), (snapshot) => {
+        const emails = [SUPER_ADMIN];
+        snapshot.docs.forEach(doc => {
+          const email = doc.data().email;
+          if (email && !emails.includes(email)) {
+            emails.push(email);
+          }
+        });
+        setAdminEmails(emails);
+      });
+
+      return () => unsubscribe();
+    }, [firebaseReady]);
+
+    // Listen to auth state changes
+    useEffect(() => {
+      if (!firebaseReady || !window.firebaseAuth) return;
+
+      const { onAuthStateChanged } = window.authHelpers;
+      const auth = window.firebaseAuth;
+
+      const unsubscribe = onAuthStateChanged(auth, (user) => {
+        setCurrentUser(user);
+        if (user && adminEmails.includes(user.email)) {
+          setIsAdmin(true);
+        } else {
+          setIsAdmin(false);
+        }
+      });
+
+      return () => unsubscribe();
+    }, [firebaseReady, adminEmails]);
+
+    const handleGoogleSignIn = async () => {
+      if (!window.firebaseAuth) return;
+      setAuthLoading(true);
+      try {
+        const { signInWithPopup, GoogleAuthProvider } = window.authHelpers;
+        const result = await signInWithPopup(window.firebaseAuth, GoogleAuthProvider);
+        if (adminEmails.includes(result.user.email)) {
+          setActiveTab('admin');
+        } else {
+          alert('You are not authorized as an admin. Contact the administrator to add your email: ' + result.user.email);
+        }
+      } catch (error) {
+        console.error('Sign in error:', error);
+        alert('Sign in failed: ' + error.message);
+      }
+      setAuthLoading(false);
+    };
+
+    // Add new admin email
+    const addAdminEmail = async () => {
+      if (!newAdminEmail.trim() || !newAdminEmail.includes('@')) {
+        alert('Please enter a valid email address');
+        return;
+      }
+      if (adminEmails.includes(newAdminEmail.trim())) {
+        alert('This email is already an admin');
+        return;
+      }
+
+      const { collection, addDoc } = window.firebaseHelpers;
+      const db = window.firebaseDB;
+
+      try {
+        await addDoc(collection(db, 'fps_admins'), {
+          email: newAdminEmail.trim().toLowerCase(),
+          addedBy: currentUser.email,
+          addedAt: new Date().toISOString()
+        });
+        setNewAdminEmail('');
+      } catch (error) {
+        console.error('Error adding admin:', error);
+        alert('Error adding admin: ' + error.message);
       }
     };
 
-    const verifyPassword = () => {
-      if (passwordInput === ADMIN_PASSWORD) {
-        setAdminAuthenticated(true);
-        setShowPasswordPrompt(false);
+    // Remove admin email
+    const removeAdminEmail = async (emailToRemove) => {
+      if (emailToRemove === SUPER_ADMIN) {
+        alert('Cannot remove the super admin');
+        return;
+      }
+      if (!confirm(`Remove ${emailToRemove} from admins?`)) return;
+
+      const { collection, getDocs, deleteDoc, doc, query } = window.firebaseHelpers;
+      const db = window.firebaseDB;
+
+      try {
+        const snapshot = await getDocs(collection(db, 'fps_admins'));
+        snapshot.docs.forEach(async (docSnap) => {
+          if (docSnap.data().email === emailToRemove) {
+            await deleteDoc(doc(db, 'fps_admins', docSnap.id));
+          }
+        });
+      } catch (error) {
+        console.error('Error removing admin:', error);
+        alert('Error removing admin: ' + error.message);
+      }
+    };
+
+    const handleSignOut = async () => {
+      if (!window.firebaseAuth) return;
+      try {
+        const { signOut } = window.authHelpers;
+        await signOut(window.firebaseAuth);
+        setActiveTab('simulation');
+      } catch (error) {
+        console.error('Sign out error:', error);
+      }
+    };
+
+    const handleAdminAccess = () => {
+      if (isAdmin) {
         setActiveTab('admin');
-        setPasswordInput('');
+      } else if (currentUser) {
+        alert('You are signed in but not authorized as admin. Your email: ' + currentUser.email);
       } else {
-        setPasswordError(true);
+        handleGoogleSignIn();
       }
     };
 
@@ -952,34 +1067,25 @@ permalink: /FPSSIM/
             className={`fps-tab ${activeTab === 'admin' ? 'active' : ''}`}
             onClick={handleAdminAccess}
           >
-            Admin Panel {adminAuthenticated && `(${submissions.length})`}
+            Admin Panel {isAdmin && `(${submissions.length})`}
           </button>
+          {currentUser && (
+            <button
+              className="fps-tab"
+              onClick={handleSignOut}
+              style={{ marginLeft: 'auto', background: '#dc3545' }}
+            >
+              Sign Out ({currentUser.email?.split('@')[0]})
+            </button>
+          )}
         </div>
 
-        {/* PASSWORD PROMPT MODAL */}
-        {showPasswordPrompt && (
-          <div className="password-modal" onClick={() => setShowPasswordPrompt(false)}>
-            <div className="password-box" onClick={e => e.stopPropagation()}>
-              <h3>Admin Access</h3>
-              <p style={{ color: '#aaa', marginBottom: 15 }}>Enter password to access admin panel</p>
-              {passwordError && <div className="password-error">Incorrect password</div>}
-              <input
-                type="password"
-                className={passwordError ? 'error' : ''}
-                value={passwordInput}
-                onChange={e => setPasswordInput(e.target.value)}
-                onKeyPress={e => e.key === 'Enter' && verifyPassword()}
-                placeholder="Password"
-                autoFocus
-              />
-              <div>
-                <button className="fps-btn fps-btn-primary" onClick={verifyPassword}>
-                  Unlock
-                </button>
-                <button className="fps-btn fps-btn-danger" onClick={() => setShowPasswordPrompt(false)}>
-                  Cancel
-                </button>
-              </div>
+        {/* SIGN IN PROMPT */}
+        {authLoading && (
+          <div className="password-modal">
+            <div className="password-box">
+              <h3>Signing in...</h3>
+              <p style={{ color: '#aaa' }}>Please complete sign in with Google</p>
             </div>
           </div>
         )}
@@ -1657,12 +1763,28 @@ permalink: /FPSSIM/
 
         {/* ADMIN PANEL */}
         <div className={`fps-panel ${activeTab === 'admin' ? 'active' : ''}`}>
+          {!isAdmin ? (
+            <div className="fps-section" style={{ textAlign: 'center' }}>
+              <h3>Admin Access Required</h3>
+              <p style={{ color: '#888', marginBottom: 20 }}>Sign in with an authorized Google account to access the admin panel.</p>
+              <button className="fps-btn fps-btn-primary" onClick={handleGoogleSignIn} disabled={authLoading}>
+                Sign in with Google
+              </button>
+            </div>
+          ) : (
+          <>
           <div className="admin-tabs">
             <button
               className={`admin-tab ${adminSubTab === 'submissions' ? 'active' : ''}`}
               onClick={() => setAdminSubTab('submissions')}
             >
               Submissions ({submissions.length})
+            </button>
+            <button
+              className={`admin-tab ${adminSubTab === 'admins' ? 'active' : ''}`}
+              onClick={() => setAdminSubTab('admins')}
+            >
+              Admins ({adminEmails.length})
             </button>
             <button
               className={`admin-tab ${adminSubTab === 'assignments' ? 'active' : ''}`}
@@ -1824,6 +1946,76 @@ permalink: /FPSSIM/
             </>
           )}
 
+          {/* ADMINS TAB */}
+          {adminSubTab === 'admins' && (
+            <div className="fps-section">
+              <h3>Manage Admin Access</h3>
+              <p style={{ color: '#888', marginBottom: 20 }}>Add or remove Gmail accounts that can access the admin panel.</p>
+
+              <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
+                <input
+                  className="fps-input"
+                  style={{ flex: 1 }}
+                  type="email"
+                  value={newAdminEmail}
+                  onChange={e => setNewAdminEmail(e.target.value)}
+                  onKeyPress={e => e.key === 'Enter' && addAdminEmail()}
+                  placeholder="Enter Gmail address..."
+                />
+                <button className="fps-btn fps-btn-success" onClick={addAdminEmail}>
+                  Add Admin
+                </button>
+              </div>
+
+              <h4 style={{ color: '#4a9eff', marginBottom: 10 }}>Current Admins ({adminEmails.length})</h4>
+              {adminEmails.map(email => (
+                <div key={email} style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  background: '#2a2a2a',
+                  padding: '12px 15px',
+                  borderRadius: 6,
+                  marginBottom: 8,
+                  borderLeft: email === SUPER_ADMIN ? '4px solid #ffc107' : '4px solid #4a9eff'
+                }}>
+                  <div>
+                    <span style={{ color: '#fff' }}>{email}</span>
+                    {email === SUPER_ADMIN && (
+                      <span style={{
+                        background: '#ffc107',
+                        color: '#000',
+                        padding: '2px 8px',
+                        borderRadius: 10,
+                        fontSize: 11,
+                        marginLeft: 10
+                      }}>SUPER ADMIN</span>
+                    )}
+                    {email === currentUser?.email && (
+                      <span style={{
+                        background: '#4a9eff',
+                        color: '#fff',
+                        padding: '2px 8px',
+                        borderRadius: 10,
+                        fontSize: 11,
+                        marginLeft: 10
+                      }}>YOU</span>
+                    )}
+                  </div>
+                  {email !== SUPER_ADMIN && (
+                    <button
+                      className="fps-btn fps-btn-danger"
+                      style={{ padding: '6px 12px', fontSize: 12 }}
+                      onClick={() => removeAdminEmail(email)}
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
           <div className="fps-section">
             <h3>Scoring Rubric</h3>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -1847,6 +2039,8 @@ permalink: /FPSSIM/
               </tbody>
             </table>
           </div>
+          </>
+          )}
         </div>
 
         {/* VIEW MODAL */}
