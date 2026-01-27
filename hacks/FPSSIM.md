@@ -270,6 +270,7 @@ permalink: /FPSSIM/
 
 <div id="fps-root"></div>
 
+{% raw %}
 <script type="text/babel">
   const { useState, useEffect, useCallback } = React;
 
@@ -918,3 +919,4 @@ permalink: /FPSSIM/
   const root = ReactDOM.createRoot(document.getElementById('fps-root'));
   root.render(<App />);
 </script>
+{% endraw %}
