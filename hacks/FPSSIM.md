@@ -11,6 +11,9 @@ permalink: /FPSSIM/
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
+<!-- reCAPTCHA Enterprise -->
+<script src="https://www.google.com/recaptcha/enterprise.js?render=6LdnmVcsAAAAACWepOoMh_mH2mu5ghsCih1KLohI"></script>
+
 <!-- Mammoth.js for DOCX parsing -->
 <script src="https://unpkg.com/mammoth@1.6.0/mammoth.browser.min.js"></script>
 
@@ -564,6 +567,129 @@ permalink: /FPSSIM/
     background: #1a1a1a;
     border-radius: 8px;
   }
+  /* Toast Notifications */
+  .toast-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 10000;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .toast {
+    padding: 15px 20px;
+    border-radius: 8px;
+    color: #fff;
+    min-width: 280px;
+    max-width: 400px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+    animation: slideIn 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .toast.success { background: linear-gradient(135deg, #28a745, #20863a); }
+  .toast.error { background: linear-gradient(135deg, #dc3545, #b02a37); }
+  .toast.warning { background: linear-gradient(135deg, #ffc107, #d4a106); color: #000; }
+  .toast.info { background: linear-gradient(135deg, #4a9eff, #3a7ecc); }
+  .toast-icon { font-size: 20px; }
+  .toast-message { flex: 1; }
+  .toast-close {
+    background: none;
+    border: none;
+    color: inherit;
+    font-size: 18px;
+    cursor: pointer;
+    opacity: 0.7;
+    padding: 0;
+  }
+  .toast-close:hover { opacity: 1; }
+  @keyframes slideIn {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+  }
+  /* Confirm Modal */
+  .confirm-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10001;
+  }
+  .confirm-box {
+    background: #2a2a2a;
+    padding: 25px 30px;
+    border-radius: 12px;
+    max-width: 400px;
+    width: 90%;
+    text-align: center;
+  }
+  .confirm-box h3 {
+    color: #fff;
+    margin: 0 0 10px 0;
+  }
+  .confirm-box p {
+    color: #aaa;
+    margin: 0 0 20px 0;
+  }
+  .confirm-buttons {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+  }
+  /* CAPTCHA Screen */
+  .captcha-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10002;
+  }
+  .captcha-box {
+    background: #2a2a2a;
+    padding: 40px 50px;
+    border-radius: 16px;
+    text-align: center;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+    max-width: 400px;
+    width: 90%;
+  }
+  .captcha-box h2 {
+    color: #4a9eff;
+    margin: 0 0 10px 0;
+    font-size: 24px;
+  }
+  .captcha-box p {
+    color: #888;
+    margin: 0 0 25px 0;
+    font-size: 14px;
+  }
+  .captcha-box .fps-btn {
+    width: 100%;
+    padding: 15px;
+    font-size: 16px;
+    margin-top: 10px;
+  }
+  .captcha-loading {
+    color: #4a9eff;
+    padding: 20px;
+  }
+  .captcha-error {
+    color: #dc3545;
+    margin-top: 15px;
+    font-size: 14px;
+  }
 </style>
 
 <div id="fps-root"></div>
@@ -592,6 +718,66 @@ permalink: /FPSSIM/
     const [authLoading, setAuthLoading] = useState(false);
     const [adminEmails, setAdminEmails] = useState([SUPER_ADMIN]);
     const [newAdminEmail, setNewAdminEmail] = useState('');
+
+    // Toast notifications
+    const [toasts, setToasts] = useState([]);
+    const [confirmModal, setConfirmModal] = useState(null);
+
+    const showToast = (message, type = 'info') => {
+      const id = Date.now();
+      setToasts(prev => [...prev, { id, message, type }]);
+      setTimeout(() => {
+        setToasts(prev => prev.filter(t => t.id !== id));
+      }, 4000);
+    };
+
+    const removeToast = (id) => {
+      setToasts(prev => prev.filter(t => t.id !== id));
+    };
+
+    const showConfirm = (message, onConfirm) => {
+      setConfirmModal({ message, onConfirm });
+    };
+
+    const handleConfirm = (confirmed) => {
+      if (confirmed && confirmModal?.onConfirm) {
+        confirmModal.onConfirm();
+      }
+      setConfirmModal(null);
+    };
+
+    // CAPTCHA state
+    const [captchaVerified, setCaptchaVerified] = useState(() => {
+      return sessionStorage.getItem('fps_captcha_verified') === 'true';
+    });
+    const [captchaLoading, setCaptchaLoading] = useState(false);
+    const [captchaError, setCaptchaError] = useState('');
+
+    const RECAPTCHA_SITE_KEY = '6LdnmVcsAAAAACWepOoMh_mH2mu5ghsCih1KLohI';
+
+    const verifyCaptcha = async () => {
+      setCaptchaLoading(true);
+      setCaptchaError('');
+
+      try {
+        const token = await window.grecaptcha.enterprise.execute(RECAPTCHA_SITE_KEY, { action: 'LOGIN' });
+
+        if (token) {
+          // For client-side only apps, we trust the token was generated
+          // In production, you'd verify this token on your backend
+          sessionStorage.setItem('fps_captcha_verified', 'true');
+          setCaptchaVerified(true);
+          showToast('Verification successful!', 'success');
+        } else {
+          setCaptchaError('Verification failed. Please try again.');
+        }
+      } catch (error) {
+        console.error('reCAPTCHA error:', error);
+        setCaptchaError('Verification failed. Please try again.');
+      }
+
+      setCaptchaLoading(false);
+    };
 
     // Assignment state
     const [assignments, setAssignments] = useState([]);
@@ -687,12 +873,13 @@ permalink: /FPSSIM/
         const result = await signInWithPopup(window.firebaseAuth, GoogleAuthProvider);
         if (adminEmails.includes(result.user.email)) {
           setActiveTab('admin');
+          showToast('Signed in successfully!', 'success');
         } else {
-          alert('You are not authorized as an admin. Contact the administrator to add your email: ' + result.user.email);
+          showToast('Not authorized as admin. Your email: ' + result.user.email, 'warning');
         }
       } catch (error) {
         console.error('Sign in error:', error);
-        alert('Sign in failed: ' + error.message);
+        showToast('Sign in failed: ' + error.message, 'error');
       }
       setAuthLoading(false);
     };
@@ -700,11 +887,11 @@ permalink: /FPSSIM/
     // Add new admin email
     const addAdminEmail = async () => {
       if (!newAdminEmail.trim() || !newAdminEmail.includes('@')) {
-        alert('Please enter a valid email address');
+        showToast('Please enter a valid email address', 'warning');
         return;
       }
       if (adminEmails.includes(newAdminEmail.trim())) {
-        alert('This email is already an admin');
+        showToast('This email is already an admin', 'warning');
         return;
       }
 
@@ -718,34 +905,36 @@ permalink: /FPSSIM/
           addedAt: new Date().toISOString()
         });
         setNewAdminEmail('');
+        showToast('Admin added successfully!', 'success');
       } catch (error) {
         console.error('Error adding admin:', error);
-        alert('Error adding admin: ' + error.message);
+        showToast('Error adding admin: ' + error.message, 'error');
       }
     };
 
     // Remove admin email
-    const removeAdminEmail = async (emailToRemove) => {
+    const removeAdminEmail = (emailToRemove) => {
       if (emailToRemove === SUPER_ADMIN) {
-        alert('Cannot remove the super admin');
+        showToast('Cannot remove the super admin', 'error');
         return;
       }
-      if (!confirm(`Remove ${emailToRemove} from admins?`)) return;
+      showConfirm(`Remove ${emailToRemove} from admins?`, async () => {
+        const { collection, getDocs, deleteDoc, doc } = window.firebaseHelpers;
+        const db = window.firebaseDB;
 
-      const { collection, getDocs, deleteDoc, doc, query } = window.firebaseHelpers;
-      const db = window.firebaseDB;
-
-      try {
-        const snapshot = await getDocs(collection(db, 'fps_admins'));
-        snapshot.docs.forEach(async (docSnap) => {
-          if (docSnap.data().email === emailToRemove) {
-            await deleteDoc(doc(db, 'fps_admins', docSnap.id));
+        try {
+          const snapshot = await getDocs(collection(db, 'fps_admins'));
+          for (const docSnap of snapshot.docs) {
+            if (docSnap.data().email === emailToRemove) {
+              await deleteDoc(doc(db, 'fps_admins', docSnap.id));
+            }
           }
-        });
-      } catch (error) {
-        console.error('Error removing admin:', error);
-        alert('Error removing admin: ' + error.message);
-      }
+          showToast('Admin removed successfully', 'success');
+        } catch (error) {
+          console.error('Error removing admin:', error);
+          showToast('Error removing admin: ' + error.message, 'error');
+        }
+      });
     };
 
     const handleSignOut = async () => {
@@ -763,7 +952,7 @@ permalink: /FPSSIM/
       if (isAdmin) {
         setActiveTab('admin');
       } else if (currentUser) {
-        alert('You are signed in but not authorized as admin. Your email: ' + currentUser.email);
+        showToast('You are signed in but not authorized as admin. Your email: ' + currentUser.email, 'warning');
       } else {
         handleGoogleSignIn();
       }
@@ -862,7 +1051,7 @@ permalink: /FPSSIM/
     // Handle DOCX file upload
     const handleFileUpload = async (file) => {
       if (!file || !file.name.endsWith('.docx')) {
-        alert('Please upload a .docx file');
+        showToast('Please upload a .docx file', 'warning');
         return;
       }
 
@@ -873,7 +1062,7 @@ permalink: /FPSSIM/
         setNewAssignment(prev => ({ ...prev, futureScene: result.value }));
       } catch (error) {
         console.error('Error parsing DOCX:', error);
-        alert('Error parsing DOCX file: ' + error.message);
+        showToast('Error parsing DOCX file: ' + error.message, 'error');
       }
       setUploadingFile(false);
     };
@@ -881,7 +1070,7 @@ permalink: /FPSSIM/
     // Create new assignment
     const createAssignment = async () => {
       if (!newAssignment.title.trim() || !newAssignment.futureScene.trim()) {
-        alert('Please provide a title and upload a future scene document');
+        showToast('Please provide a title and upload a future scene document', 'warning');
         return;
       }
 
@@ -896,26 +1085,27 @@ permalink: /FPSSIM/
           active: true
         });
         setNewAssignment({ title: '', futureScene: '' });
-        alert('Assignment created successfully!');
+        showToast('Assignment created successfully!', 'success');
       } catch (error) {
         console.error('Error creating assignment:', error);
-        alert('Error creating assignment: ' + error.message);
+        showToast('Error creating assignment: ' + error.message, 'error');
       }
     };
 
     // Delete assignment
-    const deleteAssignment = async (id) => {
-      if (!confirm('Delete this assignment? This cannot be undone.')) return;
+    const deleteAssignment = (id) => {
+      showConfirm('Delete this assignment? This cannot be undone.', async () => {
+        const { doc, deleteDoc } = window.firebaseHelpers;
+        const db = window.firebaseDB;
 
-      const { doc, deleteDoc } = window.firebaseHelpers;
-      const db = window.firebaseDB;
-
-      try {
-        await deleteDoc(doc(db, 'fps_assignments', id));
-      } catch (error) {
-        console.error('Error deleting assignment:', error);
-        alert('Error deleting assignment: ' + error.message);
-      }
+        try {
+          await deleteDoc(doc(db, 'fps_assignments', id));
+          showToast('Assignment deleted', 'success');
+        } catch (error) {
+          console.error('Error deleting assignment:', error);
+          showToast('Error deleting assignment: ' + error.message, 'error');
+        }
+      });
     };
 
     // Open evaluation modal
@@ -964,19 +1154,19 @@ permalink: /FPSSIM/
           },
           status: 'evaluated'
         });
-        alert('Evaluation saved successfully!');
+        showToast('Evaluation saved successfully!', 'success');
         setShowEvalModal(false);
         setEvaluatingSubmission(null);
       } catch (error) {
         console.error('Error saving evaluation:', error);
-        alert('Error saving evaluation: ' + error.message);
+        showToast('Error saving evaluation: ' + error.message, 'error');
       }
     };
 
     // Submit to Firebase
     const handleSubmit = async () => {
       if (!firebaseReady || !window.firebaseDB) {
-        alert('Firebase not ready! Please wait or refresh.');
+        showToast('Firebase not ready! Please wait or refresh.', 'warning');
         return;
       }
 
@@ -1005,12 +1195,12 @@ permalink: /FPSSIM/
 
       try {
         await addDoc(collection(db, 'fps_submissions'), data);
-        alert('Submission saved globally! Everyone can see it now.');
+        showToast('Submission saved globally! Everyone can see it now.', 'success');
         setActiveTab('admin');
         resetForm();
       } catch (error) {
         console.error("Error submitting:", error);
-        alert('Error submitting: ' + error.message);
+        showToast('Error submitting: ' + error.message, 'error');
       }
 
       setLoading(false);
@@ -1035,16 +1225,46 @@ permalink: /FPSSIM/
       await updateDoc(doc(db, 'fps_submissions', id), { status: 'reviewed' });
     };
 
-    const deleteSubmission = async (id) => {
+    const deleteSubmission = (id) => {
       if (!firebaseReady || !window.firebaseDB) return;
-      if (confirm('Delete this submission globally?')) {
+      showConfirm('Delete this submission globally?', async () => {
         const { doc, deleteDoc } = window.firebaseHelpers;
         const db = window.firebaseDB;
         await deleteDoc(doc(db, 'fps_submissions', id));
-      }
+        showToast('Submission deleted', 'success');
+      });
     };
 
     const progress = (currentStep / 6) * 100;
+
+    // Show CAPTCHA screen if not verified
+    if (!captchaVerified) {
+      return (
+        <div className="captcha-screen">
+          <div className="captcha-box">
+            <h2>FPS Simulator</h2>
+            <p>Please verify you're human to continue</p>
+
+            {captchaLoading ? (
+              <div className="captcha-loading">Verifying...</div>
+            ) : (
+              <button
+                className="fps-btn fps-btn-primary"
+                onClick={verifyCaptcha}
+              >
+                Verify & Continue
+              </button>
+            )}
+
+            {captchaError && <div className="captcha-error">{captchaError}</div>}
+
+            <p style={{ marginTop: 20, fontSize: 12, color: '#666' }}>
+              Protected by reCAPTCHA
+            </p>
+          </div>
+        </div>
+      );
+    }
 
     return (
       <div className="fps-container">
@@ -2205,6 +2425,40 @@ permalink: /FPSSIM/
                     Cancel
                   </button>
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TOAST NOTIFICATIONS */}
+        <div className="toast-container">
+          {toasts.map(toast => (
+            <div key={toast.id} className={`toast ${toast.type}`}>
+              <span className="toast-icon">
+                {toast.type === 'success' && '✓'}
+                {toast.type === 'error' && '✕'}
+                {toast.type === 'warning' && '⚠'}
+                {toast.type === 'info' && 'ℹ'}
+              </span>
+              <span className="toast-message">{toast.message}</span>
+              <button className="toast-close" onClick={() => removeToast(toast.id)}>×</button>
+            </div>
+          ))}
+        </div>
+
+        {/* CONFIRM MODAL */}
+        {confirmModal && (
+          <div className="confirm-modal" onClick={() => handleConfirm(false)}>
+            <div className="confirm-box" onClick={e => e.stopPropagation()}>
+              <h3>Confirm Action</h3>
+              <p>{confirmModal.message}</p>
+              <div className="confirm-buttons">
+                <button className="fps-btn fps-btn-danger" onClick={() => handleConfirm(true)}>
+                  Yes, Delete
+                </button>
+                <button className="fps-btn fps-btn-primary" onClick={() => handleConfirm(false)}>
+                  Cancel
+                </button>
               </div>
             </div>
           </div>
