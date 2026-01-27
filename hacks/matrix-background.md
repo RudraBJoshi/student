@@ -8,17 +8,22 @@ permalink: /matrix
 <canvas id="matrix"></canvas>
 
 <style>
-    * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
+    html, body {
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: hidden !important;
+        background: #000 !important;
     }
-    body {
-        overflow: hidden;
-        background: #000;
+    body > *:not(#matrix) {
+        display: none !important;
     }
-    canvas {
-        display: block;
+    #matrix {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        z-index: 9999;
     }
 </style>
 
