@@ -371,9 +371,23 @@ permalink: /FPSSIM/
     const [criteria, setCriteria] = useState(Array(5).fill(''));
     const [selectedSolutions, setSelectedSolutions] = useState([]);
     const [evalScores, setEvalScores] = useState({});
+    const emptyStep = {
+      action: '',
+      criteria: '',
+      timeline: '',
+      assistance: '',
+      resistance: '',
+      humaneness: '',
+      impact: '',
+      sustainability: '',
+      where: '',
+      whyWho: '',
+      testing: '',
+      up: ''
+    };
     const [actionPlan, setActionPlan] = useState({
       summary: '',
-      steps: Array(5).fill({ action: '', who: '', when: '' }),
+      steps: [{ ...emptyStep }],
       addressUP: '',
       outcomes: '',
       humaneness: ''
@@ -464,7 +478,7 @@ permalink: /FPSSIM/
       setCriteria(Array(5).fill(''));
       setSelectedSolutions([]);
       setEvalScores({});
-      setActionPlan({ summary: '', steps: Array(5).fill({ action: '', who: '', when: '' }), addressUP: '', outcomes: '', humaneness: '' });
+      setActionPlan({ summary: '', steps: [{ ...emptyStep }], addressUP: '', outcomes: '', humaneness: '' });
     };
 
     const markReviewed = async (id) => {
@@ -840,7 +854,8 @@ permalink: /FPSSIM/
                       </button>
                     )}
                   </div>
-                  <div className="fps-grid" style={{ gridTemplateColumns: '2fr 1fr 1fr' }}>
+                  <div style={{ marginBottom: 10 }}>
+                    <label style={{ fontSize: 12, color: '#888' }}>Action</label>
                     <input
                       className="fps-input"
                       value={step.action}
@@ -849,28 +864,153 @@ permalink: /FPSSIM/
                         newSteps[i] = {...newSteps[i], action: e.target.value};
                         setActionPlan({...actionPlan, steps: newSteps});
                       }}
-                      placeholder="Action to take..."
+                      placeholder="What action will be taken?"
                     />
-                    <input
-                      className="fps-input"
-                      value={step.who}
-                      onChange={e => {
-                        const newSteps = [...actionPlan.steps];
-                        newSteps[i] = {...newSteps[i], who: e.target.value};
-                        setActionPlan({...actionPlan, steps: newSteps});
-                      }}
-                      placeholder="Who?"
-                    />
-                    <input
-                      className="fps-input"
-                      value={step.when}
-                      onChange={e => {
-                        const newSteps = [...actionPlan.steps];
-                        newSteps[i] = {...newSteps[i], when: e.target.value};
-                        setActionPlan({...actionPlan, steps: newSteps});
-                      }}
-                      placeholder="When?"
-                    />
+                  </div>
+                  <div className="fps-grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
+                    <div>
+                      <label style={{ fontSize: 12, color: '#888' }}>Criteria</label>
+                      <input
+                        className="fps-input"
+                        value={step.criteria}
+                        onChange={e => {
+                          const newSteps = [...actionPlan.steps];
+                          newSteps[i] = {...newSteps[i], criteria: e.target.value};
+                          setActionPlan({...actionPlan, steps: newSteps});
+                        }}
+                        placeholder="Which criteria does this meet?"
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: 12, color: '#888' }}>Timeline</label>
+                      <input
+                        className="fps-input"
+                        value={step.timeline}
+                        onChange={e => {
+                          const newSteps = [...actionPlan.steps];
+                          newSteps[i] = {...newSteps[i], timeline: e.target.value};
+                          setActionPlan({...actionPlan, steps: newSteps});
+                        }}
+                        placeholder="When will this happen?"
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: 12, color: '#888' }}>Assistance</label>
+                      <input
+                        className="fps-input"
+                        value={step.assistance}
+                        onChange={e => {
+                          const newSteps = [...actionPlan.steps];
+                          newSteps[i] = {...newSteps[i], assistance: e.target.value};
+                          setActionPlan({...actionPlan, steps: newSteps});
+                        }}
+                        placeholder="Who/what will help?"
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: 12, color: '#888' }}>Resistance</label>
+                      <input
+                        className="fps-input"
+                        value={step.resistance}
+                        onChange={e => {
+                          const newSteps = [...actionPlan.steps];
+                          newSteps[i] = {...newSteps[i], resistance: e.target.value};
+                          setActionPlan({...actionPlan, steps: newSteps});
+                        }}
+                        placeholder="What obstacles exist?"
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: 12, color: '#888' }}>Humaneness</label>
+                      <input
+                        className="fps-input"
+                        value={step.humaneness}
+                        onChange={e => {
+                          const newSteps = [...actionPlan.steps];
+                          newSteps[i] = {...newSteps[i], humaneness: e.target.value};
+                          setActionPlan({...actionPlan, steps: newSteps});
+                        }}
+                        placeholder="How is this humane?"
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: 12, color: '#888' }}>Impact on People</label>
+                      <input
+                        className="fps-input"
+                        value={step.impact}
+                        onChange={e => {
+                          const newSteps = [...actionPlan.steps];
+                          newSteps[i] = {...newSteps[i], impact: e.target.value};
+                          setActionPlan({...actionPlan, steps: newSteps});
+                        }}
+                        placeholder="Impact on people in future scene"
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: 12, color: '#888' }}>Sustainability</label>
+                      <input
+                        className="fps-input"
+                        value={step.sustainability}
+                        onChange={e => {
+                          const newSteps = [...actionPlan.steps];
+                          newSteps[i] = {...newSteps[i], sustainability: e.target.value};
+                          setActionPlan({...actionPlan, steps: newSteps});
+                        }}
+                        placeholder="Is this sustainable long-term?"
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: 12, color: '#888' }}>Where?</label>
+                      <input
+                        className="fps-input"
+                        value={step.where}
+                        onChange={e => {
+                          const newSteps = [...actionPlan.steps];
+                          newSteps[i] = {...newSteps[i], where: e.target.value};
+                          setActionPlan({...actionPlan, steps: newSteps});
+                        }}
+                        placeholder="Where will this happen?"
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: 12, color: '#888' }}>Why is the Who doing it?</label>
+                      <input
+                        className="fps-input"
+                        value={step.whyWho}
+                        onChange={e => {
+                          const newSteps = [...actionPlan.steps];
+                          newSteps[i] = {...newSteps[i], whyWho: e.target.value};
+                          setActionPlan({...actionPlan, steps: newSteps});
+                        }}
+                        placeholder="Why is this person/group responsible?"
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: 12, color: '#888' }}>Testing?</label>
+                      <input
+                        className="fps-input"
+                        value={step.testing}
+                        onChange={e => {
+                          const newSteps = [...actionPlan.steps];
+                          newSteps[i] = {...newSteps[i], testing: e.target.value};
+                          setActionPlan({...actionPlan, steps: newSteps});
+                        }}
+                        placeholder="How will this be tested?"
+                      />
+                    </div>
+                    <div style={{ gridColumn: 'span 2' }}>
+                      <label style={{ fontSize: 12, color: '#888' }}>UP (Underlying Problem Connection)</label>
+                      <input
+                        className="fps-input"
+                        value={step.up}
+                        onChange={e => {
+                          const newSteps = [...actionPlan.steps];
+                          newSteps[i] = {...newSteps[i], up: e.target.value};
+                          setActionPlan({...actionPlan, steps: newSteps});
+                        }}
+                        placeholder="How does this step address the UP?"
+                      />
+                    </div>
                   </div>
                 </div>
               ))}
@@ -878,7 +1018,7 @@ permalink: /FPSSIM/
                 className="fps-btn fps-btn-primary"
                 onClick={() => setActionPlan({
                   ...actionPlan,
-                  steps: [...actionPlan.steps, { action: '', who: '', when: '' }]
+                  steps: [...actionPlan.steps, { ...emptyStep }]
                 })}
                 style={{ marginBottom: 15 }}
               >
