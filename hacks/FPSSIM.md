@@ -385,6 +385,178 @@ permalink: /FPSSIM/
     background: #4a9eff;
     color: #fff;
   }
+  /* Evaluation styles */
+  .eval-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.9);
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    z-index: 1001;
+    overflow-y: auto;
+    padding: 20px;
+  }
+  .eval-content {
+    background: #1e1e1e;
+    border-radius: 12px;
+    max-width: 700px;
+    width: 100%;
+    margin: 20px auto;
+  }
+  .eval-header {
+    background: #4a9eff;
+    padding: 15px 20px;
+    border-radius: 12px 12px 0 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .eval-header h2 {
+    margin: 0;
+    color: #fff;
+  }
+  .eval-body {
+    padding: 20px;
+  }
+  .eval-section {
+    background: #2a2a2a;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+  }
+  .eval-section h4 {
+    color: #4a9eff;
+    margin: 0 0 10px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .eval-score {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .eval-score input {
+    width: 60px;
+    padding: 8px;
+    border: 2px solid #444;
+    border-radius: 4px;
+    background: #333;
+    color: #fff;
+    text-align: center;
+    font-size: 16px;
+  }
+  .eval-score span {
+    color: #888;
+    font-size: 14px;
+  }
+  .eval-comment {
+    width: 100%;
+    padding: 10px;
+    border: 2px solid #444;
+    border-radius: 6px;
+    background: #333;
+    color: #fff;
+    font-size: 14px;
+    resize: vertical;
+    min-height: 60px;
+    margin-top: 10px;
+  }
+  .eval-total {
+    background: #1a3a1a;
+    border: 2px solid #28a745;
+    padding: 15px;
+    border-radius: 8px;
+    text-align: center;
+    margin-bottom: 15px;
+  }
+  .eval-total h3 {
+    color: #28a745;
+    margin: 0;
+    font-size: 24px;
+  }
+  .eval-total span {
+    color: #888;
+    font-size: 14px;
+  }
+  .eval-badge {
+    display: inline-block;
+    background: #ff6b35;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    margin-left: 10px;
+  }
+  .eval-badge.graded {
+    background: #28a745;
+  }
+  /* Search styles */
+  .search-section {
+    background: linear-gradient(135deg, #1a2a3a 0%, #2a3a4a 100%);
+    border: 2px solid #4a9eff;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+  .search-section h3 {
+    color: #4a9eff;
+    margin: 0 0 15px 0;
+  }
+  .search-bar {
+    display: flex;
+    gap: 10px;
+  }
+  .search-bar input {
+    flex: 1;
+    padding: 12px 15px;
+    border: 2px solid #444;
+    border-radius: 8px;
+    background: #1e1e1e;
+    color: #fff;
+    font-size: 16px;
+  }
+  .search-bar input:focus {
+    border-color: #4a9eff;
+    outline: none;
+  }
+  .search-results {
+    margin-top: 15px;
+  }
+  .search-result-card {
+    background: #2a2a2a;
+    border: 2px solid #28a745;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+  .search-result-card:hover {
+    background: #1a3a1a;
+    transform: translateY(-2px);
+  }
+  .result-score {
+    font-size: 24px;
+    color: #28a745;
+    font-weight: bold;
+  }
+  .result-percentage {
+    font-size: 14px;
+    color: #888;
+    margin-left: 10px;
+  }
+  .no-results {
+    color: #888;
+    text-align: center;
+    padding: 20px;
+    background: #1a1a1a;
+    border-radius: 8px;
+  }
 </style>
 
 <div id="fps-root"></div>
@@ -419,6 +591,45 @@ permalink: /FPSSIM/
     const [adminSubTab, setAdminSubTab] = useState('submissions');
     const [newAssignment, setNewAssignment] = useState({ title: '', futureScene: '' });
     const [uploadingFile, setUploadingFile] = useState(false);
+
+    // Evaluation state
+    const [showEvalModal, setShowEvalModal] = useState(false);
+    const [evaluatingSubmission, setEvaluatingSubmission] = useState(null);
+    const [evaluation, setEvaluation] = useState({
+      challenges: { score: 0, comment: '' },
+      underlyingProblem: { score: 0, comment: '' },
+      solutions: { score: 0, comment: '' },
+      criteria: { score: 0, comment: '' },
+      evaluationGrid: { score: 0, comment: '' },
+      actionPlan: { score: 0, comment: '' },
+      overallComments: ''
+    });
+    const maxScores = {
+      challenges: 60,
+      underlyingProblem: 30,
+      solutions: 60,
+      criteria: 20,
+      evaluationGrid: 30,
+      actionPlan: 100
+    };
+
+    // Search state for users to find their graded booklets
+    const [searchQuery, setSearchQuery] = useState('');
+    const [searchResults, setSearchResults] = useState([]);
+    const [viewingResult, setViewingResult] = useState(null);
+
+    // Search for graded booklets by team name
+    const searchGradedBooklets = () => {
+      if (!searchQuery.trim()) {
+        setSearchResults([]);
+        return;
+      }
+      const results = submissions.filter(sub =>
+        sub.evaluation &&
+        sub.team?.name?.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+      setSearchResults(results);
+    };
 
     const handleAdminAccess = () => {
       if (adminAuthenticated) {
@@ -590,6 +801,61 @@ permalink: /FPSSIM/
       }
     };
 
+    // Open evaluation modal
+    const openEvaluation = (submission) => {
+      setEvaluatingSubmission(submission);
+      // Load existing evaluation if present
+      if (submission.evaluation) {
+        setEvaluation(submission.evaluation);
+      } else {
+        setEvaluation({
+          challenges: { score: 0, comment: '' },
+          underlyingProblem: { score: 0, comment: '' },
+          solutions: { score: 0, comment: '' },
+          criteria: { score: 0, comment: '' },
+          evaluationGrid: { score: 0, comment: '' },
+          actionPlan: { score: 0, comment: '' },
+          overallComments: ''
+        });
+      }
+      setShowEvalModal(true);
+    };
+
+    // Calculate total score
+    const getTotalScore = () => {
+      return Object.keys(maxScores).reduce((sum, key) => sum + (evaluation[key]?.score || 0), 0);
+    };
+
+    const getMaxTotal = () => {
+      return Object.values(maxScores).reduce((sum, val) => sum + val, 0);
+    };
+
+    // Save evaluation to Firebase
+    const saveEvaluation = async () => {
+      if (!firebaseReady || !window.firebaseDB || !evaluatingSubmission) return;
+
+      const { doc, updateDoc, serverTimestamp } = window.firebaseHelpers;
+      const db = window.firebaseDB;
+
+      try {
+        await updateDoc(doc(db, 'fps_submissions', evaluatingSubmission.id), {
+          evaluation: {
+            ...evaluation,
+            totalScore: getTotalScore(),
+            maxScore: getMaxTotal(),
+            evaluatedAt: new Date().toISOString()
+          },
+          status: 'evaluated'
+        });
+        alert('Evaluation saved successfully!');
+        setShowEvalModal(false);
+        setEvaluatingSubmission(null);
+      } catch (error) {
+        console.error('Error saving evaluation:', error);
+        alert('Error saving evaluation: ' + error.message);
+      }
+    };
+
     // Submit to Firebase
     const handleSubmit = async () => {
       if (!firebaseReady || !window.firebaseDB) {
@@ -733,6 +999,129 @@ permalink: /FPSSIM/
               </div>
             ))}
           </div>
+
+          {/* SEARCH FOR GRADED BOOKLETS */}
+          <div className="search-section">
+            <h3>Find Your Graded Booklet</h3>
+            <div className="search-bar">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                onKeyPress={e => e.key === 'Enter' && searchGradedBooklets()}
+                placeholder="Enter your team name..."
+              />
+              <button className="fps-btn fps-btn-primary" onClick={searchGradedBooklets}>
+                Search
+              </button>
+            </div>
+
+            {searchQuery && searchResults.length === 0 && (
+              <div className="no-results">
+                No graded booklets found for "{searchQuery}". Your booklet may not be graded yet.
+              </div>
+            )}
+
+            {searchResults.length > 0 && (
+              <div className="search-results">
+                <p style={{ color: '#888', marginBottom: 10 }}>Found {searchResults.length} graded booklet(s):</p>
+                {searchResults.map(result => (
+                  <div
+                    key={result.id}
+                    className="search-result-card"
+                    onClick={() => setViewingResult(result)}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <strong style={{ fontSize: 18 }}>{result.team?.name}</strong>
+                        <div style={{ color: '#888', fontSize: 13 }}>
+                          {result.assignmentTitle || 'Free Practice'} | {result.timestamp?.toDate ? result.timestamp.toDate().toLocaleDateString() : 'Recent'}
+                        </div>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <span className="result-score">{result.evaluation.totalScore}</span>
+                        <span style={{ color: '#888' }}>/{result.evaluation.maxScore}</span>
+                        <div className="result-percentage">
+                          {Math.round((result.evaluation.totalScore / result.evaluation.maxScore) * 100)}%
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* VIEW GRADED RESULT MODAL */}
+          {viewingResult && (
+            <div className="modal-overlay active" onClick={() => setViewingResult(null)}>
+              <div className="modal-content" onClick={e => e.stopPropagation()}>
+                <div className="modal-header">
+                  <h2>{viewingResult.team?.name} - Results</h2>
+                  <button className="modal-close" onClick={() => setViewingResult(null)}>&times;</button>
+                </div>
+
+                <div style={{ background: '#1a3a1a', padding: 15, borderRadius: 8, marginBottom: 20, textAlign: 'center' }}>
+                  <div style={{ fontSize: 36, color: '#28a745', fontWeight: 'bold' }}>
+                    {viewingResult.evaluation.totalScore} / {viewingResult.evaluation.maxScore}
+                  </div>
+                  <div style={{ fontSize: 18, color: '#888' }}>
+                    {Math.round((viewingResult.evaluation.totalScore / viewingResult.evaluation.maxScore) * 100)}%
+                  </div>
+                </div>
+
+                <div style={{ background: '#2a2a2a', padding: 10, borderRadius: 6, marginBottom: 15 }}>
+                  <strong style={{ color: '#4a9eff' }}>Assignment:</strong> {viewingResult.assignmentTitle || 'Free Practice'}
+                  <br />
+                  <strong style={{ color: '#4a9eff' }}>Submitted:</strong> {viewingResult.timestamp?.toDate ? viewingResult.timestamp.toDate().toLocaleString() : 'Recent'}
+                </div>
+
+                <h4 style={{ color: '#ff6b35', marginTop: 20 }}>Score Breakdown</h4>
+                {[
+                  { key: 'challenges', label: 'Step 1: Challenges', max: 60 },
+                  { key: 'underlyingProblem', label: 'Step 2: Underlying Problem', max: 30 },
+                  { key: 'solutions', label: 'Step 3: Solutions', max: 60 },
+                  { key: 'criteria', label: 'Step 4: Criteria', max: 20 },
+                  { key: 'evaluationGrid', label: 'Step 5: Evaluation Grid', max: 30 },
+                  { key: 'actionPlan', label: 'Step 6: Action Plan', max: 100 }
+                ].map(({ key, label, max }) => (
+                  <div key={key} style={{ background: '#2a2a2a', padding: 12, borderRadius: 6, marginBottom: 8 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <strong>{label}</strong>
+                      <span style={{ color: '#4a9eff', fontSize: 18 }}>
+                        {viewingResult.evaluation[key]?.score || 0} / {max}
+                      </span>
+                    </div>
+                    {viewingResult.evaluation[key]?.comment && (
+                      <div style={{ marginTop: 8, padding: 10, background: '#1a1a1a', borderRadius: 4, borderLeft: '3px solid #4a9eff' }}>
+                        <span style={{ color: '#888', fontSize: 12 }}>Feedback:</span>
+                        <p style={{ color: '#fff', margin: '5px 0 0 0', fontSize: 14 }}>
+                          {viewingResult.evaluation[key].comment}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ))}
+
+                {viewingResult.evaluation.overallComments && (
+                  <div style={{ background: '#333', padding: 15, borderRadius: 8, marginTop: 20, borderLeft: '4px solid #ff6b35' }}>
+                    <strong style={{ color: '#ff6b35' }}>Overall Feedback:</strong>
+                    <p style={{ margin: '10px 0 0 0', whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>
+                      {viewingResult.evaluation.overallComments}
+                    </p>
+                  </div>
+                )}
+
+                <button
+                  className="fps-btn fps-btn-primary"
+                  style={{ width: '100%', marginTop: 20 }}
+                  onClick={() => setViewingResult(null)}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Step 0: Assignment Selection & Team Info */}
           {currentStep === 0 && (
@@ -1308,9 +1697,24 @@ permalink: /FPSSIM/
                     <div style={{ marginTop: 10, fontSize: 12, color: '#666' }}>
                       {sub.timestamp?.toDate ? sub.timestamp.toDate().toLocaleString() : 'Just now'}
                     </div>
+                    {sub.evaluation && (
+                      <div style={{ marginTop: 10, padding: 8, background: '#1a3a1a', borderRadius: 4 }}>
+                        <strong style={{ color: '#28a745' }}>Score: {sub.evaluation.totalScore}/{sub.evaluation.maxScore}</strong>
+                        <span style={{ color: '#888', marginLeft: 10, fontSize: 12 }}>
+                          ({Math.round((sub.evaluation.totalScore / sub.evaluation.maxScore) * 100)}%)
+                        </span>
+                      </div>
+                    )}
                     <div style={{ marginTop: 10 }}>
                       <button className="fps-btn fps-btn-primary" onClick={() => setSelectedSubmission(sub)}>
                         View
+                      </button>
+                      <button
+                        className="fps-btn"
+                        style={{ background: '#ff6b35' }}
+                        onClick={() => openEvaluation(sub)}
+                      >
+                        {sub.evaluation ? 'Edit Evaluation' : 'Evaluate'}
                       </button>
                       <button className="fps-btn fps-btn-success" onClick={() => markReviewed(sub.id)}>
                         Mark Reviewed
@@ -1490,6 +1894,122 @@ permalink: /FPSSIM/
               <p><strong>How it addresses UP:</strong> {selectedSubmission.actionPlan?.addressUP}</p>
               <p><strong>Expected Outcomes:</strong> {selectedSubmission.actionPlan?.outcomes}</p>
               <p><strong>Humaneness:</strong> {selectedSubmission.actionPlan?.humaneness}</p>
+
+              {/* Display Evaluation if exists */}
+              {selectedSubmission.evaluation && (
+                <>
+                  <h4 style={{ color: '#ff6b35', marginTop: 30, borderTop: '2px solid #ff6b35', paddingTop: 15 }}>
+                    Evaluation Results
+                  </h4>
+                  <div style={{ background: '#1a3a1a', padding: 15, borderRadius: 8, marginBottom: 15 }}>
+                    <h3 style={{ color: '#28a745', margin: 0, textAlign: 'center' }}>
+                      Total Score: {selectedSubmission.evaluation.totalScore}/{selectedSubmission.evaluation.maxScore}
+                      ({Math.round((selectedSubmission.evaluation.totalScore / selectedSubmission.evaluation.maxScore) * 100)}%)
+                    </h3>
+                  </div>
+                  {[
+                    { key: 'challenges', label: 'Challenges', max: 60 },
+                    { key: 'underlyingProblem', label: 'Underlying Problem', max: 30 },
+                    { key: 'solutions', label: 'Solutions', max: 60 },
+                    { key: 'criteria', label: 'Criteria', max: 20 },
+                    { key: 'evaluationGrid', label: 'Evaluation Grid', max: 30 },
+                    { key: 'actionPlan', label: 'Action Plan', max: 100 }
+                  ].map(({ key, label, max }) => (
+                    <div key={key} style={{ background: '#2a2a2a', padding: 10, borderRadius: 6, marginBottom: 8 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <strong>{label}</strong>
+                        <span style={{ color: '#4a9eff' }}>{selectedSubmission.evaluation[key]?.score || 0}/{max}</span>
+                      </div>
+                      {selectedSubmission.evaluation[key]?.comment && (
+                        <p style={{ color: '#888', fontSize: 13, margin: '5px 0 0 0' }}>
+                          {selectedSubmission.evaluation[key].comment}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                  {selectedSubmission.evaluation.overallComments && (
+                    <div style={{ background: '#333', padding: 15, borderRadius: 8, marginTop: 15 }}>
+                      <strong style={{ color: '#ff6b35' }}>Overall Comments:</strong>
+                      <p style={{ margin: '10px 0 0 0', whiteSpace: 'pre-wrap' }}>{selectedSubmission.evaluation.overallComments}</p>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* EVALUATION MODAL */}
+        {showEvalModal && evaluatingSubmission && (
+          <div className="eval-modal" onClick={() => setShowEvalModal(false)}>
+            <div className="eval-content" onClick={e => e.stopPropagation()}>
+              <div className="eval-header">
+                <h2>Evaluate: {evaluatingSubmission.team?.name || 'Submission'}</h2>
+                <button className="modal-close" onClick={() => setShowEvalModal(false)}>&times;</button>
+              </div>
+              <div className="eval-body">
+                <div className="eval-total">
+                  <h3>{getTotalScore()} / {getMaxTotal()}</h3>
+                  <span>Total Score ({Math.round((getTotalScore() / getMaxTotal()) * 100)}%)</span>
+                </div>
+
+                {[
+                  { key: 'challenges', label: 'Step 1: Challenges', max: 60 },
+                  { key: 'underlyingProblem', label: 'Step 2: Underlying Problem', max: 30 },
+                  { key: 'solutions', label: 'Step 3: Solutions', max: 60 },
+                  { key: 'criteria', label: 'Step 4: Criteria', max: 20 },
+                  { key: 'evaluationGrid', label: 'Step 5: Evaluation Grid', max: 30 },
+                  { key: 'actionPlan', label: 'Step 6: Action Plan', max: 100 }
+                ].map(({ key, label, max }) => (
+                  <div key={key} className="eval-section">
+                    <h4>
+                      {label}
+                      <div className="eval-score">
+                        <input
+                          type="number"
+                          min="0"
+                          max={max}
+                          value={evaluation[key]?.score || 0}
+                          onChange={e => setEvaluation({
+                            ...evaluation,
+                            [key]: { ...evaluation[key], score: Math.min(max, Math.max(0, parseInt(e.target.value) || 0)) }
+                          })}
+                        />
+                        <span>/ {max}</span>
+                      </div>
+                    </h4>
+                    <textarea
+                      className="eval-comment"
+                      placeholder={`Comments for ${label}...`}
+                      value={evaluation[key]?.comment || ''}
+                      onChange={e => setEvaluation({
+                        ...evaluation,
+                        [key]: { ...evaluation[key], comment: e.target.value }
+                      })}
+                    />
+                  </div>
+                ))}
+
+                <div className="eval-section">
+                  <h4>Overall Comments</h4>
+                  <textarea
+                    className="eval-comment"
+                    style={{ minHeight: 100 }}
+                    placeholder="Overall feedback, strengths, areas for improvement..."
+                    value={evaluation.overallComments || ''}
+                    onChange={e => setEvaluation({ ...evaluation, overallComments: e.target.value })}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
+                  <button className="fps-btn fps-btn-success" style={{ flex: 1 }} onClick={saveEvaluation}>
+                    Save Evaluation
+                  </button>
+                  <button className="fps-btn fps-btn-danger" onClick={() => setShowEvalModal(false)}>
+                    Cancel
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         )}
