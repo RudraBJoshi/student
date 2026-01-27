@@ -11,9 +11,6 @@ permalink: /FPSSIM/
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-<!-- reCAPTCHA Enterprise -->
-<script src="https://www.google.com/recaptcha/enterprise.js?render=6LdnmVcsAAAAACWepOoMh_mH2mu5ghsCih1KLohI"></script>
-
 <!-- Mammoth.js for DOCX parsing -->
 <script src="https://unpkg.com/mammoth@1.6.0/mammoth.browser.min.js"></script>
 
@@ -643,54 +640,7 @@ permalink: /FPSSIM/
     gap: 10px;
     justify-content: center;
   }
-  /* CAPTCHA Screen */
-  .captcha-screen {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 10002;
-  }
-  .captcha-box {
-    background: #2a2a2a;
-    padding: 40px 50px;
-    border-radius: 16px;
-    text-align: center;
-    box-shadow: 0 10px 40px rgba(0,0,0,0.5);
-    max-width: 400px;
-    width: 90%;
-  }
-  .captcha-box h2 {
-    color: #4a9eff;
-    margin: 0 0 10px 0;
-    font-size: 24px;
-  }
-  .captcha-box p {
-    color: #888;
-    margin: 0 0 25px 0;
-    font-size: 14px;
-  }
-  .captcha-box .fps-btn {
-    width: 100%;
-    padding: 15px;
-    font-size: 16px;
-    margin-top: 10px;
-  }
-  .captcha-loading {
-    color: #4a9eff;
-    padding: 20px;
-  }
-  .captcha-error {
-    color: #dc3545;
-    margin-top: 15px;
-    font-size: 14px;
-  }
-</style>
+  </style>
 
 <div id="fps-root"></div>
 
@@ -744,61 +694,6 @@ permalink: /FPSSIM/
         confirmModal.onConfirm();
       }
       setConfirmModal(null);
-    };
-
-    // CAPTCHA state
-    const [captchaVerified, setCaptchaVerified] = useState(() => {
-      return sessionStorage.getItem('fps_captcha_verified') === 'true';
-    });
-    const [captchaLoading, setCaptchaLoading] = useState(false);
-    const [captchaError, setCaptchaError] = useState('');
-    const [recaptchaReady, setRecaptchaReady] = useState(false);
-
-    const RECAPTCHA_SITE_KEY = '6LdnmVcsAAAAACWepOoMh_mH2mu5ghsCih1KLohI';
-
-    // Poll for reCAPTCHA to be ready
-    useEffect(() => {
-      let attempts = 0;
-      const maxAttempts = 20; // 10 seconds max
-
-      const checkRecaptcha = () => {
-        attempts++;
-        if (window.grecaptcha && window.grecaptcha.enterprise) {
-          window.grecaptcha.enterprise.ready(() => {
-            setRecaptchaReady(true);
-          });
-        } else if (attempts < maxAttempts) {
-          setTimeout(checkRecaptcha, 500);
-        }
-      };
-
-      checkRecaptcha();
-    }, []);
-
-    const verifyCaptcha = async () => {
-      if (!recaptchaReady) {
-        setCaptchaError('reCAPTCHA still loading. Please wait...');
-        return;
-      }
-
-      setCaptchaLoading(true);
-      setCaptchaError('');
-
-      try {
-        const token = await window.grecaptcha.enterprise.execute(RECAPTCHA_SITE_KEY, { action: 'LOGIN' });
-
-        if (token) {
-          sessionStorage.setItem('fps_captcha_verified', 'true');
-          setCaptchaVerified(true);
-          showToast('Verification successful!', 'success');
-        } else {
-          setCaptchaError('Verification failed. Please try again.');
-        }
-      } catch (error) {
-        console.error('reCAPTCHA error:', error);
-        setCaptchaError('Verification failed. Please try again.');
-      }
-      setCaptchaLoading(false);
     };
 
     // Assignment state
@@ -1258,37 +1153,6 @@ permalink: /FPSSIM/
     };
 
     const progress = (currentStep / 6) * 100;
-
-    // Show CAPTCHA screen if not verified
-    if (!captchaVerified) {
-      return (
-        <div className="captcha-screen">
-          <div className="captcha-box">
-            <h2>FPS Simulator</h2>
-            <p>Please verify you're human to continue</p>
-
-            {!recaptchaReady ? (
-              <div className="captcha-loading">Loading reCAPTCHA...</div>
-            ) : captchaLoading ? (
-              <div className="captcha-loading">Verifying...</div>
-            ) : (
-              <button
-                className="fps-btn fps-btn-primary"
-                onClick={verifyCaptcha}
-              >
-                Verify & Continue
-              </button>
-            )}
-
-            {captchaError && <div className="captcha-error">{captchaError}</div>}
-
-            <p style={{ marginTop: 20, fontSize: 12, color: '#666' }}>
-              Protected by reCAPTCHA Enterprise
-            </p>
-          </div>
-        </div>
-      );
-    }
 
     return (
       <div className="fps-container">
