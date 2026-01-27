@@ -9,6 +9,9 @@ permalink: /FPSSIM/
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
+<!-- Mammoth.js for DOCX parsing -->
+<script src="https://unpkg.com/mammoth@1.6.0/mammoth.browser.min.js"></script>
+
 <!-- Firebase Modular CDN -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-app.js";
@@ -310,6 +313,78 @@ permalink: /FPSSIM/
     font-size: 14px;
     margin-bottom: 10px;
   }
+  /* Assignment styles */
+  .assignment-card {
+    background: #2a2a2a;
+    border: 2px solid #444;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+  .assignment-card:hover {
+    border-color: #4a9eff;
+  }
+  .assignment-card.selected {
+    border-color: #28a745;
+    background: #1a3a1a;
+  }
+  .assignment-title {
+    color: #4a9eff;
+    font-weight: bold;
+    margin-bottom: 5px;
+  }
+  .assignment-date {
+    color: #666;
+    font-size: 12px;
+  }
+  .future-scene-preview {
+    background: #1a1a1a;
+    border: 1px solid #444;
+    border-radius: 8px;
+    padding: 15px;
+    max-height: 300px;
+    overflow-y: auto;
+    margin-top: 15px;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+  .file-upload-zone {
+    border: 2px dashed #444;
+    border-radius: 8px;
+    padding: 30px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    margin-bottom: 15px;
+  }
+  .file-upload-zone:hover {
+    border-color: #4a9eff;
+    background: #1a2a3a;
+  }
+  .file-upload-zone.dragover {
+    border-color: #28a745;
+    background: #1a3a1a;
+  }
+  .admin-tabs {
+    display: flex;
+    gap: 5px;
+    margin-bottom: 15px;
+  }
+  .admin-tab {
+    padding: 8px 16px;
+    border: none;
+    background: #333;
+    color: #aaa;
+    cursor: pointer;
+    border-radius: 4px;
+    font-size: 13px;
+  }
+  .admin-tab.active {
+    background: #4a9eff;
+    color: #fff;
+  }
 </style>
 
 <div id="fps-root"></div>
@@ -337,6 +412,13 @@ permalink: /FPSSIM/
     const [showPasswordPrompt, setShowPasswordPrompt] = useState(false);
     const [passwordInput, setPasswordInput] = useState('');
     const [passwordError, setPasswordError] = useState(false);
+
+    // Assignment state
+    const [assignments, setAssignments] = useState([]);
+    const [selectedAssignment, setSelectedAssignment] = useState(null);
+    const [adminSubTab, setAdminSubTab] = useState('submissions');
+    const [newAssignment, setNewAssignment] = useState({ title: '', futureScene: '' });
+    const [uploadingFile, setUploadingFile] = useState(false);
 
     const handleAdminAccess = () => {
       if (adminAuthenticated) {
@@ -414,6 +496,86 @@ permalink: /FPSSIM/
       return () => unsubscribe();
     }, [firebaseReady]);
 
+    // Load assignments from Firebase (real-time)
+    useEffect(() => {
+      if (!firebaseReady || !window.firebaseDB) return;
+
+      const { collection, query, orderBy, onSnapshot } = window.firebaseHelpers;
+      const db = window.firebaseDB;
+
+      const q = query(collection(db, 'fps_assignments'), orderBy('createdAt', 'desc'));
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        const assigns = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        setAssignments(assigns);
+      }, (error) => {
+        console.error("Error fetching assignments:", error);
+      });
+
+      return () => unsubscribe();
+    }, [firebaseReady]);
+
+    // Handle DOCX file upload
+    const handleFileUpload = async (file) => {
+      if (!file || !file.name.endsWith('.docx')) {
+        alert('Please upload a .docx file');
+        return;
+      }
+
+      setUploadingFile(true);
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        const result = await mammoth.extractRawText({ arrayBuffer });
+        setNewAssignment(prev => ({ ...prev, futureScene: result.value }));
+      } catch (error) {
+        console.error('Error parsing DOCX:', error);
+        alert('Error parsing DOCX file: ' + error.message);
+      }
+      setUploadingFile(false);
+    };
+
+    // Create new assignment
+    const createAssignment = async () => {
+      if (!newAssignment.title.trim() || !newAssignment.futureScene.trim()) {
+        alert('Please provide a title and upload a future scene document');
+        return;
+      }
+
+      const { collection, addDoc, serverTimestamp } = window.firebaseHelpers;
+      const db = window.firebaseDB;
+
+      try {
+        await addDoc(collection(db, 'fps_assignments'), {
+          title: newAssignment.title,
+          futureScene: newAssignment.futureScene,
+          createdAt: serverTimestamp(),
+          active: true
+        });
+        setNewAssignment({ title: '', futureScene: '' });
+        alert('Assignment created successfully!');
+      } catch (error) {
+        console.error('Error creating assignment:', error);
+        alert('Error creating assignment: ' + error.message);
+      }
+    };
+
+    // Delete assignment
+    const deleteAssignment = async (id) => {
+      if (!confirm('Delete this assignment? This cannot be undone.')) return;
+
+      const { doc, deleteDoc } = window.firebaseHelpers;
+      const db = window.firebaseDB;
+
+      try {
+        await deleteDoc(doc(db, 'fps_assignments', id));
+      } catch (error) {
+        console.error('Error deleting assignment:', error);
+        alert('Error deleting assignment: ' + error.message);
+      }
+    };
+
     // Submit to Firebase
     const handleSubmit = async () => {
       if (!firebaseReady || !window.firebaseDB) {
@@ -429,6 +591,8 @@ permalink: /FPSSIM/
       const data = {
         timestamp: serverTimestamp(),
         status: 'pending',
+        assignmentId: selectedAssignment?.id || null,
+        assignmentTitle: selectedAssignment?.title || 'Free Practice',
         team: teamInfo,
         challenges: challenges.filter(c => c.trim()),
         underlyingProblem,
@@ -556,8 +720,44 @@ permalink: /FPSSIM/
             ))}
           </div>
 
-          {/* Step 0: Team Info */}
+          {/* Step 0: Assignment Selection & Team Info */}
           {currentStep === 0 && (
+            <>
+            <div className="fps-section">
+              <h3>Select Assignment</h3>
+              <p style={{ color: '#888', marginBottom: 15 }}>Choose an assignment or practice freely</p>
+
+              <div
+                className={`assignment-card ${!selectedAssignment ? 'selected' : ''}`}
+                onClick={() => setSelectedAssignment(null)}
+              >
+                <div className="assignment-title">Free Practice</div>
+                <div style={{ color: '#888', fontSize: 13 }}>Practice without a specific future scene</div>
+              </div>
+
+              {assignments.map(assignment => (
+                <div
+                  key={assignment.id}
+                  className={`assignment-card ${selectedAssignment?.id === assignment.id ? 'selected' : ''}`}
+                  onClick={() => setSelectedAssignment(assignment)}
+                >
+                  <div className="assignment-title">{assignment.title}</div>
+                  <div className="assignment-date">
+                    {assignment.createdAt?.toDate ? assignment.createdAt.toDate().toLocaleDateString() : 'New'}
+                  </div>
+                </div>
+              ))}
+
+              {selectedAssignment && (
+                <div className="future-scene-preview">
+                  <strong style={{ color: '#4a9eff' }}>Future Scene:</strong>
+                  <div style={{ marginTop: 10, whiteSpace: 'pre-wrap' }}>
+                    {selectedAssignment.futureScene}
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div className="fps-section">
               <h3>Team Information</h3>
               <div className="fps-grid">
@@ -609,6 +809,7 @@ permalink: /FPSSIM/
                 </button>
               </div>
             </div>
+            </>
           )}
 
           {/* Step 1: Challenges */}
@@ -901,46 +1102,157 @@ permalink: /FPSSIM/
 
         {/* ADMIN PANEL */}
         <div className={`fps-panel ${activeTab === 'admin' ? 'active' : ''}`}>
-          <div className="fps-section">
-            <h3>Global Submissions ({submissions.length})</h3>
-            <p style={{ color: '#888', marginBottom: 15 }}>Real-time updates from all users worldwide</p>
-
-            {loading ? (
-              <div className="loading">Loading submissions...</div>
-            ) : submissions.length === 0 ? (
-              <div className="no-submissions">No submissions yet. Be the first to submit!</div>
-            ) : (
-              submissions.map(sub => (
-                <div key={sub.id} className={`submission-card ${sub.status}`}>
-                  <div className="submission-header">
-                    <span className="submission-id">{sub.team?.name || 'Anonymous'}</span>
-                    <span className={`submission-status status-${sub.status}`}>
-                      {sub.status?.toUpperCase()}
-                    </span>
-                  </div>
-                  <div className="submission-details">
-                    <div><strong>Division:</strong> {sub.team?.division || 'N/A'}</div>
-                    <div><strong>Topic:</strong> {sub.team?.topic || 'N/A'}</div>
-                    <div><strong>Challenges:</strong> {sub.challenges?.length || 0}/16</div>
-                  </div>
-                  <div style={{ marginTop: 10, fontSize: 12, color: '#666' }}>
-                    {sub.timestamp?.toDate ? sub.timestamp.toDate().toLocaleString() : 'Just now'}
-                  </div>
-                  <div style={{ marginTop: 10 }}>
-                    <button className="fps-btn fps-btn-primary" onClick={() => setSelectedSubmission(sub)}>
-                      View
-                    </button>
-                    <button className="fps-btn fps-btn-success" onClick={() => markReviewed(sub.id)}>
-                      Mark Reviewed
-                    </button>
-                    <button className="fps-btn fps-btn-danger" onClick={() => deleteSubmission(sub.id)}>
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              ))
-            )}
+          <div className="admin-tabs">
+            <button
+              className={`admin-tab ${adminSubTab === 'submissions' ? 'active' : ''}`}
+              onClick={() => setAdminSubTab('submissions')}
+            >
+              Submissions ({submissions.length})
+            </button>
+            <button
+              className={`admin-tab ${adminSubTab === 'assignments' ? 'active' : ''}`}
+              onClick={() => setAdminSubTab('assignments')}
+            >
+              Assignments ({assignments.length})
+            </button>
           </div>
+
+          {/* SUBMISSIONS TAB */}
+          {adminSubTab === 'submissions' && (
+            <div className="fps-section">
+              <h3>Global Submissions</h3>
+              <p style={{ color: '#888', marginBottom: 15 }}>Real-time updates from all users worldwide</p>
+
+              {loading ? (
+                <div className="loading">Loading submissions...</div>
+              ) : submissions.length === 0 ? (
+                <div className="no-submissions">No submissions yet. Be the first to submit!</div>
+              ) : (
+                submissions.map(sub => (
+                  <div key={sub.id} className={`submission-card ${sub.status}`}>
+                    <div className="submission-header">
+                      <span className="submission-id">{sub.team?.name || 'Anonymous'}</span>
+                      <span className={`submission-status status-${sub.status}`}>
+                        {sub.status?.toUpperCase()}
+                      </span>
+                    </div>
+                    <div className="submission-details">
+                      <div><strong>Assignment:</strong> {sub.assignmentTitle || 'Free Practice'}</div>
+                      <div><strong>Division:</strong> {sub.team?.division || 'N/A'}</div>
+                      <div><strong>Challenges:</strong> {sub.challenges?.length || 0}/16</div>
+                    </div>
+                    <div style={{ marginTop: 10, fontSize: 12, color: '#666' }}>
+                      {sub.timestamp?.toDate ? sub.timestamp.toDate().toLocaleString() : 'Just now'}
+                    </div>
+                    <div style={{ marginTop: 10 }}>
+                      <button className="fps-btn fps-btn-primary" onClick={() => setSelectedSubmission(sub)}>
+                        View
+                      </button>
+                      <button className="fps-btn fps-btn-success" onClick={() => markReviewed(sub.id)}>
+                        Mark Reviewed
+                      </button>
+                      <button className="fps-btn fps-btn-danger" onClick={() => deleteSubmission(sub.id)}>
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+
+          {/* ASSIGNMENTS TAB */}
+          {adminSubTab === 'assignments' && (
+            <>
+              <div className="fps-section">
+                <h3>Create New Assignment</h3>
+                <div style={{ marginBottom: 15 }}>
+                  <label className="fps-label">Assignment Title</label>
+                  <input
+                    className="fps-input"
+                    value={newAssignment.title}
+                    onChange={e => setNewAssignment({...newAssignment, title: e.target.value})}
+                    placeholder="e.g., Practice Booklet #1 - Climate Change"
+                  />
+                </div>
+
+                <label className="fps-label">Future Scene (Upload DOCX)</label>
+                <div
+                  className="file-upload-zone"
+                  onDragOver={e => { e.preventDefault(); e.currentTarget.classList.add('dragover'); }}
+                  onDragLeave={e => e.currentTarget.classList.remove('dragover')}
+                  onDrop={e => {
+                    e.preventDefault();
+                    e.currentTarget.classList.remove('dragover');
+                    const file = e.dataTransfer.files[0];
+                    handleFileUpload(file);
+                  }}
+                  onClick={() => document.getElementById('docx-upload').click()}
+                >
+                  <input
+                    type="file"
+                    id="docx-upload"
+                    accept=".docx"
+                    style={{ display: 'none' }}
+                    onChange={e => handleFileUpload(e.target.files[0])}
+                  />
+                  {uploadingFile ? (
+                    <span style={{ color: '#4a9eff' }}>Processing DOCX...</span>
+                  ) : newAssignment.futureScene ? (
+                    <span style={{ color: '#28a745' }}>✓ Future scene loaded ({newAssignment.futureScene.length} characters)</span>
+                  ) : (
+                    <span style={{ color: '#888' }}>Drop DOCX file here or click to upload</span>
+                  )}
+                </div>
+
+                {newAssignment.futureScene && (
+                  <div className="future-scene-preview">
+                    <strong style={{ color: '#4a9eff' }}>Preview:</strong>
+                    <div style={{ marginTop: 10, whiteSpace: 'pre-wrap' }}>
+                      {newAssignment.futureScene.substring(0, 500)}
+                      {newAssignment.futureScene.length > 500 && '...'}
+                    </div>
+                  </div>
+                )}
+
+                <button
+                  className="fps-btn fps-btn-success"
+                  onClick={createAssignment}
+                  disabled={!newAssignment.title || !newAssignment.futureScene}
+                  style={{ marginTop: 15 }}
+                >
+                  Create Assignment
+                </button>
+              </div>
+
+              <div className="fps-section">
+                <h3>Existing Assignments</h3>
+                {assignments.length === 0 ? (
+                  <div className="no-submissions">No assignments yet. Create one above!</div>
+                ) : (
+                  assignments.map(assignment => (
+                    <div key={assignment.id} className="submission-card">
+                      <div className="submission-header">
+                        <span className="submission-id">{assignment.title}</span>
+                      </div>
+                      <div style={{ color: '#888', fontSize: 13, marginBottom: 10 }}>
+                        Created: {assignment.createdAt?.toDate ? assignment.createdAt.toDate().toLocaleDateString() : 'New'}
+                      </div>
+                      <div style={{ color: '#666', fontSize: 12, marginBottom: 10 }}>
+                        {assignment.futureScene?.substring(0, 150)}...
+                      </div>
+                      <button
+                        className="fps-btn fps-btn-danger"
+                        onClick={() => deleteAssignment(assignment.id)}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+            </>
+          )}
 
           <div className="fps-section">
             <h3>Scoring Rubric</h3>
@@ -974,6 +1286,10 @@ permalink: /FPSSIM/
               <div className="modal-header">
                 <h2>{selectedSubmission.team?.name || 'Submission'}</h2>
                 <button className="modal-close" onClick={() => setSelectedSubmission(null)}>&times;</button>
+              </div>
+
+              <div style={{ background: '#1a3a1a', padding: 10, borderRadius: 6, marginBottom: 15 }}>
+                <strong style={{ color: '#28a745' }}>Assignment:</strong> {selectedSubmission.assignmentTitle || 'Free Practice'}
               </div>
 
               <h4 style={{ color: '#4a9eff' }}>Team Information</h4>
