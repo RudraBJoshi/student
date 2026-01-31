@@ -957,6 +957,42 @@ permalink: /FPSSIM/
       return () => unsubscribe();
     }, [firebaseReady]);
 
+    // Permalink view state
+    const [permalinkView, setPermalinkView] = useState(null);
+
+    // Handle permalink URL on load
+    useEffect(() => {
+      const hash = window.location.hash;
+      if (hash && hash.startsWith('#view=')) {
+        const submissionId = hash.replace('#view=', '');
+        if (submissionId && submissions.length > 0) {
+          const sub = submissions.find(s => s.id === submissionId);
+          if (sub) {
+            setPermalinkView(sub);
+          }
+        }
+      }
+    }, [submissions]);
+
+    // Generate permalink for a submission
+    const getPermalink = (submissionId) => {
+      const baseUrl = window.location.origin + window.location.pathname;
+      return `${baseUrl}#view=${submissionId}`;
+    };
+
+    // Open permalink (navigates current page)
+    const openPermalink = (submissionId) => {
+      window.location.hash = `view=${submissionId}`;
+      const sub = submissions.find(s => s.id === submissionId);
+      if (sub) setPermalinkView(sub);
+    };
+
+    // Exit permalink view
+    const exitPermalinkView = () => {
+      window.location.hash = '';
+      setPermalinkView(null);
+    };
+
     // Listen to auth state changes
     useEffect(() => {
       if (!firebaseReady || !window.firebaseAuth) return;
@@ -1355,6 +1391,163 @@ permalink: /FPSSIM/
     };
 
     const progress = (currentStep / 6) * 100;
+
+    // PERMALINK FULL PAGE VIEW
+    if (permalinkView) {
+      return (
+        <div className="fps-container">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+            <h1 style={{ margin: 0 }}>📄 Submission View</h1>
+            <button
+              className="fps-btn fps-btn-primary"
+              onClick={exitPermalinkView}
+            >
+              ← Back to App
+            </button>
+          </div>
+
+          <div className="fps-section">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 }}>
+              <h2 style={{ color: '#4a9eff', margin: 0 }}>{permalinkView.team?.name || 'Submission'}</h2>
+              <span style={{ color: '#888', fontSize: 14 }}>
+                {permalinkView.timestamp?.toDate ? permalinkView.timestamp.toDate().toLocaleString() : 'Recent'}
+              </span>
+            </div>
+
+            <div style={{ background: '#1a3a1a', padding: 12, borderRadius: 8, marginBottom: 20 }}>
+              <strong style={{ color: '#28a745' }}>Assignment:</strong> {permalinkView.assignmentTitle || 'Free Practice'}
+              <span style={{ marginLeft: 20, color: '#888' }}>|</span>
+              <span style={{ marginLeft: 10, color: '#888' }}>Division: {permalinkView.team?.division}</span>
+              <span style={{ marginLeft: 20, color: '#888' }}>|</span>
+              <span style={{ marginLeft: 10, color: '#888' }}>Topic: {permalinkView.team?.topic}</span>
+            </div>
+
+            <p><strong>Team Members:</strong> {permalinkView.team?.members}</p>
+
+            <h3 style={{ color: '#4a9eff', marginTop: 25, borderBottom: '2px solid #4a9eff', paddingBottom: 8 }}>
+              Step 1: Challenges ({permalinkView.challenges?.length || 0}/16)
+            </h3>
+            <ol style={{ marginLeft: 20, lineHeight: 1.8 }}>
+              {permalinkView.challenges?.map((c, i) => <li key={i}>{c}</li>)}
+            </ol>
+
+            <h3 style={{ color: '#4a9eff', marginTop: 25, borderBottom: '2px solid #4a9eff', paddingBottom: 8 }}>
+              Step 2: Underlying Problem
+            </h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10, marginBottom: 15 }}>
+              <div style={{ background: '#333', padding: 10, borderRadius: 6 }}>
+                <div style={{ color: '#888', fontSize: 11 }}>WHO</div>
+                <div>{permalinkView.underlyingProblem?.who}</div>
+              </div>
+              <div style={{ background: '#333', padding: 10, borderRadius: 6 }}>
+                <div style={{ color: '#888', fontSize: 11 }}>WHAT</div>
+                <div>{permalinkView.underlyingProblem?.what}</div>
+              </div>
+              <div style={{ background: '#333', padding: 10, borderRadius: 6 }}>
+                <div style={{ color: '#888', fontSize: 11 }}>WHERE</div>
+                <div>{permalinkView.underlyingProblem?.where}</div>
+              </div>
+              <div style={{ background: '#333', padding: 10, borderRadius: 6 }}>
+                <div style={{ color: '#888', fontSize: 11 }}>WHEN</div>
+                <div>{permalinkView.underlyingProblem?.when}</div>
+              </div>
+              <div style={{ background: '#333', padding: 10, borderRadius: 6 }}>
+                <div style={{ color: '#888', fontSize: 11 }}>WHY</div>
+                <div>{permalinkView.underlyingProblem?.why}</div>
+              </div>
+            </div>
+            <div style={{ background: '#1a2a3a', padding: 15, borderRadius: 8, borderLeft: '4px solid #4a9eff' }}>
+              <em style={{ fontSize: 16 }}>
+                How might we <strong>{permalinkView.underlyingProblem?.action}</strong> so that <strong>{permalinkView.underlyingProblem?.outcome}</strong>?
+              </em>
+            </div>
+
+            <h3 style={{ color: '#4a9eff', marginTop: 25, borderBottom: '2px solid #4a9eff', paddingBottom: 8 }}>
+              Step 3: Solutions ({permalinkView.solutions?.length || 0}/16)
+            </h3>
+            <ol style={{ marginLeft: 20, lineHeight: 1.8 }}>
+              {permalinkView.solutions?.map((s, i) => <li key={i}>{s.text}</li>)}
+            </ol>
+
+            <h3 style={{ color: '#4a9eff', marginTop: 25, borderBottom: '2px solid #4a9eff', paddingBottom: 8 }}>
+              Step 4: Criteria ({permalinkView.criteria?.length || 0}/5)
+            </h3>
+            <ol style={{ marginLeft: 20, lineHeight: 1.8 }}>
+              {permalinkView.criteria?.map((c, i) => <li key={i}>{c}</li>)}
+            </ol>
+
+            <h3 style={{ color: '#4a9eff', marginTop: 25, borderBottom: '2px solid #4a9eff', paddingBottom: 8 }}>
+              Step 5: Evaluation Grid
+            </h3>
+            {permalinkView.evaluationGrid && permalinkView.evaluationGrid.length > 0 ? (
+              <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: 10 }}>
+                <thead>
+                  <tr style={{ background: '#333' }}>
+                    <th style={{ padding: 10, border: '1px solid #444' }}>Solution #</th>
+                    {[1,2,3,4,5].map(c => <th key={c} style={{ padding: 10, border: '1px solid #444' }}>C{c}</th>)}
+                    <th style={{ padding: 10, border: '1px solid #444', background: '#4a9eff' }}>Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {permalinkView.evaluationGrid.map((row, i) => (
+                    <tr key={i}>
+                      <td style={{ padding: 10, border: '1px solid #444', fontWeight: 'bold' }}>#{row.solutionNum}</td>
+                      {row.scores?.map((score, j) => (
+                        <td key={j} style={{ padding: 10, border: '1px solid #444', textAlign: 'center' }}>{score}</td>
+                      ))}
+                      <td style={{ padding: 10, border: '1px solid #444', textAlign: 'center', fontWeight: 'bold', color: '#4a9eff' }}>{row.total}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <p style={{ color: '#888' }}>No evaluation grid data</p>
+            )}
+
+            <h3 style={{ color: '#4a9eff', marginTop: 25, borderBottom: '2px solid #4a9eff', paddingBottom: 8 }}>
+              Step 6: Action Plan
+            </h3>
+            {Array.isArray(permalinkView.actionPlan) ? (
+              permalinkView.actionPlan.map((field, i) => (
+                <div key={i} style={{ background: '#333', padding: 15, borderRadius: 8, marginBottom: 12 }}>
+                  <strong style={{ color: '#4a9eff', fontSize: 14 }}>{field.label || `Field ${i + 1}`}</strong>
+                  <p style={{ margin: '10px 0 0 0', whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{field.content}</p>
+                </div>
+              ))
+            ) : (
+              <>
+                <p><strong>Summary:</strong> {permalinkView.actionPlan?.summary}</p>
+                <p><strong>How it addresses UP:</strong> {permalinkView.actionPlan?.addressUP}</p>
+                <p><strong>Expected Outcomes:</strong> {permalinkView.actionPlan?.outcomes}</p>
+              </>
+            )}
+
+            {/* Evaluation Results if graded */}
+            {permalinkView.evaluation && (
+              <>
+                <h3 style={{ color: '#ff6b35', marginTop: 30, borderBottom: '2px solid #ff6b35', paddingBottom: 8 }}>
+                  📊 Evaluation Results
+                </h3>
+                <div style={{ background: '#1a3a1a', padding: 20, borderRadius: 8, marginBottom: 20, textAlign: 'center' }}>
+                  <div style={{ fontSize: 42, color: '#28a745', fontWeight: 'bold' }}>
+                    {permalinkView.evaluation.totalScore} / {permalinkView.evaluation.maxScore}
+                  </div>
+                  <div style={{ fontSize: 18, color: '#888' }}>
+                    {Math.round((permalinkView.evaluation.totalScore / permalinkView.evaluation.maxScore) * 100)}%
+                  </div>
+                </div>
+                {permalinkView.evaluation.overallComments && (
+                  <div style={{ background: '#333', padding: 15, borderRadius: 8, borderLeft: '4px solid #ff6b35' }}>
+                    <strong style={{ color: '#ff6b35' }}>Overall Feedback:</strong>
+                    <p style={{ margin: '10px 0 0 0', whiteSpace: 'pre-wrap' }}>{permalinkView.evaluation.overallComments}</p>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      );
+    }
 
     return (
       <div className="fps-container">
@@ -2544,15 +2737,15 @@ permalink: /FPSSIM/
                 </tr>
               </thead>
               <tbody>
-                <tr><td style={{ padding: 8, border: '1px solid #444' }}>Step 1: Challenges</td><td style={{ textAlign: 'center', border: '1px solid #444' }}>48 pts</td></tr>
-                <tr><td style={{ padding: 8, border: '1px solid #444' }}>Step 2: Underlying Problem</td><td style={{ textAlign: 'center', border: '1px solid #444' }}>25 pts</td></tr>
-                <tr><td style={{ padding: 8, border: '1px solid #444' }}>Step 3: Solutions</td><td style={{ textAlign: 'center', border: '1px solid #444' }}>48 pts</td></tr>
-                <tr><td style={{ padding: 8, border: '1px solid #444' }}>Step 4: Criteria</td><td style={{ textAlign: 'center', border: '1px solid #444' }}>15 pts</td></tr>
-                <tr><td style={{ padding: 8, border: '1px solid #444' }}>Step 5: Grid</td><td style={{ textAlign: 'center', border: '1px solid #444' }}>20 pts</td></tr>
-                <tr><td style={{ padding: 8, border: '1px solid #444' }}>Step 6: Action Plan</td><td style={{ textAlign: 'center', border: '1px solid #444' }}>44 pts</td></tr>
+                <tr><td style={{ padding: 8, border: '1px solid #444' }}>Step 1: Challenges</td><td style={{ textAlign: 'center', border: '1px solid #444' }}>60 pts</td></tr>
+                <tr><td style={{ padding: 8, border: '1px solid #444' }}>Step 2: Underlying Problem</td><td style={{ textAlign: 'center', border: '1px solid #444' }}>30 pts</td></tr>
+                <tr><td style={{ padding: 8, border: '1px solid #444' }}>Step 3: Solutions</td><td style={{ textAlign: 'center', border: '1px solid #444' }}>60 pts</td></tr>
+                <tr><td style={{ padding: 8, border: '1px solid #444' }}>Step 4: Criteria</td><td style={{ textAlign: 'center', border: '1px solid #444' }}>20 pts</td></tr>
+                <tr><td style={{ padding: 8, border: '1px solid #444' }}>Step 5: Grid</td><td style={{ textAlign: 'center', border: '1px solid #444' }}>30 pts</td></tr>
+                <tr><td style={{ padding: 8, border: '1px solid #444' }}>Step 6: Action Plan</td><td style={{ textAlign: 'center', border: '1px solid #444' }}>100 pts</td></tr>
                 <tr style={{ background: '#333', fontWeight: 'bold' }}>
                   <td style={{ padding: 10, border: '1px solid #444' }}>TOTAL</td>
-                  <td style={{ textAlign: 'center', border: '1px solid #444', color: '#4a9eff' }}>200 pts</td>
+                  <td style={{ textAlign: 'center', border: '1px solid #444', color: '#4a9eff' }}>300 pts</td>
                 </tr>
               </tbody>
             </table>
@@ -2567,7 +2760,24 @@ permalink: /FPSSIM/
             <div className="modal-content" onClick={e => e.stopPropagation()}>
               <div className="modal-header">
                 <h2>{selectedSubmission.team?.name || 'Submission'}</h2>
-                <button className="modal-close" onClick={() => setSelectedSubmission(null)}>&times;</button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <button
+                    onClick={() => window.open(getPermalink(selectedSubmission.id), '_blank')}
+                    style={{
+                      background: '#4a9eff',
+                      border: 'none',
+                      borderRadius: 6,
+                      padding: '8px 12px',
+                      cursor: 'pointer',
+                      color: 'white',
+                      fontSize: 13
+                    }}
+                    title="Open in new tab"
+                  >
+                    🔗 New Tab
+                  </button>
+                  <button className="modal-close" onClick={() => setSelectedSubmission(null)}>&times;</button>
+                </div>
               </div>
 
               <div style={{ background: '#1a3a1a', padding: 10, borderRadius: 6, marginBottom: 15 }}>
