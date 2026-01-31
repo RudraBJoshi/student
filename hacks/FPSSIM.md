@@ -5,7 +5,7 @@ permalink: /FPSSIM/
 ---
 
 ### Automating the Future Problem Solvers Simulation Process With a simple Web App
-
+<!--Firebase config and React app for FPS Simulation-->
 <!-- React CDN -->
 <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
@@ -828,6 +828,9 @@ permalink: /FPSSIM/
     const [assignments, setAssignments] = useState([]);
     const [selectedAssignment, setSelectedAssignment] = useState(null);
     const [adminSubTab, setAdminSubTab] = useState('submissions');
+    const [simSubTab, setSimSubTab] = useState('simulation'); // 'simulation' or 'find'
+    const [showHttpsLogger, setShowHttpsLogger] = useState(false);
+    const [httpsLogs, setHttpsLogs] = useState([]);
     const [newAssignment, setNewAssignment] = useState({ title: '', futureScene: '', timerMode: 'variable', timerDuration: 120 });
     const [uploadingFile, setUploadingFile] = useState(false);
 
@@ -920,6 +923,19 @@ permalink: /FPSSIM/
       setCurrentStep(0);
     };
 
+    // HTTPS Logger helper
+    const logHttps = (method, endpoint, status = 200) => {
+      const startTime = performance.now();
+      setHttpsLogs(prev => [...prev, {
+        id: Date.now(),
+        timestamp: new Date().toLocaleTimeString(),
+        method,
+        url: `https://firestore.googleapis.com/v1/projects/fps-simulation/${endpoint}`,
+        status,
+        duration: `${Math.round(performance.now() - startTime)}ms`
+      }]);
+    };
+
     // Load admin emails from Firestore
     useEffect(() => {
       if (!firebaseReady || !window.firebaseDB) return;
@@ -999,10 +1015,12 @@ permalink: /FPSSIM/
           addedBy: currentUser.email,
           addedAt: new Date().toISOString()
         });
+        logHttps('POST', 'documents/fps_admins', 200);
         setNewAdminEmail('');
         showToast('Admin added successfully!', 'success');
       } catch (error) {
         console.error('Error adding admin:', error);
+        logHttps('POST', 'documents/fps_admins', 500);
         showToast('Error adding admin: ' + error.message, 'error');
       }
     };
@@ -1018,15 +1036,18 @@ permalink: /FPSSIM/
         const db = window.firebaseDB;
 
         try {
+          logHttps('GET', 'documents/fps_admins', 200);
           const snapshot = await getDocs(collection(db, 'fps_admins'));
           for (const docSnap of snapshot.docs) {
             if (docSnap.data().email === emailToRemove) {
               await deleteDoc(doc(db, 'fps_admins', docSnap.id));
+              logHttps('DELETE', `documents/fps_admins/${docSnap.id}`, 200);
             }
           }
           showToast('Admin removed successfully', 'success');
         } catch (error) {
           console.error('Error removing admin:', error);
+          logHttps('DELETE', 'documents/fps_admins', 500);
           showToast('Error removing admin: ' + error.message, 'error');
         }
       });
@@ -1164,10 +1185,12 @@ permalink: /FPSSIM/
           createdAt: serverTimestamp(),
           active: true
         });
+        logHttps('POST', 'documents/fps_assignments', 200);
         setNewAssignment({ title: '', futureScene: '', timerMode: 'variable', timerDuration: 120 });
         showToast('Assignment created successfully!', 'success');
       } catch (error) {
         console.error('Error creating assignment:', error);
+        logHttps('POST', 'documents/fps_assignments', 500);
         showToast('Error creating assignment: ' + error.message, 'error');
       }
     };
@@ -1180,6 +1203,7 @@ permalink: /FPSSIM/
 
         try {
           await deleteDoc(doc(db, 'fps_assignments', id));
+          logHttps('DELETE', `documents/fps_assignments/${id}`, 200);
           showToast('Assignment deleted', 'success');
         } catch (error) {
           console.error('Error deleting assignment:', error);
@@ -1234,11 +1258,13 @@ permalink: /FPSSIM/
           },
           status: 'evaluated'
         });
+        logHttps('PATCH', `documents/fps_submissions/${evaluatingSubmission.id}`, 200);
         showToast('Evaluation saved successfully!', 'success');
         setShowEvalModal(false);
         setEvaluatingSubmission(null);
       } catch (error) {
         console.error('Error saving evaluation:', error);
+        logHttps('PATCH', `documents/fps_submissions/${evaluatingSubmission.id}`, 500);
         showToast('Error saving evaluation: ' + error.message, 'error');
       }
     };
@@ -1275,11 +1301,13 @@ permalink: /FPSSIM/
 
       try {
         await addDoc(collection(db, 'fps_submissions'), data);
+        logHttps('POST', 'documents/fps_submissions', 200);
         showToast('Submission saved globally! Everyone can see it now.', 'success');
         setActiveTab('admin');
         resetForm();
       } catch (error) {
         console.error("Error submitting:", error);
+        logHttps('POST', 'documents/fps_submissions', 500);
         showToast('Error submitting: ' + error.message, 'error');
       }
 
@@ -1302,7 +1330,12 @@ permalink: /FPSSIM/
       if (!firebaseReady || !window.firebaseDB) return;
       const { doc, updateDoc } = window.firebaseHelpers;
       const db = window.firebaseDB;
-      await updateDoc(doc(db, 'fps_submissions', id), { status: 'reviewed' });
+      try {
+        await updateDoc(doc(db, 'fps_submissions', id), { status: 'reviewed' });
+        logHttps('PATCH', `documents/fps_submissions/${id}`, 200);
+      } catch (error) {
+        logHttps('PATCH', `documents/fps_submissions/${id}`, 500);
+      }
     };
 
     const deleteSubmission = (id) => {
@@ -1310,8 +1343,14 @@ permalink: /FPSSIM/
       showConfirm('Delete this submission globally?', async () => {
         const { doc, deleteDoc } = window.firebaseHelpers;
         const db = window.firebaseDB;
-        await deleteDoc(doc(db, 'fps_submissions', id));
-        showToast('Submission deleted', 'success');
+        try {
+          await deleteDoc(doc(db, 'fps_submissions', id));
+          logHttps('DELETE', `documents/fps_submissions/${id}`, 200);
+          showToast('Submission deleted', 'success');
+        } catch (error) {
+          logHttps('DELETE', `documents/fps_submissions/${id}`, 500);
+          showToast('Error deleting: ' + error.message, 'error');
+        }
       });
     };
 
@@ -1363,6 +1402,22 @@ permalink: /FPSSIM/
 
         {/* SIMULATION PANEL */}
         <div className={`fps-panel ${activeTab === 'simulation' ? 'active' : ''}`}>
+          {/* Simulation Subtabs */}
+          <div className="admin-tabs" style={{ marginBottom: 20 }}>
+            <button
+              className={`admin-tab ${simSubTab === 'simulation' ? 'active' : ''}`}
+              onClick={() => setSimSubTab('simulation')}
+            >
+              📝 New Simulation
+            </button>
+            <button
+              className={`admin-tab ${simSubTab === 'find' ? 'active' : ''}`}
+              onClick={() => setSimSubTab('find')}
+            >
+              🔍 Find Your Booklet
+            </button>
+          </div>
+
           {/* Timer Display for Timed Mode */}
           {timerStarted && simulationMode === 'timed' && (
             <div className={`timer-display ${timeRemaining <= 600 ? 'danger' : timeRemaining <= 1800 ? 'warning' : ''}`}>
@@ -1395,6 +1450,9 @@ permalink: /FPSSIM/
             </div>
           )}
 
+          {/* SIMULATION SUBTAB */}
+          {simSubTab === 'simulation' && (
+          <>
           <div className="progress-bar">
             <div className="progress-fill" style={{ width: `${progress}%` }}></div>
           </div>
@@ -1410,10 +1468,15 @@ permalink: /FPSSIM/
               </div>
             ))}
           </div>
+          </>
+          )}
 
-          {/* SEARCH FOR GRADED BOOKLETS */}
-          <div className="search-section">
+          {/* FIND YOUR BOOKLET SUBTAB */}
+          {simSubTab === 'find' && (
+          <>
+          <div className="fps-section">
             <h3>Find Your Graded Booklet</h3>
+            <p style={{ color: '#888', marginBottom: 15 }}>Search for your team's graded submission to view feedback and scores.</p>
             <div className="search-bar">
               <input
                 type="text"
@@ -1533,7 +1596,12 @@ permalink: /FPSSIM/
               </div>
             </div>
           )}
+          </>
+          )}
 
+          {/* SIMULATION STEPS */}
+          {simSubTab === 'simulation' && (
+          <>
           {/* Step 0: Assignment Selection & Team Info */}
           {currentStep === 0 && (
             <>
@@ -2029,6 +2097,8 @@ permalink: /FPSSIM/
               </div>
             </div>
           )}
+          </>
+          )}
         </div>
 
         {/* ADMIN PANEL */}
@@ -2043,26 +2113,152 @@ permalink: /FPSSIM/
             </div>
           ) : (
           <>
-          <div className="admin-tabs">
+          <div className="admin-tabs" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: 5 }}>
+              <button
+                className={`admin-tab ${adminSubTab === 'submissions' ? 'active' : ''}`}
+                onClick={() => setAdminSubTab('submissions')}
+              >
+                Submissions ({submissions.length})
+              </button>
+              <button
+                className={`admin-tab ${adminSubTab === 'admins' ? 'active' : ''}`}
+                onClick={() => setAdminSubTab('admins')}
+              >
+                Admins ({adminEmails.length})
+              </button>
+              <button
+                className={`admin-tab ${adminSubTab === 'assignments' ? 'active' : ''}`}
+                onClick={() => setAdminSubTab('assignments')}
+              >
+                Assignments ({assignments.length})
+              </button>
+            </div>
             <button
-              className={`admin-tab ${adminSubTab === 'submissions' ? 'active' : ''}`}
-              onClick={() => setAdminSubTab('submissions')}
+              onClick={() => setShowHttpsLogger(true)}
+              style={{
+                background: 'none',
+                border: '2px solid #444',
+                borderRadius: 8,
+                padding: '8px 12px',
+                cursor: 'pointer',
+                color: httpsLogs.length > 0 ? '#28a745' : '#888',
+                fontSize: 16,
+                transition: 'all 0.3s',
+                position: 'relative'
+              }}
+              onMouseOver={e => { e.target.style.borderColor = '#4a9eff'; e.target.style.color = '#4a9eff'; }}
+              onMouseOut={e => { e.target.style.borderColor = '#444'; e.target.style.color = httpsLogs.length > 0 ? '#28a745' : '#888'; }}
+              title="HTTPS Logger"
             >
-              Submissions ({submissions.length})
-            </button>
-            <button
-              className={`admin-tab ${adminSubTab === 'admins' ? 'active' : ''}`}
-              onClick={() => setAdminSubTab('admins')}
-            >
-              Admins ({adminEmails.length})
-            </button>
-            <button
-              className={`admin-tab ${adminSubTab === 'assignments' ? 'active' : ''}`}
-              onClick={() => setAdminSubTab('assignments')}
-            >
-              Assignments ({assignments.length})
+              📡 {httpsLogs.length > 0 && <span style={{ fontSize: 10, position: 'absolute', top: -5, right: -5, background: '#28a745', color: 'white', borderRadius: '50%', width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{httpsLogs.length}</span>}
             </button>
           </div>
+
+          {/* HTTPS LOGGER MODAL */}
+          {showHttpsLogger && (
+            <div className="modal-overlay active" onClick={() => setShowHttpsLogger(false)}>
+              <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: 700 }}>
+                <div className="modal-header">
+                  <h2>📡 HTTPS Logger</h2>
+                  <button className="modal-close" onClick={() => setShowHttpsLogger(false)}>&times;</button>
+                </div>
+                <div style={{ padding: '10px 0' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 }}>
+                    <p style={{ color: '#888', margin: 0 }}>
+                      Network requests made by this app ({httpsLogs.length} logged)
+                    </p>
+                    <div style={{ display: 'flex', gap: 10 }}>
+                      <button
+                        className="fps-btn fps-btn-primary"
+                        onClick={() => {
+                          setHttpsLogs(prev => [...prev, {
+                            id: Date.now(),
+                            timestamp: new Date().toLocaleTimeString(),
+                            method: 'TEST',
+                            url: 'https://example.com/test',
+                            status: 200,
+                            duration: '50ms'
+                          }]);
+                        }}
+                        style={{ padding: '6px 12px', fontSize: 12 }}
+                      >
+                        + Test Log
+                      </button>
+                      <button
+                        className="fps-btn fps-btn-danger"
+                        onClick={() => setHttpsLogs([])}
+                        style={{ padding: '6px 12px', fontSize: 12 }}
+                      >
+                        Clear All
+                      </button>
+                    </div>
+                  </div>
+
+                  <div style={{ maxHeight: 400, overflowY: 'auto', background: '#0d1117', borderRadius: 8, padding: 10 }}>
+                    {httpsLogs.length === 0 ? (
+                      <div style={{ textAlign: 'center', padding: 40, color: '#666' }}>
+                        <div style={{ fontSize: 48, marginBottom: 10 }}>📭</div>
+                        <p>No requests logged yet</p>
+                        <p style={{ fontSize: 12 }}>Network activity will appear here</p>
+                      </div>
+                    ) : (
+                      httpsLogs.slice().reverse().map(log => (
+                        <div
+                          key={log.id}
+                          style={{
+                            background: '#161b22',
+                            border: '1px solid #30363d',
+                            borderRadius: 6,
+                            padding: 12,
+                            marginBottom: 8,
+                            fontFamily: 'monospace',
+                            fontSize: 13
+                          }}
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                              <span style={{
+                                background: log.method === 'GET' ? '#238636' : log.method === 'POST' ? '#1f6feb' : log.method === 'DELETE' ? '#da3633' : '#8b949e',
+                                color: 'white',
+                                padding: '2px 8px',
+                                borderRadius: 4,
+                                fontSize: 11,
+                                fontWeight: 'bold'
+                              }}>
+                                {log.method}
+                              </span>
+                              <span style={{
+                                background: log.status >= 200 && log.status < 300 ? '#238636' : log.status >= 400 ? '#da3633' : '#8b949e',
+                                color: 'white',
+                                padding: '2px 6px',
+                                borderRadius: 4,
+                                fontSize: 11
+                              }}>
+                                {log.status}
+                              </span>
+                            </div>
+                            <span style={{ color: '#8b949e', fontSize: 11 }}>{log.timestamp} • {log.duration}</span>
+                          </div>
+                          <div style={{ color: '#58a6ff', wordBreak: 'break-all' }}>{log.url}</div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  <div style={{ marginTop: 15, padding: 12, background: '#1a1a2e', borderRadius: 8, border: '1px solid #333' }}>
+                    <p style={{ color: '#4a9eff', margin: '0 0 8px 0', fontSize: 13, fontWeight: 'bold' }}>📊 Firebase Endpoints</p>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 11, color: '#888' }}>
+                      <div>• firestore.googleapis.com</div>
+                      <div>• identitytoolkit.googleapis.com</div>
+                      <div>• securetoken.googleapis.com</div>
+                      <div>• fps-simulation.firebaseapp.com</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* SUBMISSIONS TAB */}
           {adminSubTab === 'submissions' && (
