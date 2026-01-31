@@ -1323,7 +1323,7 @@ permalink: /FPSSIM/
       setCriteria(Array(5).fill(''));
       setSelectedSolutions([]);
       setEvalScores({});
-      setActionPlan({ summary: '', steps: [{ ...emptyStep }], addressUP: '', outcomes: '', humaneness: '' });
+      setActionPlan([{ label: '', content: '' }]);
     };
 
     const markReviewed = async (id) => {
