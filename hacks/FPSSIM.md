@@ -564,6 +564,134 @@ permalink: /FPSSIM/
     background: #1a1a1a;
     border-radius: 8px;
   }
+  /* Timer styles */
+  .timer-display {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
+    border: 3px solid #ff6b35;
+    border-radius: 12px;
+    padding: 15px 30px;
+    z-index: 999;
+    text-align: center;
+    box-shadow: 0 4px 20px rgba(255, 107, 53, 0.3);
+  }
+  .timer-display.warning {
+    border-color: #ffc107;
+    animation: pulse 1s infinite;
+  }
+  .timer-display.danger {
+    border-color: #dc3545;
+    animation: pulse 0.5s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 4px 20px rgba(255, 107, 53, 0.3); }
+    50% { box-shadow: 0 4px 30px rgba(255, 107, 53, 0.6); }
+  }
+  .timer-time {
+    font-size: 32px;
+    font-weight: bold;
+    color: #ff6b35;
+    font-family: 'Courier New', monospace;
+  }
+  .timer-display.warning .timer-time { color: #ffc107; }
+  .timer-display.danger .timer-time { color: #dc3545; }
+  .timer-label {
+    font-size: 12px;
+    color: #888;
+    margin-bottom: 5px;
+  }
+  .mode-selection {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 20px;
+  }
+  .mode-card {
+    flex: 1;
+    background: #2a2a2a;
+    border: 3px solid #444;
+    border-radius: 12px;
+    padding: 20px;
+    cursor: pointer;
+    transition: all 0.3s;
+    text-align: center;
+  }
+  .mode-card:hover {
+    border-color: #4a9eff;
+    transform: translateY(-2px);
+  }
+  .mode-card.selected {
+    border-color: #28a745;
+    background: #1a3a1a;
+  }
+  .mode-card h4 {
+    color: #4a9eff;
+    margin: 0 0 10px 0;
+    font-size: 18px;
+  }
+  .mode-card.selected h4 { color: #28a745; }
+  .mode-card p {
+    color: #888;
+    margin: 0;
+    font-size: 14px;
+  }
+  .mode-card .mode-icon {
+    font-size: 36px;
+    margin-bottom: 10px;
+  }
+  .start-timer-btn {
+    width: 100%;
+    padding: 15px;
+    font-size: 18px;
+    margin-top: 15px;
+    background: linear-gradient(135deg, #ff6b35 0%, #ff8c5a 100%);
+    border: none;
+    border-radius: 8px;
+    color: white;
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+  .start-timer-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(255, 107, 53, 0.4);
+  }
+  .start-timer-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+  .time-up-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.9);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000;
+  }
+  .time-up-content {
+    background: #1e1e1e;
+    border: 3px solid #dc3545;
+    border-radius: 16px;
+    padding: 40px;
+    text-align: center;
+    max-width: 400px;
+  }
+  .time-up-content h2 {
+    color: #dc3545;
+    font-size: 36px;
+    margin: 0 0 15px 0;
+  }
+  .time-up-content p {
+    color: #888;
+    font-size: 16px;
+    margin-bottom: 25px;
+  }
   /* Toast Notifications */
   .toast-container {
     position: fixed;
@@ -700,7 +828,7 @@ permalink: /FPSSIM/
     const [assignments, setAssignments] = useState([]);
     const [selectedAssignment, setSelectedAssignment] = useState(null);
     const [adminSubTab, setAdminSubTab] = useState('submissions');
-    const [newAssignment, setNewAssignment] = useState({ title: '', futureScene: '' });
+    const [newAssignment, setNewAssignment] = useState({ title: '', futureScene: '', timerMode: 'variable', timerDuration: 120 });
     const [uploadingFile, setUploadingFile] = useState(false);
 
     // Evaluation state
@@ -729,6 +857,12 @@ permalink: /FPSSIM/
     const [searchResults, setSearchResults] = useState([]);
     const [viewingResult, setViewingResult] = useState(null);
 
+    // Timed mode state
+    const [simulationMode, setSimulationMode] = useState('practice'); // 'practice' or 'timed'
+    const [timerRunning, setTimerRunning] = useState(false);
+    const [timeRemaining, setTimeRemaining] = useState(2 * 60 * 60); // 2 hours in seconds
+    const [timerStarted, setTimerStarted] = useState(false);
+
     // Search for graded booklets by team name
     const searchGradedBooklets = () => {
       if (!searchQuery.trim()) {
@@ -740,6 +874,50 @@ permalink: /FPSSIM/
         sub.team?.name?.toLowerCase().includes(searchQuery.toLowerCase())
       );
       setSearchResults(results);
+    };
+
+    // Timer countdown effect
+    useEffect(() => {
+      let interval = null;
+      if (timerRunning && timeRemaining > 0) {
+        interval = setInterval(() => {
+          setTimeRemaining(prev => {
+            if (prev <= 1) {
+              setTimerRunning(false);
+              return 0;
+            }
+            return prev - 1;
+          });
+        }, 1000);
+      }
+      return () => {
+        if (interval) clearInterval(interval);
+      };
+    }, [timerRunning, timeRemaining]);
+
+    // Format time helper
+    const formatTime = (seconds) => {
+      const hrs = Math.floor(seconds / 3600);
+      const mins = Math.floor((seconds % 3600) / 60);
+      const secs = seconds % 60;
+      return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    };
+
+    // Start timed simulation
+    const startTimedSimulation = (durationMinutes = 120) => {
+      setTimerStarted(true);
+      setTimerRunning(true);
+      setTimeRemaining(durationMinutes * 60); // Convert minutes to seconds
+      setCurrentStep(1); // Move to first step (Challenges)
+    };
+
+    // Reset simulation mode
+    const resetSimulation = () => {
+      setSimulationMode('practice');
+      setTimerRunning(false);
+      setTimerStarted(false);
+      setTimeRemaining(2 * 60 * 60);
+      setCurrentStep(0);
     };
 
     // Load admin emails from Firestore
@@ -887,27 +1065,10 @@ permalink: /FPSSIM/
     const [criteria, setCriteria] = useState(Array(5).fill(''));
     const [selectedSolutions, setSelectedSolutions] = useState([]);
     const [evalScores, setEvalScores] = useState({});
-    const emptyStep = {
-      action: '',
-      criteria: '',
-      timeline: '',
-      assistance: '',
-      resistance: '',
-      humaneness: '',
-      impact: '',
-      sustainability: '',
-      where: '',
-      whyWho: '',
-      testing: '',
-      up: ''
-    };
-    const [actionPlan, setActionPlan] = useState({
-      summary: '',
-      steps: [{ ...emptyStep }],
-      addressUP: '',
-      outcomes: '',
-      humaneness: ''
-    });
+    // Action Plan - dynamic fields with custom labels
+    const [actionPlan, setActionPlan] = useState([
+      { label: '', content: '' }
+    ]);
 
     // Wait for Firebase to be ready
     useEffect(() => {
@@ -998,10 +1159,12 @@ permalink: /FPSSIM/
         await addDoc(collection(db, 'fps_assignments'), {
           title: newAssignment.title,
           futureScene: newAssignment.futureScene,
+          timerMode: newAssignment.timerMode, // 'timeless', 'timed', or 'variable'
+          timerDuration: newAssignment.timerDuration, // duration in minutes
           createdAt: serverTimestamp(),
           active: true
         });
-        setNewAssignment({ title: '', futureScene: '' });
+        setNewAssignment({ title: '', futureScene: '', timerMode: 'variable', timerDuration: 120 });
         showToast('Assignment created successfully!', 'success');
       } catch (error) {
         console.error('Error creating assignment:', error);
@@ -1200,6 +1363,38 @@ permalink: /FPSSIM/
 
         {/* SIMULATION PANEL */}
         <div className={`fps-panel ${activeTab === 'simulation' ? 'active' : ''}`}>
+          {/* Timer Display for Timed Mode */}
+          {timerStarted && simulationMode === 'timed' && (
+            <div className={`timer-display ${timeRemaining <= 600 ? 'danger' : timeRemaining <= 1800 ? 'warning' : ''}`}>
+              <div className="timer-label">TIME REMAINING</div>
+              <div className="timer-time">{formatTime(timeRemaining)}</div>
+              {timeRemaining <= 600 && <div style={{ color: '#dc3545', fontSize: 12, marginTop: 5 }}>Less than 10 minutes!</div>}
+            </div>
+          )}
+
+          {/* Time's Up Modal */}
+          {timerStarted && timeRemaining === 0 && (
+            <div className="time-up-modal">
+              <div className="time-up-content">
+                <h2>⏰ Time's Up!</h2>
+                <p>Your 2 hours have ended. Submit your booklet now or continue reviewing.</p>
+                <button
+                  className="fps-btn fps-btn-success"
+                  style={{ marginRight: 10 }}
+                  onClick={handleSubmit}
+                >
+                  Submit Booklet
+                </button>
+                <button
+                  className="fps-btn fps-btn-primary"
+                  onClick={() => setTimeRemaining(1)}
+                >
+                  Continue Reviewing
+                </button>
+              </div>
+            </div>
+          )}
+
           <div className="progress-bar">
             <div className="progress-fill" style={{ width: `${progress}%` }}></div>
           </div>
@@ -1360,7 +1555,18 @@ permalink: /FPSSIM/
                   className={`assignment-card ${selectedAssignment?.id === assignment.id ? 'selected' : ''}`}
                   onClick={() => setSelectedAssignment(assignment)}
                 >
-                  <div className="assignment-title">{assignment.title}</div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div className="assignment-title">{assignment.title}</div>
+                    <span style={{
+                      fontSize: 11,
+                      padding: '3px 8px',
+                      borderRadius: 12,
+                      background: assignment.timerMode === 'timeless' ? '#28a745' : assignment.timerMode === 'timed' ? '#ff6b35' : '#4a9eff',
+                      color: 'white'
+                    }}>
+                      {assignment.timerMode === 'timeless' ? '📝 Practice' : assignment.timerMode === 'timed' ? `⏱️ ${assignment.timerDuration || 120}m` : '🔄 Choice'}
+                    </span>
+                  </div>
                   <div className="assignment-date">
                     {assignment.createdAt?.toDate ? assignment.createdAt.toDate().toLocaleDateString() : 'New'}
                   </div>
@@ -1376,6 +1582,60 @@ permalink: /FPSSIM/
                 </div>
               )}
             </div>
+
+            {/* Mode Selection - conditional based on assignment timerMode */}
+            {(() => {
+              const assignmentTimerMode = selectedAssignment?.timerMode || 'variable';
+              const timerDuration = selectedAssignment?.timerDuration || 120;
+
+              // Timeless assignment - no mode selection needed, show info
+              if (assignmentTimerMode === 'timeless') {
+                return (
+                  <div className="fps-section" style={{ background: 'linear-gradient(135deg, #1a2a1a 0%, #2a3a2a 100%)', border: '2px solid #28a745' }}>
+                    <h3 style={{ color: '#28a745' }}>📝 Practice Mode</h3>
+                    <p style={{ color: '#888' }}>This assignment is set to practice mode. Take your time and work at your own pace - no timer!</p>
+                  </div>
+                );
+              }
+
+              // Timed assignment - forced timer, show info
+              if (assignmentTimerMode === 'timed') {
+                return (
+                  <div className="fps-section" style={{ background: 'linear-gradient(135deg, #2a1a1a 0%, #3a2a2a 100%)', border: '2px solid #ff6b35' }}>
+                    <h3 style={{ color: '#ff6b35' }}>⏱️ Timed Mode Required</h3>
+                    <p style={{ color: '#888' }}>
+                      This assignment requires timed completion. You'll have <strong style={{ color: '#ff6b35' }}>{Math.floor(timerDuration / 60)}h {timerDuration % 60}m</strong> to complete the entire booklet.
+                    </p>
+                  </div>
+                );
+              }
+
+              // Variable - user chooses
+              return (
+                <div className="fps-section">
+                  <h3>Select Mode</h3>
+                  <p style={{ color: '#888', marginBottom: 15 }}>Choose how you want to complete this assignment</p>
+                  <div className="mode-selection">
+                    <div
+                      className={`mode-card ${simulationMode === 'practice' ? 'selected' : ''}`}
+                      onClick={() => setSimulationMode('practice')}
+                    >
+                      <div className="mode-icon">📝</div>
+                      <h4>Practice</h4>
+                      <p>Take your time, no pressure. Practice at your own pace.</p>
+                    </div>
+                    <div
+                      className={`mode-card ${simulationMode === 'timed' ? 'selected' : ''}`}
+                      onClick={() => setSimulationMode('timed')}
+                    >
+                      <div className="mode-icon">⏱️</div>
+                      <h4>Timed</h4>
+                      <p>{Math.floor(timerDuration / 60)}h {timerDuration % 60}m to complete. Just like the real competition!</p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
 
             <div className="fps-section">
               <h3>Team Information</h3>
@@ -1421,12 +1681,72 @@ permalink: /FPSSIM/
                   />
                 </div>
               </div>
-              <div className="nav-buttons">
-                <div></div>
-                <button className="fps-btn fps-btn-primary" onClick={() => setCurrentStep(1)}>
-                  Next: Challenges →
-                </button>
-              </div>
+              {(() => {
+                const assignmentTimerMode = selectedAssignment?.timerMode || 'variable';
+                const timerDuration = selectedAssignment?.timerDuration || 120;
+
+                // Timeless assignment - always practice mode, just proceed
+                if (assignmentTimerMode === 'timeless') {
+                  return (
+                    <div className="nav-buttons">
+                      <div></div>
+                      <button className="fps-btn fps-btn-primary" onClick={() => setCurrentStep(1)}>
+                        Next: Challenges →
+                      </button>
+                    </div>
+                  );
+                }
+
+                // Timed assignment - forced timer
+                if (assignmentTimerMode === 'timed') {
+                  return (
+                    <>
+                      <div className="nav-buttons">
+                        <div></div>
+                        <button
+                          className="start-timer-btn"
+                          onClick={() => startTimedSimulation(timerDuration)}
+                          disabled={!teamInfo.name}
+                        >
+                          ⏱️ Start {Math.floor(timerDuration / 60)}h {timerDuration % 60}m Timer & Begin
+                        </button>
+                      </div>
+                      {!teamInfo.name && (
+                        <p style={{ color: '#ff6b35', fontSize: 13, marginTop: 10, textAlign: 'right' }}>
+                          Please enter a team name to start the timed simulation
+                        </p>
+                      )}
+                    </>
+                  );
+                }
+
+                // Variable - user chooses between practice and timed
+                return (
+                  <>
+                    <div className="nav-buttons">
+                      <div></div>
+                      {simulationMode === 'practice' ? (
+                        <button className="fps-btn fps-btn-primary" onClick={() => setCurrentStep(1)}>
+                          Next: Challenges →
+                        </button>
+                      ) : (
+                        <button
+                          className="start-timer-btn"
+                          onClick={() => startTimedSimulation(timerDuration)}
+                          disabled={!teamInfo.name}
+                        >
+                          ⏱️ Start {Math.floor(timerDuration / 60)}h {timerDuration % 60}m Timer & Begin
+                        </button>
+                      )}
+                    </div>
+                    {simulationMode === 'timed' && !teamInfo.name && (
+                      <p style={{ color: '#ff6b35', fontSize: 13, marginTop: 10, textAlign: 'right' }}>
+                        Please enter a team name to start the timed simulation
+                      </p>
+                    )}
+                  </>
+                );
+              })()}
             </div>
             </>
           )}
@@ -1633,227 +1953,69 @@ permalink: /FPSSIM/
           {currentStep === 6 && (
             <div className="fps-section">
               <h3>Step 6: Action Plan</h3>
+              <p style={{ color: '#888', marginBottom: 20 }}>Add custom fields to build your action plan. Label each section and fill in the details.</p>
 
-              <label className="fps-label">Selected Solution Summary</label>
-              <textarea
-                className="fps-textarea"
-                value={actionPlan.summary}
-                onChange={e => setActionPlan({...actionPlan, summary: e.target.value})}
-                placeholder="Summarize your winning solution..."
-              />
-
-              <h4 style={{ color: '#4a9eff', marginTop: 20 }}>Action Steps</h4>
-              {actionPlan.steps.map((step, i) => (
-                <div key={i} style={{ background: '#333', padding: 15, borderRadius: 8, marginBottom: 10, position: 'relative' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <label className="fps-label">Step {i + 1}</label>
-                    {actionPlan.steps.length > 1 && (
+              {actionPlan.map((field, i) => (
+                <div key={i} style={{ background: '#333', padding: 15, borderRadius: 8, marginBottom: 15, position: 'relative' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                    <span style={{ color: '#4a9eff', fontWeight: 'bold' }}>Field {i + 1}</span>
+                    {actionPlan.length > 1 && (
                       <button
                         onClick={() => {
-                          const newSteps = actionPlan.steps.filter((_, idx) => idx !== i);
-                          setActionPlan({...actionPlan, steps: newSteps});
+                          const newPlan = actionPlan.filter((_, idx) => idx !== i);
+                          setActionPlan(newPlan);
                         }}
-                        style={{ background: 'none', border: 'none', color: '#dc3545', cursor: 'pointer', fontSize: 18 }}
-                        title="Remove step"
+                        style={{ background: 'none', border: 'none', color: '#dc3545', cursor: 'pointer', fontSize: 20 }}
+                        title="Remove field"
                       >
                         ×
                       </button>
                     )}
                   </div>
                   <div style={{ marginBottom: 10 }}>
-                    <label style={{ fontSize: 12, color: '#888' }}>Action</label>
+                    <label style={{ fontSize: 12, color: '#888' }}>Label (what this section covers)</label>
                     <input
                       className="fps-input"
-                      value={step.action}
+                      value={field.label}
                       onChange={e => {
-                        const newSteps = [...actionPlan.steps];
-                        newSteps[i] = {...newSteps[i], action: e.target.value};
-                        setActionPlan({...actionPlan, steps: newSteps});
+                        const newPlan = [...actionPlan];
+                        newPlan[i] = {...newPlan[i], label: e.target.value};
+                        setActionPlan(newPlan);
                       }}
-                      placeholder="What action will be taken?"
+                      placeholder="e.g., Timeline, Resources Needed, Implementation Steps, Expected Outcomes..."
+                      style={{ fontWeight: 'bold', borderColor: '#4a9eff' }}
                     />
                   </div>
-                  <div className="fps-grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
-                    <div>
-                      <label style={{ fontSize: 12, color: '#888' }}>Criteria</label>
-                      <input
-                        className="fps-input"
-                        value={step.criteria}
-                        onChange={e => {
-                          const newSteps = [...actionPlan.steps];
-                          newSteps[i] = {...newSteps[i], criteria: e.target.value};
-                          setActionPlan({...actionPlan, steps: newSteps});
-                        }}
-                        placeholder="Which criteria does this meet?"
-                      />
-                    </div>
-                    <div>
-                      <label style={{ fontSize: 12, color: '#888' }}>Timeline</label>
-                      <input
-                        className="fps-input"
-                        value={step.timeline}
-                        onChange={e => {
-                          const newSteps = [...actionPlan.steps];
-                          newSteps[i] = {...newSteps[i], timeline: e.target.value};
-                          setActionPlan({...actionPlan, steps: newSteps});
-                        }}
-                        placeholder="When will this happen?"
-                      />
-                    </div>
-                    <div>
-                      <label style={{ fontSize: 12, color: '#888' }}>Assistance</label>
-                      <input
-                        className="fps-input"
-                        value={step.assistance}
-                        onChange={e => {
-                          const newSteps = [...actionPlan.steps];
-                          newSteps[i] = {...newSteps[i], assistance: e.target.value};
-                          setActionPlan({...actionPlan, steps: newSteps});
-                        }}
-                        placeholder="Who/what will help?"
-                      />
-                    </div>
-                    <div>
-                      <label style={{ fontSize: 12, color: '#888' }}>Resistance</label>
-                      <input
-                        className="fps-input"
-                        value={step.resistance}
-                        onChange={e => {
-                          const newSteps = [...actionPlan.steps];
-                          newSteps[i] = {...newSteps[i], resistance: e.target.value};
-                          setActionPlan({...actionPlan, steps: newSteps});
-                        }}
-                        placeholder="What obstacles exist?"
-                      />
-                    </div>
-                    <div>
-                      <label style={{ fontSize: 12, color: '#888' }}>Humaneness</label>
-                      <input
-                        className="fps-input"
-                        value={step.humaneness}
-                        onChange={e => {
-                          const newSteps = [...actionPlan.steps];
-                          newSteps[i] = {...newSteps[i], humaneness: e.target.value};
-                          setActionPlan({...actionPlan, steps: newSteps});
-                        }}
-                        placeholder="How is this humane?"
-                      />
-                    </div>
-                    <div>
-                      <label style={{ fontSize: 12, color: '#888' }}>Impact on People</label>
-                      <input
-                        className="fps-input"
-                        value={step.impact}
-                        onChange={e => {
-                          const newSteps = [...actionPlan.steps];
-                          newSteps[i] = {...newSteps[i], impact: e.target.value};
-                          setActionPlan({...actionPlan, steps: newSteps});
-                        }}
-                        placeholder="Impact on people in future scene"
-                      />
-                    </div>
-                    <div>
-                      <label style={{ fontSize: 12, color: '#888' }}>Sustainability</label>
-                      <input
-                        className="fps-input"
-                        value={step.sustainability}
-                        onChange={e => {
-                          const newSteps = [...actionPlan.steps];
-                          newSteps[i] = {...newSteps[i], sustainability: e.target.value};
-                          setActionPlan({...actionPlan, steps: newSteps});
-                        }}
-                        placeholder="Is this sustainable long-term?"
-                      />
-                    </div>
-                    <div>
-                      <label style={{ fontSize: 12, color: '#888' }}>Where?</label>
-                      <input
-                        className="fps-input"
-                        value={step.where}
-                        onChange={e => {
-                          const newSteps = [...actionPlan.steps];
-                          newSteps[i] = {...newSteps[i], where: e.target.value};
-                          setActionPlan({...actionPlan, steps: newSteps});
-                        }}
-                        placeholder="Where will this happen?"
-                      />
-                    </div>
-                    <div>
-                      <label style={{ fontSize: 12, color: '#888' }}>Why is the Who doing it?</label>
-                      <input
-                        className="fps-input"
-                        value={step.whyWho}
-                        onChange={e => {
-                          const newSteps = [...actionPlan.steps];
-                          newSteps[i] = {...newSteps[i], whyWho: e.target.value};
-                          setActionPlan({...actionPlan, steps: newSteps});
-                        }}
-                        placeholder="Why is this person/group responsible?"
-                      />
-                    </div>
-                    <div>
-                      <label style={{ fontSize: 12, color: '#888' }}>Testing?</label>
-                      <input
-                        className="fps-input"
-                        value={step.testing}
-                        onChange={e => {
-                          const newSteps = [...actionPlan.steps];
-                          newSteps[i] = {...newSteps[i], testing: e.target.value};
-                          setActionPlan({...actionPlan, steps: newSteps});
-                        }}
-                        placeholder="How will this be tested?"
-                      />
-                    </div>
-                    <div style={{ gridColumn: 'span 2' }}>
-                      <label style={{ fontSize: 12, color: '#888' }}>UP (Underlying Problem Connection)</label>
-                      <input
-                        className="fps-input"
-                        value={step.up}
-                        onChange={e => {
-                          const newSteps = [...actionPlan.steps];
-                          newSteps[i] = {...newSteps[i], up: e.target.value};
-                          setActionPlan({...actionPlan, steps: newSteps});
-                        }}
-                        placeholder="How does this step address the UP?"
-                      />
-                    </div>
+                  <div>
+                    <label style={{ fontSize: 12, color: '#888' }}>Content</label>
+                    <textarea
+                      className="fps-textarea"
+                      value={field.content}
+                      onChange={e => {
+                        const newPlan = [...actionPlan];
+                        newPlan[i] = {...newPlan[i], content: e.target.value};
+                        setActionPlan(newPlan);
+                      }}
+                      placeholder="Enter the details for this section..."
+                      style={{ minHeight: 100 }}
+                    />
                   </div>
                 </div>
               ))}
+
               <button
                 className="fps-btn fps-btn-primary"
-                onClick={() => setActionPlan({
-                  ...actionPlan,
-                  steps: [...actionPlan.steps, { ...emptyStep }]
-                })}
-                style={{ marginBottom: 15 }}
+                onClick={() => setActionPlan([...actionPlan, { label: '', content: '' }])}
+                style={{ marginBottom: 20, width: '100%' }}
               >
-                + Add Step
+                + Add Field
               </button>
 
-              <h4 style={{ color: '#4a9eff', marginTop: 20 }}>How does this solution address the UP?</h4>
-              <textarea
-                className="fps-textarea"
-                value={actionPlan.addressUP}
-                onChange={e => setActionPlan({...actionPlan, addressUP: e.target.value})}
-                placeholder="Explain how your solution solves the underlying problem..."
-              />
-
-              <h4 style={{ color: '#4a9eff', marginTop: 20 }}>Expected Outcomes</h4>
-              <textarea
-                className="fps-textarea"
-                value={actionPlan.outcomes}
-                onChange={e => setActionPlan({...actionPlan, outcomes: e.target.value})}
-                placeholder="List expected outcomes..."
-              />
-
-              <h4 style={{ color: '#4a9eff', marginTop: 20 }}>Humaneness Considerations</h4>
-              <textarea
-                className="fps-textarea"
-                value={actionPlan.humaneness}
-                onChange={e => setActionPlan({...actionPlan, humaneness: e.target.value})}
-                placeholder="How does this consider human values and ethics?"
-              />
+              <div style={{ background: '#1a2a1a', border: '1px solid #28a745', borderRadius: 8, padding: 15, marginBottom: 20 }}>
+                <p style={{ color: '#28a745', margin: 0, fontSize: 13 }}>
+                  <strong>Tip:</strong> Common action plan sections include: Your solution from step 3 with more details, assistors and resistors, humaness, how it will solve the UP, etc.
+                </p>
+              </div>
 
               <div className="nav-buttons">
                 <button className="fps-btn fps-btn-primary" onClick={() => setCurrentStep(5)}>← Back</button>
@@ -2012,6 +2174,58 @@ permalink: /FPSSIM/
                       {newAssignment.futureScene.substring(0, 500)}
                       {newAssignment.futureScene.length > 500 && '...'}
                     </div>
+                  </div>
+                )}
+
+                {/* Timer Mode Selection */}
+                <div style={{ marginTop: 20 }}>
+                  <label className="fps-label">Timer Mode</label>
+                  <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
+                    <button
+                      className={`fps-btn ${newAssignment.timerMode === 'timeless' ? 'fps-btn-success' : ''}`}
+                      style={{ flex: 1, background: newAssignment.timerMode === 'timeless' ? '#28a745' : '#333' }}
+                      onClick={() => setNewAssignment({...newAssignment, timerMode: 'timeless'})}
+                    >
+                      📝 Timeless
+                    </button>
+                    <button
+                      className={`fps-btn ${newAssignment.timerMode === 'timed' ? 'fps-btn-success' : ''}`}
+                      style={{ flex: 1, background: newAssignment.timerMode === 'timed' ? '#28a745' : '#333' }}
+                      onClick={() => setNewAssignment({...newAssignment, timerMode: 'timed'})}
+                    >
+                      ⏱️ Timed
+                    </button>
+                    <button
+                      className={`fps-btn ${newAssignment.timerMode === 'variable' ? 'fps-btn-success' : ''}`}
+                      style={{ flex: 1, background: newAssignment.timerMode === 'variable' ? '#28a745' : '#333' }}
+                      onClick={() => setNewAssignment({...newAssignment, timerMode: 'variable'})}
+                    >
+                      🔄 User Choice
+                    </button>
+                  </div>
+                  <p style={{ color: '#888', fontSize: 12, marginTop: 8 }}>
+                    {newAssignment.timerMode === 'timeless' && 'Students can take as long as they need - no timer shown.'}
+                    {newAssignment.timerMode === 'timed' && 'Students must complete within the time limit.'}
+                    {newAssignment.timerMode === 'variable' && 'Students choose between practice (untimed) or timed mode.'}
+                  </p>
+                </div>
+
+                {/* Timer Duration (for timed and variable modes) */}
+                {newAssignment.timerMode !== 'timeless' && (
+                  <div style={{ marginTop: 15 }}>
+                    <label className="fps-label">Timer Duration (minutes)</label>
+                    <input
+                      type="number"
+                      className="fps-input"
+                      value={newAssignment.timerDuration}
+                      onChange={e => setNewAssignment({...newAssignment, timerDuration: parseInt(e.target.value) || 120})}
+                      min="10"
+                      max="300"
+                      style={{ width: 120 }}
+                    />
+                    <span style={{ color: '#888', marginLeft: 10 }}>
+                      ({Math.floor(newAssignment.timerDuration / 60)}h {newAssignment.timerDuration % 60}m)
+                    </span>
                   </div>
                 )}
 
@@ -2194,10 +2408,21 @@ permalink: /FPSSIM/
               </ol>
 
               <h4 style={{ color: '#4a9eff', marginTop: 20 }}>Action Plan</h4>
-              <p><strong>Summary:</strong> {selectedSubmission.actionPlan?.summary}</p>
-              <p><strong>How it addresses UP:</strong> {selectedSubmission.actionPlan?.addressUP}</p>
-              <p><strong>Expected Outcomes:</strong> {selectedSubmission.actionPlan?.outcomes}</p>
-              <p><strong>Humaneness:</strong> {selectedSubmission.actionPlan?.humaneness}</p>
+              {Array.isArray(selectedSubmission.actionPlan) ? (
+                selectedSubmission.actionPlan.map((field, i) => (
+                  <div key={i} style={{ background: '#333', padding: 12, borderRadius: 6, marginBottom: 10 }}>
+                    <strong style={{ color: '#4a9eff' }}>{field.label || `Field ${i + 1}`}:</strong>
+                    <p style={{ margin: '8px 0 0 0', whiteSpace: 'pre-wrap' }}>{field.content}</p>
+                  </div>
+                ))
+              ) : (
+                <>
+                  <p><strong>Summary:</strong> {selectedSubmission.actionPlan?.summary}</p>
+                  <p><strong>How it addresses UP:</strong> {selectedSubmission.actionPlan?.addressUP}</p>
+                  <p><strong>Expected Outcomes:</strong> {selectedSubmission.actionPlan?.outcomes}</p>
+                  <p><strong>Humaneness:</strong> {selectedSubmission.actionPlan?.humaneness}</p>
+                </>
+              )}
 
               {/* Display Evaluation if exists */}
               {selectedSubmission.evaluation && (
