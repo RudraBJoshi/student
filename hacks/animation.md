@@ -641,6 +641,40 @@ permalink: /privacy
     word-break: break-all;
   }
   .fp-hash.show { opacity: 1; }
+  .fp-toggle-wrap {
+    display: flex; align-items: center; justify-content: center; gap: 12px;
+    margin-bottom: 14px; font-size: 0.85em;
+  }
+  .fp-toggle-label { color: var(--muted); transition: color 0.3s; }
+  .fp-toggle-label.active { color: var(--text); font-weight: 600; }
+  .fp-toggle {
+    position: relative; width: 52px; height: 28px;
+    background: var(--border); border-radius: 14px; cursor: pointer;
+    transition: background 0.3s;
+  }
+  .fp-toggle.on { background: var(--orange); }
+  .fp-toggle::after {
+    content: ''; position: absolute; top: 3px; left: 3px;
+    width: 22px; height: 22px; border-radius: 50%;
+    background: var(--card-bg); transition: transform 0.3s;
+  }
+  .fp-toggle.on::after { transform: translateX(24px); }
+  .fp-cookie-item {
+    padding: 12px; border-radius: 8px; font-size: 0.78em;
+    border: 1px solid var(--orange); background: rgba(255,145,0,0.06);
+    opacity: 0; transition: all 0.4s; display: none;
+  }
+  .fp-cookie-item.show { opacity: 1; }
+  .fp-cookie-item .fp-label { color: var(--orange); font-size: 0.85em; font-weight: 600; }
+  .fp-cookie-item .fp-value { color: var(--text); font-family: monospace; margin-top: 3px; font-size: 0.9em; word-break: break-all; }
+  .fp-cookie-banner {
+    margin-top: 12px; padding: 14px; border-radius: 8px;
+    border: 2px dashed var(--orange); background: rgba(255,145,0,0.04);
+    text-align: center; font-size: 0.82em; color: var(--muted);
+    opacity: 0; transition: opacity 0.5s; display: none;
+  }
+  .fp-cookie-banner.show { opacity: 1; }
+  .fp-cookie-banner strong { color: var(--orange); }
   .fp-uniqueness {
     margin-top: 10px;
     font-size: 0.75em;
@@ -1160,12 +1194,17 @@ permalink: /privacy
 
   <!-- ═══════════════════ 9. FINGERPRINTING ══════════════ -->
   <div class="section-card" id="fingerprint">
-    <h2><span class="icon">🖐️</span> Browser Fingerprinting — Tracked Without Cookies</h2>
-    <p class="subtitle">See YOUR actual browser fingerprint — the data sites collect right now</p>
+    <h2><span class="icon">🖐️</span> Browser Fingerprinting — With &amp; Without Cookies</h2>
+    <p class="subtitle">Toggle between cookie-free tracking and cookie-based tracking to see the difference</p>
 
     <div class="anim-box">
       <div class="fp-scene">
-        <p style="font-size:0.8em;color:var(--muted);margin:0 0 8px;text-align:center;">
+        <div class="fp-toggle-wrap">
+          <span class="fp-toggle-label active" id="fp-lbl-no">Without Cookies</span>
+          <div class="fp-toggle" id="fp-cookie-toggle" onclick="toggleFpCookieMode()"></div>
+          <span class="fp-toggle-label" id="fp-lbl-yes">With Cookies</span>
+        </div>
+        <p style="font-size:0.8em;color:var(--muted);margin:0 0 8px;text-align:center;" id="fp-mode-desc">
           Click to see what YOUR browser is leaking right now — no cookies needed:
         </p>
         <div style="text-align:center;">
@@ -1193,7 +1232,14 @@ permalink: /privacy
           <div class="fp-item" id="fp-18"><div class="fp-label">Font Detection</div><div class="fp-value" id="fp-val-18">—</div></div>
           <div class="fp-item" id="fp-19"><div class="fp-label">Ad Blocker</div><div class="fp-value" id="fp-val-19">—</div></div>
           <div class="fp-item" id="fp-20"><div class="fp-label">Math Constants</div><div class="fp-value" id="fp-val-20">—</div></div>
+          <!-- Cookie-mode items (hidden by default) -->
+          <div class="fp-cookie-item" id="fp-c0"><div class="fp-label">🍪 Tracking Cookie ID</div><div class="fp-value" id="fp-val-c0">—</div></div>
+          <div class="fp-cookie-item" id="fp-c1"><div class="fp-label">🍪 Cookie Expiry</div><div class="fp-value" id="fp-val-c1">—</div></div>
+          <div class="fp-cookie-item" id="fp-c2"><div class="fp-label">🍪 localStorage ID</div><div class="fp-value" id="fp-val-c2">—</div></div>
+          <div class="fp-cookie-item" id="fp-c3"><div class="fp-label">🍪 sessionStorage ID</div><div class="fp-value" id="fp-val-c3">—</div></div>
+          <div class="fp-cookie-item" id="fp-c4"><div class="fp-label">🍪 Cookie Sync Partners</div><div class="fp-value" id="fp-val-c4">—</div></div>
         </div>
+        <div class="fp-cookie-banner" id="fp-cookie-verdict"></div>
         <div class="fp-hash" id="fp-hash">Your unique fingerprint: ...</div>
         <div class="fp-uniqueness" id="fp-unique"></div>
         <canvas id="fp-canvas" width="280" height="20" style="display:none;"></canvas>
@@ -1201,7 +1247,8 @@ permalink: /privacy
     </div>
 
     <div class="explain">
-      <strong>In plain English:</strong> Even if you block cookies, websites can still identify you using your browser's unique combination of settings — screen size, installed fonts, timezone, browser version, and more. Combined, these create a "fingerprint" that's often unique to you out of millions. It's like being identified by your walk, voice, and height combined — no ID card needed.
+      <strong>In plain English:</strong> <em>Without cookies,</em> websites can still identify you using your browser's unique combination of settings — screen size, installed fonts, timezone, GPU, and more. Combined, these create a "fingerprint" that's often unique to you. It's like being identified by your walk, voice, and height combined — no ID card needed.<br><br>
+      <em>With cookies,</em> it's even worse: sites just store a permanent unique ID on your device. No detective work needed — they stapled a name tag to you. Even if you clear cookies, they use <strong>localStorage</strong>, <strong>sessionStorage</strong>, and <strong>cookie syncing</strong> (sharing your ID between ad networks) to bring it right back. Toggle the switch above to see both in action.
     </div>
   </div>
 
@@ -2146,6 +2193,87 @@ permalink: /privacy
     return (h >>> 0).toString(16).padStart(8, '0');
   }
 
+  // ── Fingerprint cookie mode toggle ─────────────────
+  let fpCookieMode = false;
+
+  function toggleFpCookieMode() {
+    fpCookieMode = !fpCookieMode;
+    const toggle = document.getElementById('fp-cookie-toggle');
+    const lblNo = document.getElementById('fp-lbl-no');
+    const lblYes = document.getElementById('fp-lbl-yes');
+    const desc = document.getElementById('fp-mode-desc');
+    toggle.classList.toggle('on', fpCookieMode);
+    lblNo.classList.toggle('active', !fpCookieMode);
+    lblYes.classList.toggle('active', fpCookieMode);
+
+    // Show/hide cookie item slots
+    document.querySelectorAll('.fp-cookie-item').forEach(el => {
+      el.style.display = fpCookieMode ? '' : 'none';
+      el.classList.remove('show');
+      el.querySelector('.fp-value').textContent = '—';
+    });
+    const banner = document.getElementById('fp-cookie-verdict');
+    banner.style.display = fpCookieMode ? '' : 'none';
+    banner.classList.remove('show');
+
+    if (fpCookieMode) {
+      desc.textContent = 'With cookies enabled, sites can store a permanent ID on your device:';
+    } else {
+      desc.textContent = 'Click to see what YOUR browser is leaking right now — no cookies needed:';
+      // Clean up demo cookies/storage
+      document.cookie = '_demo_tracker=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/';
+      try { localStorage.removeItem('_demo_ls_id'); } catch(e) {}
+      try { sessionStorage.removeItem('_demo_ss_id'); } catch(e) {}
+    }
+
+    // Reset previous results
+    for (let i = 0; i <= 20; i++) {
+      const item = document.getElementById('fp-' + i);
+      const valEl = document.getElementById('fp-val-' + i);
+      if (item) item.classList.remove('show');
+      if (valEl) valEl.textContent = '—';
+    }
+    document.getElementById('fp-hash').classList.remove('show');
+    document.getElementById('fp-unique').classList.remove('show');
+  }
+
+  function generateUUID() {
+    if (crypto.randomUUID) return crypto.randomUUID();
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      const r = Math.random() * 16 | 0;
+      return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+    });
+  }
+
+  function getCookieTrackingData() {
+    const trackerId = generateUUID();
+    const expiry = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000);
+
+    // Set a demo tracking cookie
+    document.cookie = '_demo_tracker=' + trackerId + '; expires=' + expiry.toUTCString() + '; path=/; SameSite=Lax';
+
+    // Set localStorage and sessionStorage trackers
+    let lsId, ssId;
+    try { lsId = generateUUID(); localStorage.setItem('_demo_ls_id', lsId); } catch(e) { lsId = 'blocked'; }
+    try { ssId = generateUUID(); sessionStorage.setItem('_demo_ss_id', ssId); } catch(e) { ssId = 'blocked'; }
+
+    // Read back the cookie to confirm
+    const readBack = document.cookie.split(';').find(c => c.trim().startsWith('_demo_tracker='));
+    const cookieVal = readBack ? readBack.split('=')[1] : 'blocked by browser';
+
+    // Simulate cookie sync partners
+    const partners = ['AdTrackr', 'DataBroker.io', 'PixelSync', 'UserGraph', 'TargetNet'];
+    const synced = partners.map(p => p + ': ' + generateUUID().substring(0, 8)).join(', ');
+
+    return [
+      { label: 'Tracking Cookie ID', val: cookieVal },
+      { label: 'Cookie Expiry',      val: expiry.toLocaleDateString() + ' (1 year from now — survives closing the browser)' },
+      { label: 'localStorage ID',    val: lsId + (lsId !== 'blocked' ? ' (survives clearing cookies!)' : '') },
+      { label: 'sessionStorage ID',  val: ssId + (ssId !== 'blocked' ? ' (cleared when tab closes)' : '') },
+      { label: 'Cookie Sync Partners', val: synced }
+    ];
+  }
+
   async function collectFingerprint() {
     const gpu = getGPU();
     const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
@@ -2164,7 +2292,7 @@ permalink: /privacy
       { label: 'Color Depth',        val: screen.colorDepth + '-bit color, ' + screen.availWidth + 'x' + screen.availHeight + ' usable area' },
       { label: 'Do Not Track / GPC', val: getDNT() },
       { label: 'Cookies Enabled',    val: navigator.cookieEnabled ? 'Yes' : 'Blocked' },
-      { label: 'Connection Type',    val: conn ? (conn.effectiveType || '?') + (conn.downlink ? ' (~' + conn.downlink + ' Mbps)' : '') + (conn.rtt ? ', ' + conn.rtt + 'ms RTT' : '') : 'API blocked (Firefox/Safari)' },
+      { label: 'Connection Type',    val: conn ? (() => { let et = conn.effectiveType || '?'; let note = et === '4g' ? ' (spec max — covers 4G, 5G, Wi-Fi)' : ''; return et + note + (conn.downlink ? ', ~' + conn.downlink + ' Mbps' : '') + (conn.rtt != null ? ', ' + conn.rtt + 'ms RTT' : ''); })() : 'API blocked (Firefox/Safari)' },
       { label: 'Viewport Size',      val: window.innerWidth + 'x' + window.innerHeight + ' CSS px (outer: ' + window.outerWidth + 'x' + window.outerHeight + ')' },
       { label: 'Audio Fingerprint',  val: getAudioFP() },
       { label: 'WebGL Vendor',       val: gpu.vendor },
@@ -2174,7 +2302,7 @@ permalink: /privacy
       { label: 'Math Engine',        val: getMathFP() }
     ];
 
-    // Reveal each item with stagger
+    // Reveal each fingerprint item with stagger
     data.forEach((d, i) => {
       setTimeout(() => {
         const item = document.getElementById('fp-' + i);
@@ -2183,8 +2311,27 @@ permalink: /privacy
       }, i * 180);
     });
 
+    // If cookie mode is on, also show cookie tracking data
+    let cookieData = [];
+    if (fpCookieMode) {
+      cookieData = getCookieTrackingData();
+      const baseDelay = data.length * 180;
+      cookieData.forEach((cd, i) => {
+        setTimeout(() => {
+          const item = document.getElementById('fp-c' + i);
+          const valEl = document.getElementById('fp-val-c' + i);
+          if (item && valEl) {
+            valEl.textContent = cd.val;
+            item.classList.add('show');
+          }
+        }, baseDelay + i * 220);
+      });
+    }
+
     // Build real SHA-256 hash from all collected data
-    const totalDelay = data.length * 180 + 600;
+    const allItems = fpCookieMode ? data.length + cookieData.length : data.length;
+    const totalDelay = (data.length * 180) + (fpCookieMode ? cookieData.length * 220 : 0) + 600;
+
     setTimeout(async () => {
       // Wait for audio fingerprint to resolve
       const audioVal = window._fpAudioResult || 'blocked';
@@ -2192,7 +2339,10 @@ permalink: /privacy
       const audioEl = document.getElementById('fp-val-15');
       if (audioEl && audioVal !== 'computing...') audioEl.textContent = audioVal;
 
-      const raw = data.map(d => d.val).join('|');
+      const allVals = fpCookieMode
+        ? data.map(d => d.val).concat(cookieData.map(cd => cd.val))
+        : data.map(d => d.val);
+      const raw = allVals.join('|');
       const hash = await sha256(raw);
       const fp = document.getElementById('fp-hash');
       fp.textContent = 'SHA-256 fingerprint: ' + hash.substring(0, 48) + '...';
@@ -2201,10 +2351,28 @@ permalink: /privacy
       setTimeout(() => {
         const usable = data.filter(d => d.val && d.val !== '—' && d.val !== 'N/A' && d.val !== 'blocked' && !d.val.startsWith('API blocked')).length;
         const u = document.getElementById('fp-unique');
-        u.innerHTML = '<strong style="color:var(--orange)">' + usable + ' of ' + data.length + ' signals</strong> successfully collected from your browser.<br>' +
-          'Combined, this fingerprint is likely <strong style="color:var(--orange)">unique to you</strong> among hundreds of thousands of users.<br>' +
-          'This works in incognito mode, without cookies, and survives clearing browsing data.';
-        u.classList.add('show');
+
+        if (fpCookieMode) {
+          // Cookie mode verdict
+          u.innerHTML = '<strong style="color:var(--orange)">' + usable + ' fingerprint signals</strong> + <strong style="color:var(--orange)">' + cookieData.length + ' cookie-based trackers</strong> collected.<br>' +
+            'With cookies, sites don\'t <em>need</em> all that fingerprint math — the cookie ID alone identifies you <strong style="color:var(--orange)">with 100% certainty</strong>.<br>' +
+            'The fingerprint signals are used as a <strong>backup</strong> to re-link you if you ever clear your cookies.';
+          u.classList.add('show');
+
+          // Show the cookie banner
+          const banner = document.getElementById('fp-cookie-verdict');
+          banner.innerHTML = '<strong>The difference:</strong> Without cookies, sites guess who you are from ' + usable + ' clues (like a detective). ' +
+            'With cookies, they just read the ID they stapled to your forehead — <strong>no guessing needed</strong>. ' +
+            'Even if you clear cookies, localStorage and sessionStorage can bring the ID right back. ' +
+            'That\'s why "cookie syncing" exists: ad networks share your IDs so clearing one tracker doesn\'t help.';
+          banner.style.display = '';
+          banner.classList.add('show');
+        } else {
+          u.innerHTML = '<strong style="color:var(--orange)">' + usable + ' of ' + data.length + ' signals</strong> successfully collected from your browser.<br>' +
+            'Combined, this fingerprint is likely <strong style="color:var(--orange)">unique to you</strong> among hundreds of thousands of users.<br>' +
+            'This works in incognito mode, without cookies, and survives clearing browsing data.';
+          u.classList.add('show');
+        }
       }, 500);
     }, totalDelay);
   }
