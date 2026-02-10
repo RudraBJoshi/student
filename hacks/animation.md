@@ -611,8 +611,8 @@ permalink: /privacy
   .fp-scene { padding: 16px; }
   .fp-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-    gap: 10px;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 8px;
     margin-top: 12px;
   }
   .fp-item {
@@ -1172,18 +1172,31 @@ permalink: /privacy
           <button class="btn btn-orange" onclick="collectFingerprint()">Scan My Browser</button>
         </div>
         <div class="fp-grid" id="fp-grid">
-          <div class="fp-item" id="fp-0"><div class="fp-label">Browser</div><div class="fp-value" id="fp-val-0">—</div></div>
-          <div class="fp-item" id="fp-1"><div class="fp-label">Screen</div><div class="fp-value" id="fp-val-1">—</div></div>
+          <div class="fp-item" id="fp-0"><div class="fp-label">Browser &amp; Version</div><div class="fp-value" id="fp-val-0">—</div></div>
+          <div class="fp-item" id="fp-1"><div class="fp-label">Screen Resolution</div><div class="fp-value" id="fp-val-1">—</div></div>
           <div class="fp-item" id="fp-2"><div class="fp-label">OS / Platform</div><div class="fp-value" id="fp-val-2">—</div></div>
-          <div class="fp-item" id="fp-3"><div class="fp-label">Language</div><div class="fp-value" id="fp-val-3">—</div></div>
-          <div class="fp-item" id="fp-4"><div class="fp-label">Timezone</div><div class="fp-value" id="fp-val-4">—</div></div>
+          <div class="fp-item" id="fp-3"><div class="fp-label">Languages</div><div class="fp-value" id="fp-val-3">—</div></div>
+          <div class="fp-item" id="fp-4"><div class="fp-label">Timezone &amp; Offset</div><div class="fp-value" id="fp-val-4">—</div></div>
           <div class="fp-item" id="fp-5"><div class="fp-label">CPU Cores</div><div class="fp-value" id="fp-val-5">—</div></div>
-          <div class="fp-item" id="fp-6"><div class="fp-label">Touch Support</div><div class="fp-value" id="fp-val-6">—</div></div>
-          <div class="fp-item" id="fp-7"><div class="fp-label">Color Depth</div><div class="fp-value" id="fp-val-7">—</div></div>
+          <div class="fp-item" id="fp-6"><div class="fp-label">GPU / Renderer</div><div class="fp-value" id="fp-val-6">—</div></div>
+          <div class="fp-item" id="fp-7"><div class="fp-label">Canvas Fingerprint</div><div class="fp-value" id="fp-val-7">—</div></div>
           <div class="fp-item" id="fp-8"><div class="fp-label">Device Memory</div><div class="fp-value" id="fp-val-8">—</div></div>
+          <div class="fp-item" id="fp-9"><div class="fp-label">Touch Support</div><div class="fp-value" id="fp-val-9">—</div></div>
+          <div class="fp-item" id="fp-10"><div class="fp-label">Color Depth</div><div class="fp-value" id="fp-val-10">—</div></div>
+          <div class="fp-item" id="fp-11"><div class="fp-label">Do Not Track</div><div class="fp-value" id="fp-val-11">—</div></div>
+          <div class="fp-item" id="fp-12"><div class="fp-label">Cookies Enabled</div><div class="fp-value" id="fp-val-12">—</div></div>
+          <div class="fp-item" id="fp-13"><div class="fp-label">Connection Type</div><div class="fp-value" id="fp-val-13">—</div></div>
+          <div class="fp-item" id="fp-14"><div class="fp-label">Viewport Size</div><div class="fp-value" id="fp-val-14">—</div></div>
+          <div class="fp-item" id="fp-15"><div class="fp-label">Audio Context</div><div class="fp-value" id="fp-val-15">—</div></div>
+          <div class="fp-item" id="fp-16"><div class="fp-label">WebGL Vendor</div><div class="fp-value" id="fp-val-16">—</div></div>
+          <div class="fp-item" id="fp-17"><div class="fp-label">Installed Plugins</div><div class="fp-value" id="fp-val-17">—</div></div>
+          <div class="fp-item" id="fp-18"><div class="fp-label">Font Detection</div><div class="fp-value" id="fp-val-18">—</div></div>
+          <div class="fp-item" id="fp-19"><div class="fp-label">Ad Blocker</div><div class="fp-value" id="fp-val-19">—</div></div>
+          <div class="fp-item" id="fp-20"><div class="fp-label">Math Constants</div><div class="fp-value" id="fp-val-20">—</div></div>
         </div>
         <div class="fp-hash" id="fp-hash">Your unique fingerprint: ...</div>
         <div class="fp-uniqueness" id="fp-unique"></div>
+        <canvas id="fp-canvas" width="280" height="20" style="display:none;"></canvas>
       </div>
     </div>
 
@@ -1787,45 +1800,209 @@ permalink: /privacy
   }
 
   // ── 9. FINGERPRINTING ──────────────────────────────────
-  function collectFingerprint() {
+  // Helpers that collect real signals — nothing is sent or stored anywhere.
+  function getBrowserInfo() {
+    const ua = navigator.userAgent;
+    let browser = 'Unknown';
+    let ver = '';
+    if (ua.includes('Edg/'))       { browser = 'Edge';    ver = ua.match(/Edg\/([\d.]+)/)?.[1] || ''; }
+    else if (ua.includes('OPR/'))  { browser = 'Opera';   ver = ua.match(/OPR\/([\d.]+)/)?.[1] || ''; }
+    else if (ua.includes('Chrome')){ browser = 'Chrome';  ver = ua.match(/Chrome\/([\d.]+)/)?.[1] || ''; }
+    else if (ua.includes('Firefox')){ browser = 'Firefox'; ver = ua.match(/Firefox\/([\d.]+)/)?.[1] || ''; }
+    else if (ua.includes('Safari')){ browser = 'Safari';  ver = ua.match(/Version\/([\d.]+)/)?.[1] || ''; }
+    return browser + (ver ? ' ' + ver : '');
+  }
+  function getOS() {
+    const ua = navigator.userAgent;
+    if (ua.includes('Windows NT 10')) return 'Windows 10/11';
+    if (ua.includes('Windows'))       return 'Windows';
+    if (ua.includes('Mac OS X'))      return 'macOS ' + (ua.match(/Mac OS X ([\d_]+)/)?.[1]?.replace(/_/g,'.') || '');
+    if (ua.includes('CrOS'))          return 'Chrome OS';
+    if (ua.includes('Android'))       return 'Android ' + (ua.match(/Android ([\d.]+)/)?.[1] || '');
+    if (ua.includes('iPhone'))        return 'iOS ' + (ua.match(/OS ([\d_]+)/)?.[1]?.replace(/_/g,'.') || '');
+    if (ua.includes('Linux'))         return 'Linux';
+    return navigator.platform || 'Unknown';
+  }
+  function getGPU() {
+    try {
+      const c = document.createElement('canvas');
+      const gl = c.getContext('webgl') || c.getContext('experimental-webgl');
+      if (!gl) return { vendor: 'N/A', renderer: 'N/A' };
+      const dbg = gl.getExtension('WEBGL_debug_renderer_info');
+      return {
+        vendor: dbg ? gl.getParameter(dbg.UNMASKED_VENDOR_WEBGL) : gl.getParameter(gl.VENDOR),
+        renderer: dbg ? gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER)
+      };
+    } catch(e) { return { vendor: 'Blocked', renderer: 'Blocked' }; }
+  }
+  function getCanvasHash() {
+    try {
+      const c = document.getElementById('fp-canvas');
+      const ctx = c.getContext('2d');
+      // Draw a mix of text + shapes — the pixel output differs per device/GPU/font
+      ctx.fillStyle = '#f60';
+      ctx.fillRect(0, 0, 62, 20);
+      ctx.fillStyle = '#069';
+      ctx.font = '14px Arial';
+      ctx.fillText('fingerprint', 2, 15);
+      ctx.fillStyle = 'rgba(102,204,0,0.7)';
+      ctx.fillText('canvas', 80, 15);
+      ctx.beginPath();
+      ctx.arc(200, 10, 8, 0, Math.PI * 2);
+      ctx.fillStyle = '#8338ec';
+      ctx.fill();
+      const data = c.toDataURL();
+      // Simple hash of the data URL
+      let hash = 0;
+      for (let i = 0; i < data.length; i++) {
+        hash = ((hash << 5) - hash + data.charCodeAt(i)) | 0;
+      }
+      return (hash >>> 0).toString(16).padStart(8, '0');
+    } catch(e) { return 'blocked'; }
+  }
+  function getAudioFP() {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const comp = ctx.createDynamicsCompressor();
+      // Read compressor defaults — they differ per engine
+      const vals = [
+        comp.threshold.defaultValue,
+        comp.knee.defaultValue,
+        comp.ratio.defaultValue,
+        comp.attack.defaultValue,
+        comp.release.defaultValue
+      ];
+      ctx.close();
+      let h = 0;
+      vals.forEach(v => { h = ((h << 5) - h + Math.round(v * 1000)) | 0; });
+      return (h >>> 0).toString(16).padStart(8, '0');
+    } catch(e) { return 'blocked'; }
+  }
+  function getPlugins() {
+    if (!navigator.plugins || navigator.plugins.length === 0) return 'None detected';
+    const names = [];
+    for (let i = 0; i < Math.min(navigator.plugins.length, 6); i++) {
+      names.push(navigator.plugins[i].name);
+    }
+    return names.join(', ') + (navigator.plugins.length > 6 ? ' (+' + (navigator.plugins.length - 6) + ')' : '');
+  }
+  function detectFonts() {
+    // Measure width differences to detect installed fonts
+    const testFonts = ['Arial','Verdana','Times New Roman','Courier New','Georgia','Comic Sans MS','Impact','Trebuchet MS','Palatino','Lucida Console','Helvetica Neue','Futura','Calibri','Segoe UI','Roboto','Menlo','Fira Code'];
+    const found = [];
+    const span = document.createElement('span');
+    span.style.cssText = 'position:absolute;left:-9999px;font-size:72px;visibility:hidden;';
+    span.textContent = 'mmmmmmmmmmlli';
+    document.body.appendChild(span);
+    // Baseline width with generic monospace
+    span.style.fontFamily = 'monospace';
+    const baseW = span.offsetWidth;
+    span.style.fontFamily = 'serif';
+    const baseS = span.offsetWidth;
+    testFonts.forEach(f => {
+      span.style.fontFamily = '"' + f + '", monospace';
+      const w1 = span.offsetWidth;
+      span.style.fontFamily = '"' + f + '", serif';
+      const w2 = span.offsetWidth;
+      if (w1 !== baseW || w2 !== baseS) found.push(f);
+    });
+    document.body.removeChild(span);
+    return found.length > 0 ? found.slice(0, 5).join(', ') + (found.length > 5 ? ' (+' + (found.length-5) + ')' : '') : 'Default only';
+  }
+  function detectAdBlocker() {
+    const bait = document.createElement('div');
+    bait.className = 'adsbox ad-banner';
+    bait.style.cssText = 'position:absolute;left:-9999px;width:1px;height:1px;';
+    bait.innerHTML = '&nbsp;';
+    document.body.appendChild(bait);
+    const blocked = bait.offsetHeight === 0 || bait.clientHeight === 0 || getComputedStyle(bait).display === 'none';
+    document.body.removeChild(bait);
+    return blocked ? 'Likely active' : 'Not detected';
+  }
+  function getMathFP() {
+    // Some JS math implementations differ across engines
+    const vals = [
+      Math.tan(-1e300),
+      Math.sinh(1),
+      Math.cosh(10),
+      Math.atanh(0.5),
+      Math.expm1(1)
+    ];
+    let h = 0;
+    vals.forEach(v => { h = ((h << 5) - h + Math.round(v * 1e10)) | 0; });
+    return (h >>> 0).toString(16).padStart(8, '0');
+  }
+
+  // SHA-like simple hash for display (not crypto, just for demo)
+  async function simpleHash(str) {
+    if (window.crypto && crypto.subtle) {
+      const buf = new TextEncoder().encode(str);
+      const hashBuf = await crypto.subtle.digest('SHA-256', buf);
+      return Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2,'0')).join('');
+    }
+    // Fallback
+    let h = 0;
+    for (let i = 0; i < str.length; i++) h = ((h << 5) - h + str.charCodeAt(i)) | 0;
+    return (h >>> 0).toString(16).padStart(8, '0');
+  }
+
+  async function collectFingerprint() {
+    const gpu = getGPU();
+    const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+
     const data = [
-      { label: 'Browser', val: (function() { const ua = navigator.userAgent; if (ua.includes('Chrome')) return 'Chrome'; if (ua.includes('Firefox')) return 'Firefox'; if (ua.includes('Safari')) return 'Safari'; return ua.split(' ').slice(-1)[0]; })() },
-      { label: 'Screen', val: screen.width + 'x' + screen.height + ' @' + window.devicePixelRatio + 'x' },
-      { label: 'OS / Platform', val: navigator.platform || navigator.userAgentData?.platform || 'Unknown' },
-      { label: 'Language', val: navigator.language + (navigator.languages.length > 1 ? ' (+' + (navigator.languages.length-1) + ' more)' : '') },
-      { label: 'Timezone', val: Intl.DateTimeFormat().resolvedOptions().timeZone },
-      { label: 'CPU Cores', val: (navigator.hardwareConcurrency || '?') + ' cores' },
-      { label: 'Touch', val: ('ontouchstart' in window) ? 'Yes (' + navigator.maxTouchPoints + ' points)' : 'No' },
-      { label: 'Color Depth', val: screen.colorDepth + '-bit' },
-      { label: 'Memory', val: navigator.deviceMemory ? navigator.deviceMemory + ' GB' : 'Hidden' }
+      { label: 'Browser & Version', val: getBrowserInfo() },
+      { label: 'Screen Resolution',  val: screen.width + 'x' + screen.height + ' @' + window.devicePixelRatio + 'x DPR' },
+      { label: 'OS / Platform',      val: getOS() },
+      { label: 'Languages',          val: (navigator.languages || [navigator.language]).join(', ') },
+      { label: 'Timezone & Offset',  val: Intl.DateTimeFormat().resolvedOptions().timeZone + ' (UTC' + (new Date().getTimezoneOffset() > 0 ? '-' : '+') + Math.abs(new Date().getTimezoneOffset()/60) + ')' },
+      { label: 'CPU Cores',          val: (navigator.hardwareConcurrency || '?') + ' logical cores' },
+      { label: 'GPU / Renderer',     val: gpu.renderer },
+      { label: 'Canvas Fingerprint', val: getCanvasHash() },
+      { label: 'Device Memory',      val: navigator.deviceMemory ? navigator.deviceMemory + ' GB' : 'Hidden by browser' },
+      { label: 'Touch Support',      val: ('ontouchstart' in window) ? 'Yes — ' + navigator.maxTouchPoints + ' touch points' : 'No' },
+      { label: 'Color Depth',        val: screen.colorDepth + '-bit, ' + screen.availWidth + 'x' + screen.availHeight + ' avail' },
+      { label: 'Do Not Track',       val: navigator.doNotTrack === '1' ? 'Enabled (ironic — makes you more unique)' : 'Not set' },
+      { label: 'Cookies Enabled',    val: navigator.cookieEnabled ? 'Yes' : 'No' },
+      { label: 'Connection Type',    val: conn ? (conn.effectiveType || 'unknown') + ' (~' + (conn.downlink || '?') + ' Mbps)' : 'API unavailable' },
+      { label: 'Viewport Size',      val: window.innerWidth + 'x' + window.innerHeight + ' (CSS px)' },
+      { label: 'Audio Context',      val: getAudioFP() },
+      { label: 'WebGL Vendor',       val: gpu.vendor },
+      { label: 'Installed Plugins',  val: getPlugins() },
+      { label: 'Font Detection',     val: detectFonts() },
+      { label: 'Ad Blocker',         val: detectAdBlocker() },
+      { label: 'Math Constants',     val: getMathFP() }
     ];
 
+    // Reveal each item with a stagger
     data.forEach((d, i) => {
       setTimeout(() => {
         const item = document.getElementById('fp-' + i);
         const valEl = document.getElementById('fp-val-' + i);
         if (item && valEl) { valEl.textContent = d.val; item.classList.add('show'); }
-      }, i * 250);
+      }, i * 180);
     });
 
-    setTimeout(() => {
-      // Build a real-ish hash from the data
-      let raw = data.map(d => d.val).join('|');
-      let hash = '';
-      for (let i = 0; i < raw.length; i++) {
-        hash += raw.charCodeAt(i).toString(16);
-      }
-      hash = hash.substring(0, 40);
+    // Build a real SHA-256 hash from all collected data
+    const totalDelay = data.length * 180 + 300;
+    setTimeout(async () => {
+      const raw = data.map(d => d.val).join('|');
+      const hash = await simpleHash(raw);
       const fp = document.getElementById('fp-hash');
-      fp.textContent = 'Your unique fingerprint: ' + hash;
+      fp.textContent = 'Your unique fingerprint: ' + hash.substring(0, 48);
       fp.classList.add('show');
 
       setTimeout(() => {
+        // Count how many bits of entropy
+        const unique = data.filter(d => d.val && d.val !== '—' && d.val !== 'N/A').length;
         const u = document.getElementById('fp-unique');
-        u.innerHTML = 'This combination of data is likely <strong style="color:var(--orange)">unique to you</strong> among millions of users.<br>Websites can track you with this fingerprint — even in incognito mode, even without cookies.';
+        u.innerHTML = '<strong style="color:var(--orange)">' + unique + ' data points</strong> collected from your browser alone.<br>' +
+          'Combined, this fingerprint is likely <strong style="color:var(--orange)">unique to 1 in ~300,000+ users</strong>.<br>' +
+          'This works in incognito mode, without cookies, and even after clearing your browsing data.';
         u.classList.add('show');
       }, 500);
-    }, data.length * 250 + 300);
+    }, totalDelay);
   }
 
   // ── 10. DNS ────────────────────────────────────────────
