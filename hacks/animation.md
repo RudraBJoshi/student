@@ -1800,150 +1800,349 @@ permalink: /privacy
   }
 
   // ── 9. FINGERPRINTING ──────────────────────────────────
-  // Helpers that collect real signals — nothing is sent or stored anywhere.
+  // All read-only — nothing is sent or stored anywhere.
+
   function getBrowserInfo() {
+    // Try modern User-Agent Client Hints API first (Chrome 90+)
+    if (navigator.userAgentData) {
+      const brands = navigator.userAgentData.brands || [];
+      // Filter out Chromium "Not A;Brand" noise entries
+      const real = brands.filter(b => !/not.a/i.test(b.brand));
+      if (real.length > 0) {
+        // Pick the most specific brand (Edge, Opera, Chrome — prefer non-Chromium)
+        const best = real.find(b => /edge|opera|brave|vivaldi|samsung/i.test(b.brand)) || real[real.length - 1];
+        return best.brand + ' ' + best.version;
+      }
+    }
+    // Fallback: parse UA string (order matters — most specific first)
     const ua = navigator.userAgent;
-    let browser = 'Unknown';
-    let ver = '';
-    if (ua.includes('Edg/'))       { browser = 'Edge';    ver = ua.match(/Edg\/([\d.]+)/)?.[1] || ''; }
-    else if (ua.includes('OPR/'))  { browser = 'Opera';   ver = ua.match(/OPR\/([\d.]+)/)?.[1] || ''; }
-    else if (ua.includes('Chrome')){ browser = 'Chrome';  ver = ua.match(/Chrome\/([\d.]+)/)?.[1] || ''; }
-    else if (ua.includes('Firefox')){ browser = 'Firefox'; ver = ua.match(/Firefox\/([\d.]+)/)?.[1] || ''; }
-    else if (ua.includes('Safari')){ browser = 'Safari';  ver = ua.match(/Version\/([\d.]+)/)?.[1] || ''; }
-    return browser + (ver ? ' ' + ver : '');
+    if (navigator.brave && navigator.brave.isBrave) return 'Brave ' + (ua.match(/Chrome\/([\d.]+)/)?.[1] || '');
+    if (ua.includes('Vivaldi/'))    return 'Vivaldi ' + (ua.match(/Vivaldi\/([\d.]+)/)?.[1] || '');
+    if (ua.includes('SamsungBrowser/')) return 'Samsung Internet ' + (ua.match(/SamsungBrowser\/([\d.]+)/)?.[1] || '');
+    if (ua.includes('Edg/'))        return 'Edge ' + (ua.match(/Edg\/([\d.]+)/)?.[1] || '');
+    if (ua.includes('OPR/'))        return 'Opera ' + (ua.match(/OPR\/([\d.]+)/)?.[1] || '');
+    if (ua.includes('Firefox/'))    return 'Firefox ' + (ua.match(/Firefox\/([\d.]+)/)?.[1] || '');
+    if (ua.includes('Chrome/'))     return 'Chrome ' + (ua.match(/Chrome\/([\d.]+)/)?.[1] || '');
+    if (ua.includes('Safari/') && ua.includes('Version/')) return 'Safari ' + (ua.match(/Version\/([\d.]+)/)?.[1] || '');
+    return ua.split(' ').slice(-1)[0] || 'Unknown';
   }
+
   function getOS() {
+    // Try Client Hints first
+    if (navigator.userAgentData && navigator.userAgentData.platform) {
+      const p = navigator.userAgentData.platform;
+      if (p === 'Windows') return 'Windows';
+      if (p === 'macOS')   return 'macOS';
+      if (p === 'Android') return 'Android';
+      if (p === 'Chrome OS') return 'Chrome OS';
+      if (p === 'Linux')   return 'Linux';
+    }
     const ua = navigator.userAgent;
-    if (ua.includes('Windows NT 10')) return 'Windows 10/11';
-    if (ua.includes('Windows'))       return 'Windows';
-    if (ua.includes('Mac OS X'))      return 'macOS ' + (ua.match(/Mac OS X ([\d_]+)/)?.[1]?.replace(/_/g,'.') || '');
-    if (ua.includes('CrOS'))          return 'Chrome OS';
-    if (ua.includes('Android'))       return 'Android ' + (ua.match(/Android ([\d.]+)/)?.[1] || '');
-    if (ua.includes('iPhone'))        return 'iOS ' + (ua.match(/OS ([\d_]+)/)?.[1]?.replace(/_/g,'.') || '');
-    if (ua.includes('Linux'))         return 'Linux';
+    // iPad with iPadOS 13+ lies and reports as macOS — detect via touch
+    if (ua.includes('Mac OS X') && navigator.maxTouchPoints > 1) {
+      return 'iPadOS ' + (ua.match(/Mac OS X ([\d_]+)/)?.[1]?.replace(/_/g, '.') || '');
+    }
+    if (ua.includes('iPhone') || ua.includes('iPod')) {
+      return 'iOS ' + (ua.match(/OS ([\d_]+)/)?.[1]?.replace(/_/g, '.') || '');
+    }
+    if (ua.includes('Android')) {
+      return 'Android ' + (ua.match(/Android ([\d.]+)/)?.[1] || '');
+    }
+    if (ua.includes('CrOS')) return 'Chrome OS';
+    if (ua.includes('Windows NT 10.0')) {
+      // Can't distinguish 10 vs 11 from UA alone
+      return 'Windows 10 or 11 (NT 10.0)';
+    }
+    if (ua.includes('Windows NT 6.3')) return 'Windows 8.1';
+    if (ua.includes('Windows NT 6.1')) return 'Windows 7';
+    if (ua.includes('Windows'))        return 'Windows';
+    if (ua.includes('Mac OS X')) {
+      return 'macOS ' + (ua.match(/Mac OS X ([\d_]+)/)?.[1]?.replace(/_/g, '.') || '');
+    }
+    if (ua.includes('Linux')) return 'Linux';
     return navigator.platform || 'Unknown';
   }
+
   function getGPU() {
     try {
       const c = document.createElement('canvas');
-      const gl = c.getContext('webgl') || c.getContext('experimental-webgl');
-      if (!gl) return { vendor: 'N/A', renderer: 'N/A' };
+      // Try WebGL2 first (more widely supported going forward), fall back to WebGL1
+      const gl = c.getContext('webgl2') || c.getContext('webgl') || c.getContext('experimental-webgl');
+      if (!gl) return { vendor: 'WebGL unavailable', renderer: 'WebGL unavailable' };
+      // WEBGL_debug_renderer_info is deprecated in Firefox 125+ and Safari 17+
       const dbg = gl.getExtension('WEBGL_debug_renderer_info');
+      if (dbg) {
+        return {
+          vendor: gl.getParameter(dbg.UNMASKED_VENDOR_WEBGL),
+          renderer: gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL)
+        };
+      }
+      // Fallback: read the masked vendor/renderer (less specific but still useful)
+      const vendor = gl.getParameter(gl.VENDOR);
+      const renderer = gl.getParameter(gl.RENDERER);
       return {
-        vendor: dbg ? gl.getParameter(dbg.UNMASKED_VENDOR_WEBGL) : gl.getParameter(gl.VENDOR),
-        renderer: dbg ? gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER)
+        vendor: vendor + ' (masked — browser hides GPU details)',
+        renderer: renderer + ' (masked)'
       };
-    } catch(e) { return { vendor: 'Blocked', renderer: 'Blocked' }; }
+    } catch (e) { return { vendor: 'Blocked', renderer: 'Blocked' }; }
   }
+
   function getCanvasHash() {
     try {
       const c = document.getElementById('fp-canvas');
       const ctx = c.getContext('2d');
-      // Draw a mix of text + shapes — the pixel output differs per device/GPU/font
+      // Clear before each run so re-scans are consistent
+      ctx.clearRect(0, 0, c.width, c.height);
+      // Draw a mix of shapes, gradients, text with emoji — pixel output differs per GPU/OS/font stack
       ctx.fillStyle = '#f60';
       ctx.fillRect(0, 0, 62, 20);
       ctx.fillStyle = '#069';
-      ctx.font = '14px Arial';
-      ctx.fillText('fingerprint', 2, 15);
+      ctx.font = '14px Arial, sans-serif';
+      ctx.textBaseline = 'alphabetic';
+      ctx.fillText('Cwm fjord', 2, 15);
       ctx.fillStyle = 'rgba(102,204,0,0.7)';
-      ctx.fillText('canvas', 80, 15);
+      ctx.font = '14px "Times New Roman", serif';
+      ctx.fillText('bank glyphs', 80, 15);
+      // Arc with anti-aliasing differences
       ctx.beginPath();
-      ctx.arc(200, 10, 8, 0, Math.PI * 2);
-      ctx.fillStyle = '#8338ec';
+      ctx.arc(210, 10, 8, 0, Math.PI * 2);
+      const grad = ctx.createLinearGradient(202, 2, 218, 18);
+      grad.addColorStop(0, '#8338ec');
+      grad.addColorStop(1, '#3a86ff');
+      ctx.fillStyle = grad;
       ctx.fill();
-      const data = c.toDataURL();
-      // Simple hash of the data URL
+      // Shadow rendering differs across engines
+      ctx.shadowColor = 'rgba(0,0,0,0.5)';
+      ctx.shadowBlur = 4;
+      ctx.fillStyle = '#e63946';
+      ctx.fillRect(240, 4, 30, 12);
+      ctx.shadowBlur = 0;
+      const dataURL = c.toDataURL();
+      // Hash the data URL
       let hash = 0;
-      for (let i = 0; i < data.length; i++) {
-        hash = ((hash << 5) - hash + data.charCodeAt(i)) | 0;
+      for (let i = 0; i < dataURL.length; i++) {
+        hash = ((hash << 5) - hash + dataURL.charCodeAt(i)) | 0;
       }
       return (hash >>> 0).toString(16).padStart(8, '0');
-    } catch(e) { return 'blocked'; }
+    } catch (e) { return 'blocked'; }
   }
+
   function getAudioFP() {
+    // Render actual audio through an oscillator+compressor and read the output.
+    // Different audio stacks produce slightly different floating-point results.
     try {
-      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const ctx = new (window.OfflineAudioContext || window.webkitOfflineAudioContext)(1, 5000, 44100);
       const osc = ctx.createOscillator();
+      osc.type = 'triangle';
+      osc.frequency.value = 10000;
       const comp = ctx.createDynamicsCompressor();
-      // Read compressor defaults — they differ per engine
-      const vals = [
-        comp.threshold.defaultValue,
-        comp.knee.defaultValue,
-        comp.ratio.defaultValue,
-        comp.attack.defaultValue,
-        comp.release.defaultValue
-      ];
-      ctx.close();
-      let h = 0;
-      vals.forEach(v => { h = ((h << 5) - h + Math.round(v * 1000)) | 0; });
-      return (h >>> 0).toString(16).padStart(8, '0');
-    } catch(e) { return 'blocked'; }
+      comp.threshold.value = -50;
+      comp.knee.value = 40;
+      comp.ratio.value = 12;
+      comp.attack.value = 0;
+      comp.release.value = 0.25;
+      osc.connect(comp);
+      comp.connect(ctx.destination);
+      osc.start(0);
+      // Return a promise but we'll call this sync and show "computing..." then update
+      ctx.startRendering();
+      ctx.oncomplete = function(e) {
+        const buf = e.renderedBuffer.getChannelData(0);
+        // Hash a slice of the output buffer
+        let h = 0;
+        for (let i = 4500; i < 5000; i++) {
+          h = ((h << 5) - h + Math.round(buf[i] * 1e6)) | 0;
+        }
+        const result = (h >>> 0).toString(16).padStart(8, '0');
+        const el = document.getElementById('fp-val-15');
+        if (el) el.textContent = result;
+        // Update the global for hashing
+        if (window._fpAudioResult !== undefined) window._fpAudioResult = result;
+      };
+      window._fpAudioResult = 'computing...';
+      return 'computing...';
+    } catch (e) { return 'blocked (autoplay policy)'; }
   }
+
   function getPlugins() {
-    if (!navigator.plugins || navigator.plugins.length === 0) return 'None detected';
+    if (!navigator.plugins || navigator.plugins.length === 0) return 'None (API blocked or empty)';
     const names = [];
-    for (let i = 0; i < Math.min(navigator.plugins.length, 6); i++) {
+    for (let i = 0; i < navigator.plugins.length; i++) {
       names.push(navigator.plugins[i].name);
     }
-    return names.join(', ') + (navigator.plugins.length > 6 ? ' (+' + (navigator.plugins.length - 6) + ')' : '');
+    // Modern Chromium returns a fixed set of 5 fake PDF plugins for everyone
+    const allPDF = names.every(n => /pdf/i.test(n));
+    if (allPDF && names.length <= 5) {
+      return names.length + ' (generic PDF list — Chrome fakes this since v91)';
+    }
+    const display = names.slice(0, 5).join(', ');
+    return display + (names.length > 5 ? ' (+' + (names.length - 5) + ' more)' : '');
   }
+
   function detectFonts() {
-    // Measure width differences to detect installed fonts
-    const testFonts = ['Arial','Verdana','Times New Roman','Courier New','Georgia','Comic Sans MS','Impact','Trebuchet MS','Palatino','Lucida Console','Helvetica Neue','Futura','Calibri','Segoe UI','Roboto','Menlo','Fira Code'];
+    const testFonts = [
+      'Arial', 'Verdana', 'Times New Roman', 'Courier New', 'Georgia',
+      'Comic Sans MS', 'Impact', 'Trebuchet MS', 'Palatino Linotype',
+      'Lucida Console', 'Helvetica Neue', 'Futura', 'Calibri', 'Segoe UI',
+      'Roboto', 'Menlo', 'Fira Code', 'Consolas', 'Ubuntu', 'Cantarell',
+      'Noto Sans', 'SF Pro Display', 'Apple Color Emoji'
+    ];
     const found = [];
+    // Use two test strings for better accuracy (different char shapes)
+    const testStrings = ['mmmmmmmmmmlli', 'WwMmIiLl10Oo'];
+    const baselines = {};
     const span = document.createElement('span');
-    span.style.cssText = 'position:absolute;left:-9999px;font-size:72px;visibility:hidden;';
-    span.textContent = 'mmmmmmmmmmlli';
+    span.style.cssText = 'position:absolute;left:-9999px;top:-9999px;font-size:72px;visibility:hidden;white-space:nowrap;';
     document.body.appendChild(span);
-    // Baseline width with generic monospace
-    span.style.fontFamily = 'monospace';
-    const baseW = span.offsetWidth;
-    span.style.fontFamily = 'serif';
-    const baseS = span.offsetWidth;
-    testFonts.forEach(f => {
-      span.style.fontFamily = '"' + f + '", monospace';
-      const w1 = span.offsetWidth;
-      span.style.fontFamily = '"' + f + '", serif';
-      const w2 = span.offsetWidth;
-      if (w1 !== baseW || w2 !== baseS) found.push(f);
+
+    // Measure baselines for 3 generic families
+    ['monospace', 'serif', 'sans-serif'].forEach(family => {
+      baselines[family] = {};
+      testStrings.forEach(str => {
+        span.textContent = str;
+        span.style.fontFamily = family;
+        baselines[family][str] = { w: span.offsetWidth, h: span.offsetHeight };
+      });
     });
+
+    testFonts.forEach(f => {
+      let detected = false;
+      ['monospace', 'serif', 'sans-serif'].forEach(fallback => {
+        if (detected) return;
+        testStrings.forEach(str => {
+          if (detected) return;
+          span.textContent = str;
+          span.style.fontFamily = '"' + f + '", ' + fallback;
+          const w = span.offsetWidth;
+          const h = span.offsetHeight;
+          if (w !== baselines[fallback][str].w || h !== baselines[fallback][str].h) {
+            detected = true;
+          }
+        });
+      });
+      if (detected) found.push(f);
+    });
+
     document.body.removeChild(span);
-    return found.length > 0 ? found.slice(0, 5).join(', ') + (found.length > 5 ? ' (+' + (found.length-5) + ')' : '') : 'Default only';
+    if (found.length === 0) return 'Default only';
+    const show = found.slice(0, 6).join(', ');
+    return show + (found.length > 6 ? ' (+' + (found.length - 6) + ' more) [' + found.length + '/' + testFonts.length + ' detected]' : ' [' + found.length + '/' + testFonts.length + ']');
   }
+
+  function getDeviceMemory() {
+    if (navigator.deviceMemory) {
+      const gb = navigator.deviceMemory;
+      // API returns approximate bucket: 0.25, 0.5, 1, 2, 4, 8
+      return '>= ' + gb + ' GB (bucketed estimate, not exact)';
+    }
+    if (performance && performance.memory) {
+      const heapGB = (performance.memory.jsHeapSizeLimit / (1024 * 1024 * 1024)).toFixed(1);
+      return 'JS heap limit: ' + heapGB + ' GB (deviceMemory API blocked)';
+    }
+    return 'API blocked by browser (Firefox/Safari hide this)';
+  }
+
+  function getTouchSupport() {
+    const maxPoints = navigator.maxTouchPoints || 0;
+    const hasTouch = maxPoints > 0;
+    const hasFinePointer = window.matchMedia('(pointer: fine)').matches;
+    const hasCoarsePointer = window.matchMedia('(pointer: coarse)').matches;
+    const canHover = window.matchMedia('(hover: hover)').matches;
+    const anyCoarse = window.matchMedia('(any-pointer: coarse)').matches;
+
+    if (!hasTouch && !anyCoarse) return 'No touch (mouse/trackpad only)';
+    if (hasTouch && hasFinePointer && canHover)
+      return 'Hybrid — touch + mouse (' + maxPoints + ' pts, hover capable)';
+    if (hasTouch && hasCoarsePointer && !canHover)
+      return 'Touch-only (' + maxPoints + ' pts, no hover)';
+    if (hasTouch && hasFinePointer)
+      return 'Touch + precision pointer (' + maxPoints + ' pts)';
+    return maxPoints + ' touch points' + (hasFinePointer ? ' + fine pointer' : '') + (canHover ? ', hover capable' : '');
+  }
+
   function detectAdBlocker() {
+    // Method 1: bait div with ad-like class names
     const bait = document.createElement('div');
-    bait.className = 'adsbox ad-banner';
-    bait.style.cssText = 'position:absolute;left:-9999px;width:1px;height:1px;';
+    bait.className = 'adsbox ad-banner ad-wrapper';
+    bait.style.cssText = 'position:absolute;left:-9999px;width:1px;height:1px;pointer-events:none;';
     bait.innerHTML = '&nbsp;';
     document.body.appendChild(bait);
-    const blocked = bait.offsetHeight === 0 || bait.clientHeight === 0 || getComputedStyle(bait).display === 'none';
+    const divBlocked = bait.offsetHeight === 0 || bait.clientHeight === 0 ||
+                       getComputedStyle(bait).display === 'none' || getComputedStyle(bait).visibility === 'hidden';
     document.body.removeChild(bait);
-    return blocked ? 'Likely active' : 'Not detected';
+
+    // Method 2: check if a script-like ad element gets blocked
+    const bait2 = document.createElement('div');
+    bait2.id = 'ad-test-banner-12345';
+    bait2.style.cssText = 'position:absolute;left:-9999px;width:1px;height:1px;';
+    bait2.innerHTML = '&nbsp;';
+    document.body.appendChild(bait2);
+    const idBlocked = bait2.offsetHeight === 0 || getComputedStyle(bait2).display === 'none';
+    document.body.removeChild(bait2);
+
+    if (divBlocked || idBlocked) return 'Likely active (bait element hidden)';
+    return 'Not detected (may still be active — some blockers only block network requests)';
   }
+
   function getMathFP() {
-    // Some JS math implementations differ across engines
-    const vals = [
-      Math.tan(-1e300),
-      Math.sinh(1),
-      Math.cosh(10),
-      Math.atanh(0.5),
-      Math.expm1(1)
-    ];
+    // JS engines produce subtly different floating-point results for edge-case math
+    const tests = {
+      'tan(-1e300)': Math.tan(-1e300),
+      'sinh(1)': Math.sinh(1),
+      'atanh(0.5)': Math.atanh(0.5),
+      'expm1(1)': Math.expm1(1),
+      'log1p(1e-15)': Math.log1p(1e-15),
+      'cbrt(2)': Math.cbrt(2)
+    };
+    // Hash all values together
     let h = 0;
-    vals.forEach(v => { h = ((h << 5) - h + Math.round(v * 1e10)) | 0; });
+    Object.values(tests).forEach(v => {
+      // Use full precision — this is where engines differ
+      const s = v.toString();
+      for (let i = 0; i < s.length; i++) {
+        h = ((h << 5) - h + s.charCodeAt(i)) | 0;
+      }
+    });
     return (h >>> 0).toString(16).padStart(8, '0');
   }
 
-  // SHA-like simple hash for display (not crypto, just for demo)
-  async function simpleHash(str) {
+  function getTimezoneString() {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const offset = new Date().getTimezoneOffset();
+    // Format offset correctly: +5:30, -8:00, etc.
+    const sign = offset <= 0 ? '+' : '-';
+    const absMin = Math.abs(offset);
+    const hrs = Math.floor(absMin / 60);
+    const mins = absMin % 60;
+    const formatted = 'UTC' + sign + hrs + (mins > 0 ? ':' + String(mins).padStart(2, '0') : '');
+    return tz + ' (' + formatted + ')';
+  }
+
+  function getDNT() {
+    // Check multiple APIs — browsers implement this differently
+    const dnt = navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack;
+    // Also check Global Privacy Control (newer standard)
+    const gpc = navigator.globalPrivacyControl;
+    let parts = [];
+    if (dnt === '1') parts.push('DNT: enabled');
+    else if (dnt === '0') parts.push('DNT: disabled');
+    else parts.push('DNT: unset');
+    if (gpc) parts.push('GPC: enabled');
+    if (parts.includes('DNT: enabled') || gpc)
+      parts.push('(irony: makes you more unique)');
+    return parts.join(', ');
+  }
+
+  // SHA-256 hash via Web Crypto API
+  async function sha256(str) {
     if (window.crypto && crypto.subtle) {
       const buf = new TextEncoder().encode(str);
       const hashBuf = await crypto.subtle.digest('SHA-256', buf);
-      return Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2,'0')).join('');
+      return Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2, '0')).join('');
     }
-    // Fallback
-    let h = 0;
-    for (let i = 0; i < str.length; i++) h = ((h << 5) - h + str.charCodeAt(i)) | 0;
+    // Fallback: simple djb2
+    let h = 5381;
+    for (let i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) | 0;
     return (h >>> 0).toString(16).padStart(8, '0');
   }
 
@@ -1956,26 +2155,26 @@ permalink: /privacy
       { label: 'Screen Resolution',  val: screen.width + 'x' + screen.height + ' @' + window.devicePixelRatio + 'x DPR' },
       { label: 'OS / Platform',      val: getOS() },
       { label: 'Languages',          val: (navigator.languages || [navigator.language]).join(', ') },
-      { label: 'Timezone & Offset',  val: Intl.DateTimeFormat().resolvedOptions().timeZone + ' (UTC' + (new Date().getTimezoneOffset() > 0 ? '-' : '+') + Math.abs(new Date().getTimezoneOffset()/60) + ')' },
+      { label: 'Timezone & Offset',  val: getTimezoneString() },
       { label: 'CPU Cores',          val: (navigator.hardwareConcurrency || '?') + ' logical cores' },
       { label: 'GPU / Renderer',     val: gpu.renderer },
       { label: 'Canvas Fingerprint', val: getCanvasHash() },
-      { label: 'Device Memory',      val: navigator.deviceMemory ? navigator.deviceMemory + ' GB' : 'Hidden by browser' },
-      { label: 'Touch Support',      val: ('ontouchstart' in window) ? 'Yes — ' + navigator.maxTouchPoints + ' touch points' : 'No' },
-      { label: 'Color Depth',        val: screen.colorDepth + '-bit, ' + screen.availWidth + 'x' + screen.availHeight + ' avail' },
-      { label: 'Do Not Track',       val: navigator.doNotTrack === '1' ? 'Enabled (ironic — makes you more unique)' : 'Not set' },
-      { label: 'Cookies Enabled',    val: navigator.cookieEnabled ? 'Yes' : 'No' },
-      { label: 'Connection Type',    val: conn ? (conn.effectiveType || 'unknown') + ' (~' + (conn.downlink || '?') + ' Mbps)' : 'API unavailable' },
-      { label: 'Viewport Size',      val: window.innerWidth + 'x' + window.innerHeight + ' (CSS px)' },
-      { label: 'Audio Context',      val: getAudioFP() },
+      { label: 'Device Memory',      val: getDeviceMemory() },
+      { label: 'Touch Support',      val: getTouchSupport() },
+      { label: 'Color Depth',        val: screen.colorDepth + '-bit color, ' + screen.availWidth + 'x' + screen.availHeight + ' usable area' },
+      { label: 'Do Not Track / GPC', val: getDNT() },
+      { label: 'Cookies Enabled',    val: navigator.cookieEnabled ? 'Yes' : 'Blocked' },
+      { label: 'Connection Type',    val: conn ? (conn.effectiveType || '?') + (conn.downlink ? ' (~' + conn.downlink + ' Mbps)' : '') + (conn.rtt ? ', ' + conn.rtt + 'ms RTT' : '') : 'API blocked (Firefox/Safari)' },
+      { label: 'Viewport Size',      val: window.innerWidth + 'x' + window.innerHeight + ' CSS px (outer: ' + window.outerWidth + 'x' + window.outerHeight + ')' },
+      { label: 'Audio Fingerprint',  val: getAudioFP() },
       { label: 'WebGL Vendor',       val: gpu.vendor },
       { label: 'Installed Plugins',  val: getPlugins() },
       { label: 'Font Detection',     val: detectFonts() },
       { label: 'Ad Blocker',         val: detectAdBlocker() },
-      { label: 'Math Constants',     val: getMathFP() }
+      { label: 'Math Engine',        val: getMathFP() }
     ];
 
-    // Reveal each item with a stagger
+    // Reveal each item with stagger
     data.forEach((d, i) => {
       setTimeout(() => {
         const item = document.getElementById('fp-' + i);
@@ -1984,22 +2183,27 @@ permalink: /privacy
       }, i * 180);
     });
 
-    // Build a real SHA-256 hash from all collected data
-    const totalDelay = data.length * 180 + 300;
+    // Build real SHA-256 hash from all collected data
+    const totalDelay = data.length * 180 + 600;
     setTimeout(async () => {
+      // Wait for audio fingerprint to resolve
+      const audioVal = window._fpAudioResult || 'blocked';
+      data[15].val = audioVal;
+      const audioEl = document.getElementById('fp-val-15');
+      if (audioEl && audioVal !== 'computing...') audioEl.textContent = audioVal;
+
       const raw = data.map(d => d.val).join('|');
-      const hash = await simpleHash(raw);
+      const hash = await sha256(raw);
       const fp = document.getElementById('fp-hash');
-      fp.textContent = 'Your unique fingerprint: ' + hash.substring(0, 48);
+      fp.textContent = 'SHA-256 fingerprint: ' + hash.substring(0, 48) + '...';
       fp.classList.add('show');
 
       setTimeout(() => {
-        // Count how many bits of entropy
-        const unique = data.filter(d => d.val && d.val !== '—' && d.val !== 'N/A').length;
+        const usable = data.filter(d => d.val && d.val !== '—' && d.val !== 'N/A' && d.val !== 'blocked' && !d.val.startsWith('API blocked')).length;
         const u = document.getElementById('fp-unique');
-        u.innerHTML = '<strong style="color:var(--orange)">' + unique + ' data points</strong> collected from your browser alone.<br>' +
-          'Combined, this fingerprint is likely <strong style="color:var(--orange)">unique to 1 in ~300,000+ users</strong>.<br>' +
-          'This works in incognito mode, without cookies, and even after clearing your browsing data.';
+        u.innerHTML = '<strong style="color:var(--orange)">' + usable + ' of ' + data.length + ' signals</strong> successfully collected from your browser.<br>' +
+          'Combined, this fingerprint is likely <strong style="color:var(--orange)">unique to you</strong> among hundreds of thousands of users.<br>' +
+          'This works in incognito mode, without cookies, and survives clearing browsing data.';
         u.classList.add('show');
       }, 500);
     }, totalDelay);
