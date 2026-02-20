@@ -1,7 +1,6 @@
 ---
 layout: default
 permalink: /hacks/Bossfight
-title: Bossfight
 description: A 2D Platformer Boss Fight Game
 ---
 
@@ -201,15 +200,37 @@ description: A 2D Platformer Boss Fight Game
   }
 
   /* Game Over / Victory */
+  @keyframes bannerFadeIn   { from { opacity:0 } to { opacity:1 } }
+  @keyframes titleSlam      { from { transform:scale(2.2) translateY(-30px); opacity:0 } to { transform:scale(1) translateY(0); opacity:1 } }
+  @keyframes titleDrift     { from { opacity:0; transform:translateY(-18px) } to { opacity:1; transform:translateY(0) } }
+  @keyframes victoryGlow    { 0%,100% { text-shadow:0 0 30px #ffaa0099 } 50% { text-shadow:0 0 70px #ffcc00cc, 0 0 120px #ffaa0044 } }
+  @keyframes defeatPulse    { 0%,100% { text-shadow:0 0 25px #ff000099 } 50% { text-shadow:0 0 60px #ff3300bb, 0 0 100px #ff000033 } }
+  @keyframes separatorGrow  { from { width:0; opacity:0 } to { width:320px; opacity:1 } }
+  @keyframes textSlideUp    { from { opacity:0; transform:translateY(14px) } to { opacity:1; transform:translateY(0) } }
+  @keyframes btnAppear      { from { opacity:0; transform:translateY(18px) } to { opacity:1; transform:translateY(0) } }
+
   #game-end {
     position: absolute; top: 0; left: 0; width: 100%; height: 100%;
     display: none; flex-direction: column; align-items: center; justify-content: center;
-    background: rgba(0,0,0,0.85); z-index: 200;
+    z-index: 200; animation: bannerFadeIn 0.5s ease forwards;
   }
+  #game-end.victory { background: radial-gradient(ellipse at 50% 40%, rgba(50,30,0,0.96) 0%, rgba(0,0,0,0.97) 65%); }
+  #game-end.defeat  { background: radial-gradient(ellipse at 50% 40%, rgba(35,0,0,0.97) 0%, rgba(0,0,0,0.98) 65%); }
   #game-end h2 {
-    font-size: 56px; font-family: 'Georgia', serif; margin-bottom: 15px; letter-spacing: 5px;
+    font-size: 72px; font-family: 'Georgia', serif; margin-bottom: 8px; letter-spacing: 8px;
   }
-  #game-end .result-text { color: #999; font-size: 16px; margin-bottom: 15px; }
+  #game-end.victory h2 { animation: titleSlam 0.55s cubic-bezier(0.175,0.885,0.32,1.275) forwards, victoryGlow 2.2s 0.6s ease-in-out infinite; }
+  #game-end.defeat  h2 { animation: titleDrift 0.7s ease forwards, defeatPulse 2.5s 0.8s ease-in-out infinite; }
+  #end-separator {
+    height: 2px; background: currentColor; margin: 10px auto 16px;
+    animation: separatorGrow 0.5s 0.4s ease forwards; width: 0; opacity: 0;
+  }
+  #game-end.victory #end-separator { color: #ffcc00; }
+  #game-end.defeat  #end-separator { color: #cc2200; }
+  #game-end .result-text { color: #999; font-size: 16px; margin-bottom: 15px; animation: textSlideUp 0.4s 0.55s ease both; opacity:0; }
+  #game-end .menu-btn { animation: btnAppear 0.4s ease both; opacity:0; }
+  #game-end .menu-btn:nth-of-type(1) { animation-delay: 0.7s; }
+  #game-end .menu-btn:nth-of-type(2) { animation-delay: 0.85s; }
 
   /* Medal earned on victory */
   #medal-display {
@@ -323,6 +344,48 @@ description: A 2D Platformer Boss Fight Game
   }
   #reset-btn:active { transform: scale(0.95); }
 
+  /* Hacks Menu */
+  #hacks-overlay {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    display: none; flex-direction: column; align-items: center; justify-content: center;
+    background: rgba(0,8,0,0.97); z-index: 500; overflow-y: auto; padding: 20px;
+  }
+  #hacks-overlay h2 {
+    font-size: 32px; color: #00ff66; font-family: 'Georgia', serif;
+    letter-spacing: 5px; text-shadow: 0 0 20px #00ff6688; margin-bottom: 6px;
+  }
+  #hacks-overlay .hacks-warning {
+    color: #ff4444; font-size: 12px; letter-spacing: 2px; margin-bottom: 20px;
+    text-align: center;
+  }
+  .hacks-section {
+    width: 420px; max-width: 90vw; margin-bottom: 16px;
+    border: 1px solid #003322; padding: 14px 18px;
+  }
+  .hacks-section h3 {
+    color: #00cc55; font-size: 13px; letter-spacing: 3px;
+    font-family: 'Georgia', serif; margin-bottom: 12px;
+  }
+  .hack-row {
+    display: flex; align-items: center; margin: 8px 0; gap: 10px;
+  }
+  .hack-row label {
+    color: #aaa; font-size: 12px; width: 90px; flex-shrink: 0; letter-spacing: 1px;
+  }
+  .hack-row input[type=range] {
+    flex: 1; accent-color: #00ff66; cursor: pointer;
+  }
+  .hack-row .hack-val {
+    color: #00ff66; font-size: 12px; width: 36px; text-align: right;
+    font-family: monospace;
+  }
+  .hacks-toggle-row {
+    display: flex; align-items: center; gap: 14px; margin-bottom: 16px;
+  }
+  .hacks-toggle-row label { color: #aaaaaa; font-size: 13px; letter-spacing: 2px; }
+  #hacks-active-toggle { width: 20px; height: 20px; accent-color: #00ff66; cursor: pointer; }
+  #hacks-active-label { color: #ff4444; font-size: 13px; font-weight: bold; }
+
   /* Screen transition overlay */
   #transition-overlay {
     position: absolute; top: 0; left: 0; width: 100%; height: 100%;
@@ -359,13 +422,38 @@ description: A 2D Platformer Boss Fight Game
   <div class="overlay">
     <!-- Title Screen -->
     <div id="title-screen">
-      <h1>BOSS FIGHT</h1>
+      <h1 style="cursor:default;user-select:none">BOSS FIGHT</h1>
       <div class="subtitle">ARENA OF LEGENDS</div>
       <div id="rebirth-badge"></div>
       <button class="menu-btn" onclick="startGame()">ENTER ARENA</button>
       <button id="medals-btn" onclick="showMedals()">MEDALS</button>
       <button id="rebirth-btn" onclick="showRebirthConfirm()">REBIRTH</button>
       <button id="reset-btn" onclick="showResetConfirm()">RESET GAME</button>
+    </div>
+
+    <!-- Hacks Menu -->
+    <div id="hacks-overlay">
+      <h2>&#9888; HACKS MENU</h2>
+      <div class="hacks-warning">MEDALS DISABLED WHILE HACKS ARE ACTIVE</div>
+      <div class="hacks-toggle-row">
+        <input type="checkbox" id="hacks-active-toggle" onchange="toggleHacks(this.checked)">
+        <label for="hacks-active-toggle">ENABLE HACKS</label>
+        <span id="hacks-active-label" style="display:none">&#9888; ACTIVE</span>
+      </div>
+      <div class="hacks-section">
+        <h3>PLAYER</h3>
+        <div class="hack-row"><label>HP</label><input type="range" min="0.25" max="10" step="0.25" value="1" oninput="setHack('playerHp',this.value)"><span class="hack-val" id="hv-playerHp">1×</span></div>
+        <div class="hack-row"><label>DAMAGE</label><input type="range" min="0.25" max="10" step="0.25" value="1" oninput="setHack('playerDmg',this.value)"><span class="hack-val" id="hv-playerDmg">1×</span></div>
+        <div class="hack-row"><label>SPEED</label><input type="range" min="0.25" max="5" step="0.25" value="1" oninput="setHack('playerSpd',this.value)"><span class="hack-val" id="hv-playerSpd">1×</span></div>
+        <div class="hack-row"><label>JUMP</label><input type="range" min="0.5" max="3" step="0.1" value="1" oninput="setHack('playerJump',this.value)"><span class="hack-val" id="hv-playerJump">1×</span></div>
+      </div>
+      <div class="hacks-section">
+        <h3>BOSS</h3>
+        <div class="hack-row"><label>HP</label><input type="range" min="0.1" max="5" step="0.1" value="1" oninput="setHack('bossHp',this.value)"><span class="hack-val" id="hv-bossHp">1×</span></div>
+        <div class="hack-row"><label>DAMAGE</label><input type="range" min="0.1" max="5" step="0.1" value="1" oninput="setHack('bossDmg',this.value)"><span class="hack-val" id="hv-bossDmg">1×</span></div>
+        <div class="hack-row"><label>SPEED</label><input type="range" min="0.1" max="4" step="0.1" value="1" oninput="setHack('bossSpd',this.value)"><span class="hack-val" id="hv-bossSpd">1×</span></div>
+      </div>
+      <button class="back-btn" onclick="hideHacksMenu()">&#8592; Close</button>
     </div>
 
     <!-- Reset Confirmation -->
@@ -497,6 +585,7 @@ description: A 2D Platformer Boss Fight Game
     <!-- Game End -->
     <div id="game-end">
       <h2 id="end-title">VICTORY</h2>
+      <div id="end-separator"></div>
       <div class="result-text" id="end-text">You have defeated the boss!</div>
       <div id="medal-display"></div>
       <button class="menu-btn" onclick="goBack('title')">RETURN TO MENU</button>
@@ -536,6 +625,9 @@ let gameTime = 0;
 let rebirthAnimTimer = 0, rebirthNewCount = 0;
 let resetAnimTimer = 0;
 let fightIntroTimer = 0;
+let deathAnimTimer = 0;
+let hacksActive = false;
+const hackMults = { playerHp: 1, playerDmg: 1, playerSpd: 1, playerJump: 1, bossHp: 1, bossDmg: 1, bossSpd: 1 };
 let keys = {};
 let mouse = { x: 0, y: 0, down: false, clicked: false };
 
@@ -714,6 +806,24 @@ function hideResetConfirm() {
     document.getElementById('title-screen').style.display = 'flex';
   });
 }
+
+// ==================== HACKS MENU ====================
+function showHacksMenu() {
+  document.getElementById('title-screen').style.display = 'none';
+  document.getElementById('hacks-overlay').style.display = 'flex';
+}
+function hideHacksMenu() {
+  document.getElementById('hacks-overlay').style.display = 'none';
+  document.getElementById('title-screen').style.display = 'flex';
+}
+function toggleHacks(on) {
+  hacksActive = on;
+  document.getElementById('hacks-active-label').style.display = on ? 'inline' : 'none';
+}
+function setHack(key, val) {
+  hackMults[key] = parseFloat(val);
+  document.getElementById('hv-' + key).textContent = parseFloat(val).toFixed(2).replace(/\.00$/, '') + '×';
+}
 function confirmReset() {
   localStorage.removeItem('bossfight_progress');
   localStorage.removeItem('bossfight_rebirth');
@@ -750,18 +860,20 @@ function showVictoryMedals() {
   const display = document.getElementById('medal-display');
   if (gameState !== 'victory') { display.innerHTML = ''; return; }
 
-  saveProgress(selectedClass, selectedBoss);
-
   let html = '';
-  const m = MEDALS[selectedClass][selectedBoss];
-  html += '<div class="medal-earned">' + m.icon + ' ' + m.name + '</div>';
-
-  if (hasClassMaster(selectedClass)) {
-    const mm = MEDALS[selectedClass].master;
-    html += '<br><div class="medal-earned master">' + mm.icon + ' ' + mm.name + '</div>';
-  }
-  if (hasAscended()) {
-    html += '<br><div class="medal-earned ascended">' + MEDALS.ascended.icon + ' ' + MEDALS.ascended.name + '</div>';
+  if (hacksActive) {
+    html += '<div style="color:#00ff66;font-size:13px;letter-spacing:2px">&#9888; HACKS ACTIVE — NO MEDALS EARNED</div>';
+  } else {
+    saveProgress(selectedClass, selectedBoss);
+    const m = MEDALS[selectedClass][selectedBoss];
+    html += '<div class="medal-earned">' + m.icon + ' ' + m.name + '</div>';
+    if (hasClassMaster(selectedClass)) {
+      const mm = MEDALS[selectedClass].master;
+      html += '<br><div class="medal-earned master">' + mm.icon + ' ' + mm.name + '</div>';
+    }
+    if (hasAscended()) {
+      html += '<br><div class="medal-earned ascended">' + MEDALS.ascended.icon + ' ' + MEDALS.ascended.name + '</div>';
+    }
   }
 
   display.innerHTML = html;
@@ -772,6 +884,7 @@ function showVictoryMedals() {
 window.addEventListener('keydown', e => {
   keys[e.key.toLowerCase()] = true;
   if (e.key === ' ' && gameState === 'playing') e.preventDefault();
+  if (e.key === '`' && gameState === 'title') showHacksMenu();
 });
 window.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
 container.addEventListener('mousemove', e => {
@@ -935,14 +1048,15 @@ function initFight() {
 
   generateMap(selectedBoss);
 
-  const scaledMaxHp = Math.floor(cDef.maxHp * rb.playerHpMult);
-  const scaledDmg = Math.floor(cDef.attackDmg * rb.playerDmgMult);
+  const hm = hacksActive ? hackMults : { playerHp: 1, playerDmg: 1, playerSpd: 1, playerJump: 1, bossHp: 1, bossDmg: 1, bossSpd: 1 };
+  const scaledMaxHp = Math.floor(cDef.maxHp * rb.playerHpMult * hm.playerHp);
+  const scaledDmg = Math.floor(cDef.attackDmg * rb.playerDmgMult * hm.playerDmg);
 
   player = {
     x: 150, y: H - 200, vx: 0, vy: 0,
     w: cDef.width, h: cDef.height,
     hp: scaledMaxHp, maxHp: scaledMaxHp,
-    speed: cDef.speed, jumpForce: cDef.jumpForce,
+    speed: cDef.speed * hm.playerSpd, jumpForce: cDef.jumpForce * hm.playerJump,
     attackRange: cDef.attackRange, attackDmg: scaledDmg,
     attackCooldown: cDef.attackCooldown, attackTimer: 0,
     color: cDef.color, grounded: false,
@@ -969,14 +1083,14 @@ function initFight() {
     shieldFlash: 0,
   };
 
-  const bossMaxHp = Math.floor(bDef.maxHp * rb.bossHpMult);
-  const bossContact = Math.floor(bDef.contactDmg * rb.bossDmgMult);
+  const bossMaxHp = Math.floor(bDef.maxHp * rb.bossHpMult * hm.bossHp);
+  const bossContact = Math.floor(bDef.contactDmg * rb.bossDmgMult * hm.bossDmg);
 
   boss = {
     x: W - 250, y: H - 200, vx: 0, vy: 0,
     w: bDef.width, h: bDef.height,
     hp: bossMaxHp, maxHp: bossMaxHp,
-    speed: bDef.speed, color: bDef.color,
+    speed: bDef.speed * hm.bossSpd, color: bDef.color,
     secondaryColor: bDef.secondaryColor,
     grounded: false, facing: -1,
     attackTimer: bDef.attackCooldown,
@@ -1643,8 +1757,9 @@ function damagePlayer(dmg) {
       screenShake(12, 22);
       return;
     }
-    gameState = 'gameOver';
-    showGameEnd(false);
+    updateHUD();
+    gameState = 'playerDeath';
+    deathAnimTimer = 0;
   }
 }
 
@@ -1668,10 +1783,10 @@ function damageBoss(dmg, isMomentum) {
     life: 52, maxLife: 52
   });
   if (boss.hp <= 0) {
-    gameState = 'victory';
-    spawnParticles(boss.x + boss.w/2, boss.y + boss.h/2, boss.secondaryColor, 40);
+    updateHUD();
+    gameState = 'bossDeath';
+    deathAnimTimer = 0;
     screenShake(15, 25);
-    showGameEnd(true);
   }
 }
 
@@ -1688,19 +1803,22 @@ function showGameEnd(won) {
   const el = document.getElementById('game-end');
   const title = document.getElementById('end-title');
   const text = document.getElementById('end-text');
+  // Force animation replay by removing then re-adding display
+  el.style.display = 'none';
+  el.className = won ? 'victory' : 'defeat';
   if (won) {
     title.textContent = 'VICTORY';
     title.style.color = '#ffcc00';
-    title.style.textShadow = '0 0 30px #ffaa0088';
     text.textContent = 'You have defeated ' + boss.name + '!';
     showVictoryMedals();
   } else {
     title.textContent = 'DEFEATED';
-    title.style.color = '#ff3333';
-    title.style.textShadow = '0 0 30px #ff000088';
+    title.style.color = '#cc2200';
     text.textContent = boss.name + ' has slain you...';
     document.getElementById('medal-display').innerHTML = '';
   }
+  // Trigger reflow so animations restart
+  void el.offsetWidth;
   el.style.display = 'flex';
 }
 
@@ -2364,6 +2482,176 @@ function drawEffects() {
   }
 }
 
+// ==================== DEATH ANIMATIONS ====================
+function drawBossDeathAnim() {
+  const t = deathAnimTimer;
+  const bx = boss.x + boss.w / 2;
+  const by = boss.y + boss.h / 2;
+
+  if (selectedBoss === 'devil') {
+    // ---- DEVIL: burns and collapses into hellfire ----
+    const dur = 150;
+    // Continuous fire particles
+    if (t < 100 && t % 2 === 0) {
+      for (let i = 0; i < 6; i++) {
+        particles.push({ x: bx + (Math.random()-0.5)*boss.w, y: by + (Math.random()-0.5)*boss.h,
+          vx: (Math.random()-0.5)*5, vy: -2 - Math.random()*6,
+          life: 30+Math.random()*30, maxLife: 60, size: 3+Math.random()*8,
+          color: ['#ff2200','#ff6600','#ffaa00','#ffff00','#ffffff'][Math.floor(Math.random()*5)] });
+      }
+    }
+    // Boss: flicker and sink
+    const sinkY = Math.min(60, t * 0.55);
+    const flicker = t > 20 && t % 4 < 2 ? 0.3 : 1;
+    const fade = t > 80 ? Math.max(0, 1 - (t - 80) / 50) : 1;
+    ctx.save();
+    ctx.globalAlpha = flicker * fade;
+    ctx.shadowColor = '#ff4400'; ctx.shadowBlur = 30;
+    ctx.fillStyle = boss.color;
+    ctx.fillRect(boss.x, boss.y + sinkY, boss.w, boss.h);
+    ctx.restore();
+    // Red-orange screen overlay
+    if (t > 40) {
+      const oa = Math.min(0.55, (t - 40) / 60) * (t > 110 ? Math.max(0, 1 - (t-110)/35) : 1);
+      ctx.fillStyle = `rgba(220,60,0,${oa})`;
+      ctx.fillRect(0, 0, W, H);
+    }
+    // Expanding fire ring at t=5
+    if (t > 5 && t < 60) {
+      ctx.save(); ctx.globalAlpha = Math.max(0, 1 - t/60);
+      ctx.strokeStyle = '#ff6600'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(bx, by, (t-5)*4, 0, Math.PI*2); ctx.stroke();
+      ctx.restore();
+    }
+    if (t === dur - 5) { gameState = 'victory'; showGameEnd(true); }
+
+  } else if (selectedBoss === 'warlord') {
+    // ---- WARLORD: staggers, armour flies off, collapses ----
+    const dur = 160;
+    // Armour shard particles
+    if (t < 60 && t % 3 === 0) {
+      for (let i = 0; i < 4; i++) {
+        particles.push({ x: bx + (Math.random()-0.5)*boss.w*1.2, y: by + (Math.random()-0.5)*boss.h,
+          vx: (Math.random()-0.5)*9, vy: -3 - Math.random()*5,
+          life: 40+Math.random()*40, maxLife: 80, size: 4+Math.random()*7,
+          color: ['#888888','#aaaaaa','#ffcc00','#cccccc'][Math.floor(Math.random()*4)] });
+      }
+    }
+    // Dust at base while falling
+    if (t > 50 && t % 4 === 0) {
+      particles.push({ x: bx + (Math.random()-0.5)*boss.w*2, y: boss.y + boss.h,
+        vx: (Math.random()-0.5)*4, vy: -1 - Math.random()*2,
+        life: 35+Math.random()*25, maxLife: 60, size: 6+Math.random()*10, color: '#887755' });
+    }
+    // Boss: rotate and sink
+    const fallAngle = Math.min(Math.PI * 0.5, t * 0.013);
+    const sinkY = Math.min(boss.h * 0.8, Math.max(0, (t - 40) * 0.9));
+    const fade = t > 100 ? Math.max(0, 1 - (t - 100) / 50) : 1;
+    ctx.save();
+    ctx.globalAlpha = fade;
+    ctx.translate(boss.x + boss.w, boss.y + boss.h + sinkY);
+    ctx.rotate(fallAngle);
+    ctx.shadowColor = '#ffcc00'; ctx.shadowBlur = 15;
+    ctx.fillStyle = boss.color;
+    ctx.fillRect(-boss.w, -boss.h, boss.w, boss.h);
+    ctx.restore();
+    // Shockwave ring at impact (t~55)
+    if (t > 55 && t < 100) {
+      ctx.save(); ctx.globalAlpha = Math.max(0, 1 - (t-55)/45) * 0.7;
+      ctx.strokeStyle = '#ffcc00'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(bx, boss.y + boss.h, (t-55)*5, 0, Math.PI*2); ctx.stroke();
+      ctx.restore();
+    }
+    // Grey dust overlay
+    if (t > 55) {
+      ctx.fillStyle = `rgba(100,80,50,${Math.min(0.4, (t-55)/40) * (t>120 ? Math.max(0,1-(t-120)/35) : 1)})`;
+      ctx.fillRect(0, 0, W, H);
+    }
+    if (t === dur - 5) { gameState = 'victory'; showGameEnd(true); }
+
+  } else if (selectedBoss === 'shadow') {
+    // ---- SHADOW KNIGHT: dissolves into darkness ----
+    const dur = 170;
+    // Shadow particles spiral outward
+    if (t < 90 && t % 2 === 0) {
+      for (let i = 0; i < 5; i++) {
+        const ang = Math.random() * Math.PI * 2;
+        const spd = 1.5 + Math.random() * 7;
+        particles.push({ x: bx, y: by,
+          vx: Math.cos(ang)*spd, vy: Math.sin(ang)*spd,
+          life: 40+Math.random()*50, maxLife: 90, size: 3+Math.random()*9,
+          color: ['#330055','#6600aa','#aa44ff','#220033','#000000'][Math.floor(Math.random()*5)] });
+      }
+    }
+    // Boss: rapid blink then dissolve
+    const blink = t < 40 ? (t % 6 < 3 ? 1 : 0) : 0;
+    const dissolve = t >= 40 ? Math.max(0, 1 - (t - 40) / 55) : blink;
+    ctx.save();
+    ctx.globalAlpha = dissolve;
+    ctx.shadowColor = '#aa00ff'; ctx.shadowBlur = 25;
+    ctx.fillStyle = boss.color;
+    ctx.fillRect(boss.x, boss.y, boss.w, boss.h);
+    ctx.restore();
+    // Dark vignette that expands then recedes
+    const vigA = t < 80 ? Math.min(0.75, t/80*0.75) : Math.max(0, 0.75 - (t-80)/60*0.75);
+    ctx.save();
+    const vig = ctx.createRadialGradient(bx, by, 20, bx, by, W*0.8);
+    vig.addColorStop(0, 'transparent');
+    vig.addColorStop(1, `rgba(0,0,0,${vigA})`);
+    ctx.fillStyle = vig; ctx.fillRect(0, 0, W, H);
+    ctx.restore();
+    // Purple flash at dissolve start
+    if (t > 38 && t < 55) {
+      ctx.fillStyle = `rgba(100,0,180,${Math.max(0, 1-(t-38)/17)*0.55})`;
+      ctx.fillRect(0, 0, W, H);
+    }
+    if (t === dur - 5) { gameState = 'victory'; showGameEnd(true); }
+  }
+}
+
+function drawPlayerDeathAnim() {
+  const t = deathAnimTimer;
+  const px = player.x + player.w / 2;
+  const py = player.y + player.h / 2;
+  const dur = 110;
+
+  // Scatter fragments
+  if (t === 1) {
+    for (let i = 0; i < 28; i++) {
+      const ang = Math.random() * Math.PI * 2;
+      const spd = 2 + Math.random() * 8;
+      particles.push({ x: px, y: py,
+        vx: Math.cos(ang)*spd, vy: Math.sin(ang)*spd - 3,
+        life: 40+Math.random()*50, maxLife: 90, size: 3+Math.random()*8,
+        color: [player.color, '#ffffff', '#ff4444', '#ffaaaa'][Math.floor(Math.random()*4)] });
+    }
+  }
+  // Player: flash then fade
+  const fade = t > 20 ? Math.max(0, 1 - (t - 20) / 35) : 1;
+  const flash = t < 8 ? (t % 2 === 0 ? 1 : 0) : fade;
+  ctx.save();
+  ctx.globalAlpha = flash;
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(player.x - 4, player.y - 4, player.w + 8, player.h + 8);
+  ctx.restore();
+
+  // Red vignette closes in
+  const vigStr = Math.min(0.88, t / 65);
+  ctx.save();
+  const vig = ctx.createRadialGradient(px, py, 10, W/2, H/2, W*0.7);
+  vig.addColorStop(0, 'transparent');
+  vig.addColorStop(1, `rgba(160,0,0,${vigStr})`);
+  ctx.fillStyle = vig; ctx.fillRect(0, 0, W, H);
+  ctx.restore();
+
+  // Final fade to black
+  if (t > 70) {
+    ctx.fillStyle = `rgba(0,0,0,${Math.min(1, (t-70)/30)})`;
+    ctx.fillRect(0, 0, W, H);
+  }
+  if (t === dur - 5) { gameState = 'gameOver'; showGameEnd(false); }
+}
+
 function drawParticles() {
   for (const p of particles) {
     ctx.save();
@@ -2439,6 +2727,12 @@ function gameLoop() {
     updateEffects();
     updateParticles();
     if (shakeTimer > 0) shakeTimer--;
+  } else if (gameState === 'bossDeath' || gameState === 'playerDeath') {
+    deathAnimTimer++;
+    gameTime++;
+    updateParticles();
+    updateEffects();
+    if (shakeTimer > 0) shakeTimer--;
   } else {
     updateParticles();
   }
@@ -2453,15 +2747,26 @@ function gameLoop() {
   ctx.fillStyle = '#000';
   ctx.fillRect(0, 0, W, H);
 
-  if (gameState === 'playing' || gameState === 'gameOver' || gameState === 'victory') {
+  if (gameState === 'playing' || gameState === 'gameOver' || gameState === 'victory' || gameState === 'bossDeath' || gameState === 'playerDeath') {
     drawBackground();
     drawPlatforms();
     drawEffects();
-    drawPlayer();
-    drawBoss();
+    if (gameState !== 'bossDeath') drawPlayer();
+    if (gameState !== 'playerDeath') drawBoss();
+    if (gameState === 'bossDeath') drawBossDeathAnim();
+    if (gameState === 'playerDeath') drawPlayerDeathAnim();
     drawProjectiles();
     drawParticles();
     updateHUD();
+    if (hacksActive) {
+      ctx.save();
+      ctx.globalAlpha = 0.22;
+      ctx.font = 'bold 13px monospace';
+      ctx.fillStyle = '#00ff66';
+      ctx.textAlign = 'right';
+      ctx.fillText('⚠ HACKS ACTIVE — NO MEDALS', W - 14, H - 14);
+      ctx.restore();
+    }
   } else if (gameState === 'fightIntro') {
     fightIntroTimer++;
     const t = fightIntroTimer;
