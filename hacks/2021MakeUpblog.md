@@ -7,6 +7,7 @@ title: 2021 Makeup Blog
 # MakeUp of 2021 Practice Exam MCQ — Reflection
 
 **Score: 66/70**
+Time: 57:01. Why? While this test was longer, the time I took was shorter than the previous test because the topics were easier and quicker to read and understand. I didn't have to spend as much time trying to figure out what the question was asking, which allowed me to move through the test more quickly.
 
 Overall, I'm satisfied with this result. Getting 66 out of 70 on the makeup practice MCQ shows a strong grasp of most AP CSP concepts, but there are clear gaps worth addressing before the real exam.
 
