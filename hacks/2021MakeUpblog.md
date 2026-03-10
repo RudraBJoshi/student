@@ -38,7 +38,7 @@ I got most simulation questions right, showing I understand when and why simulat
 ## Weaknesses
 
 ### List and Data Structure Operations
-I struggled with questions involving list manipulation — specifically moving elements from the end of a list to the beginning. This points to a gap in understanding how list traversal and index-based operations work step by step.
+I struggled with questions involving list manipulation — specifically moving elements from the end of a list to the beginning. This points to a gap in understanding how list traversal and index-based operations work step by step. Though, I think this was just a momentary lapse in attention to detail rather than a fundamental misunderstanding, but it’s worth practicing more to ensure I can confidently handle these operations under exam conditions.
 
 ### Loop Logic and Infinite Loops
 The question about initial values that cause an infinite loop tripped me up. I need to practice tracing through loop conditions carefully, especially edge cases where the condition never becomes false. However, on Q28, I analyzed the result wrong because I didn't consider the effect of the loop's body on the variables involved in the condition. I need to be more meticulous in tracking how variable values change with each iteration.
