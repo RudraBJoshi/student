@@ -41,7 +41,7 @@ I got most simulation questions right, showing I understand when and why simulat
 I struggled with questions involving list manipulation — specifically moving elements from the end of a list to the beginning. This points to a gap in understanding how list traversal and index-based operations work step by step.
 
 ### Loop Logic and Infinite Loops
-The question about initial values that cause an infinite loop tripped me up. I need to practice tracing through loop conditions carefully, especially edge cases where the condition never becomes false.
+The question about initial values that cause an infinite loop tripped me up. I need to practice tracing through loop conditions carefully, especially edge cases where the condition never becomes false. However, on Q28, I analyzed the result wrong because I didn't consider the effect of the loop's body on the variables involved in the condition. I need to be more meticulous in tracking how variable values change with each iteration.
 
 ### Game Logic / Procedural Simulation
 The question about moving a piece on a game board was missed. These questions require careful step-by-step simulation of code, and I need to slow down and trace through each instruction precisely.
