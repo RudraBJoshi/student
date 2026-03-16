@@ -23,7 +23,21 @@
  *      block embedding; a proxy removes these
  */
 
-const PROXY_PREFIX = '/TVP/fetch?url=';
+// Derive the proxy prefix from the SW's own scope.
+// If scope is /student/TVP/, prefix becomes /student/TVP/proxy/
+// This means the SW works regardless of the Jekyll baseurl.
+let PROXY_PREFIX = '';
+// The backend URL — the Node server that does the actual fetching.
+// CORS prevents the SW from fetching arbitrary URLs directly (the SW
+// shares the browser's origin). The backend has no such restriction.
+let BACKEND_URL = 'http://localhost:4601';
+
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SET_CONFIG') {
+    PROXY_PREFIX = event.data.proxyPrefix;
+    if (event.data.backendURL) BACKEND_URL = event.data.backendURL;
+  }
+});
 
 // Install — cache the bare minimum needed to work offline
 self.addEventListener('install', (event) => {
@@ -50,17 +64,29 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // Only intercept requests going through our proxy prefix
-  if (!url.pathname.startsWith('/TVP/proxy/')) return;
+  // Only intercept requests going through our proxy prefix.
+  // PROXY_PREFIX is set at registration time via postMessage.
+  // Fall back to scope-derived prefix if message hasn't arrived yet.
+  const prefix = PROXY_PREFIX || (new URL(self.registration.scope).pathname + 'proxy/');
+  if (!url.pathname.startsWith(prefix)) return;
 
   // Decode the target URL from the path:
-  // /TVP/proxy/https://example.com/page → https://example.com/page
-  const encoded = url.pathname.replace('/TVP/proxy/', '');
+  // If it's a passthrough asset (image/font/etc), redirect the browser to the
+  // real URL directly — no need to go through the Flask backend.
+  // /student/TVP/proxy/https://example.com/page → https://example.com/page
+  const encoded = url.pathname.replace(prefix, '');
   let targetURL;
   try {
     targetURL = decodeURIComponent(encoded) + url.search;
   } catch {
     event.respondWith(new Response('Bad URL', { status: 400 }));
+    return;
+  }
+
+  // Assets (images, fonts, media) can load cross-origin without a proxy.
+  // Redirect to the real URL so CDNs serve them directly — no Flask, no 429s.
+  if (isPassthrough(targetURL)) {
+    event.respondWith(Response.redirect(targetURL, 302));
     return;
   }
 
@@ -80,19 +106,27 @@ self.addEventListener('fetch', (event) => {
 async function proxyFetch(targetURL, originalRequest) {
   console.log(`[TunnelVision] Proxying: ${targetURL}`);
 
+  // Route through the backend server instead of fetching directly.
+  //
+  // WHY: fetch() in a Service Worker is still subject to CORS because the SW
+  // shares the page's origin (localhost:4600). The browser enforces CORS on
+  // all cross-origin requests regardless of where they originate within the
+  // browser context.
+  //
+  // The backend (localhost:4601) runs in Node — outside the browser entirely.
+  // Node's http.request() is a raw TCP connection; CORS is a browser concept
+  // and simply doesn't exist there. The backend adds Access-Control-Allow-Origin: *
+  // so the SW can read the response.
+  const backendRequest = `${BACKEND_URL}/fetch?url=${encodeURIComponent(targetURL)}`;
+
   let response;
   try {
-    response = await fetch(targetURL, {
+    response = await fetch(backendRequest, {
       method: originalRequest.method,
-      headers: buildForwardHeaders(originalRequest.headers, targetURL),
-      // Don't forward credentials to arbitrary sites
       credentials: 'omit',
-      redirect: 'follow',
     });
   } catch (err) {
-    // This is where you'd see CORS errors in a real browser context.
-    // In a SW, cross-origin fetches work — that's the whole point.
-    return new Response(errorPage(targetURL, err.message), {
+    return new Response(errorPage(targetURL, `Backend unreachable: ${err.message}\n\nMake sure proxy-server.py is running:\n  python3 proxy-server.py`), {
       status: 502,
       headers: { 'Content-Type': 'text/html' },
     });
@@ -131,26 +165,9 @@ async function proxyFetch(targetURL, originalRequest) {
   });
 }
 
-/**
- * Build headers to forward to the target site.
- *
- * Real proxies must be careful here — some headers reveal the proxy,
- * others are required for the target site to respond correctly.
- */
-function buildForwardHeaders(incomingHeaders, targetURL) {
-  const target = new URL(targetURL);
-  return {
-    // Make the request look like it came from the target site itself
-    'Host': target.host,
-    'Origin': target.origin,
-    'Referer': target.href,
-    // Pass through accept headers so the server sends the right format
-    'Accept': incomingHeaders.get('Accept') || '*/*',
-    'Accept-Language': incomingHeaders.get('Accept-Language') || 'en-US,en;q=0.9',
-    'Accept-Encoding': 'gzip, deflate, br',
-    'User-Agent': 'Mozilla/5.0 (compatible; TunnelVision/1.0)',
-  };
-}
+// Header forwarding is now handled by proxy-server.js (Node backend).
+// The SW only needs to pass the URL; the backend spoofs the correct
+// Host, Origin, User-Agent, etc. for the target site.
 
 /**
  * Strip headers that would block embedding or reveal proxy behavior.
@@ -166,13 +183,17 @@ function buildForwardHeaders(incomingHeaders, targetURL) {
 function buildCleanHeaders(headers) {
   const clean = {};
   for (const [key, value] of headers.entries()) {
+    // Normalize to lowercase — the Fetch API returns lowercase keys but plain
+    // objects are case-sensitive. Using lowercase throughout prevents duplicate
+    // keys like { 'content-type': 'x', 'Content-Type': 'y' } where the browser
+    // picks the wrong one, which caused raw HTML to display as text/plain.
     const lower = key.toLowerCase();
     // Drop headers that interfere with proxy operation
     if (lower === 'content-security-policy') continue;
     if (lower === 'content-security-policy-report-only') continue;
     if (lower === 'x-frame-options') continue;
     if (lower === 'x-content-type-options') continue;
-    clean[key] = value;
+    clean[lower] = value;  // store with lowercase key
   }
   return clean;
 }
@@ -188,7 +209,13 @@ function buildCleanHeaders(headers) {
  * Strategy: convert all URLs to /TVP/proxy/<encoded-url>
  */
 function rewriteHTML(html, baseURL) {
-  const base = new URL(baseURL);
+  let base;
+  try {
+    base = new URL(baseURL);
+  } catch {
+    // baseURL is not a valid absolute URL — can't resolve relative URLs, return as-is
+    return html;
+  }
 
   // Rewrite href, src, action attributes
   html = html.replace(
@@ -199,29 +226,53 @@ function rewriteHTML(html, baseURL) {
     }
   );
 
-  // Rewrite srcset (used for responsive images)
+  // Rewrite srcset (used for responsive images).
+  // srcset format: "url1 1x, url2 2x" — split on commas, rewrite each URL,
+  // then rejoin. The previous regex approach lost commas between candidates.
   html = html.replace(
     /srcset=["']([^"']+)["']/gi,
     (match, srcset) => {
-      const rewritten = srcset.replace(
-        /(\S+)(\s+\d+[wx])?/g,
-        (m, url, descriptor) => rewriteURL(url, base) + (descriptor || '')
-      );
+      const rewritten = srcset
+        .split(',')
+        .map(candidate => {
+          const parts = candidate.trim().split(/\s+/);
+          if (!parts[0]) return candidate;
+          parts[0] = rewriteURL(parts[0], base);
+          return parts.join(' ');
+        })
+        .join(', ');
       return `srcset="${rewritten}"`;
     }
   );
 
   // Inject our proxy script into the page so dynamic JS navigation
   // is also intercepted
+  // The proxy prefix is derived from the SW scope at runtime
+  const runtimePrefix = PROXY_PREFIX || (new URL(self.registration.scope).pathname + 'proxy/');
+  // REAL_BASE is the actual URL being proxied (e.g. https://app-polytrack.kodub.com/0.6.0/).
+  // document.baseURI would be the proxy URL (localhost/.../proxy/https%3A...) which is wrong
+  // for resolving relative URLs like "models/blocks.glb".
   const injected = `<script>
-    // TunnelVision: Override window.location and history so JS navigation
-    // goes through the proxy too
     (function() {
-      const PROXY_BASE = '/TVP/proxy/';
+      const PROXY_BASE = ${JSON.stringify(runtimePrefix)};
+      const REAL_BASE  = ${JSON.stringify(baseURL)};
+      function proxify(url) {
+        try {
+          const abs = new URL(url, REAL_BASE).href;
+          if (abs.startsWith('http://') || abs.startsWith('https://')) {
+            return PROXY_BASE + encodeURIComponent(abs);
+          }
+        } catch {}
+        return url;
+      }
       const _open = XMLHttpRequest.prototype.open;
       XMLHttpRequest.prototype.open = function(method, url, ...args) {
-        const abs = new URL(url, document.baseURI).href;
-        return _open.call(this, method, PROXY_BASE + encodeURIComponent(abs), ...args);
+        return _open.call(this, method, proxify(url), ...args);
+      };
+      const _fetch = self.fetch;
+      self.fetch = function(input, init) {
+        if (typeof input === 'string') input = proxify(input);
+        return _fetch.call(this, input, init);
       };
     })();
   </script>`;
@@ -243,27 +294,55 @@ function rewriteCSS(css, baseURL) {
   });
 }
 
+// Extensions that don't need proxying.
+// Browsers can load cross-origin images/fonts/media directly without CORS
+// restrictions affecting display. Only HTML, CSS, and JS need the proxy
+// (HTML for navigation chain, CSS for url() rewriting, JS for XHR patching).
+// Bypassing assets avoids hammering CDNs and getting 429 rate-limited.
+const PASSTHROUGH_EXTENSIONS = new Set([
+  // Images — browsers load cross-origin images freely (no CORS on display)
+  'jpg','jpeg','png','gif','webp','avif','svg','ico','bmp',
+  // Media — also loads cross-origin freely
+  'mp4','webm',
+  // NOTE: fonts (woff/woff2/ttf) are NOT here — browsers enforce CORS on fonts,
+  // so they must go through Flask which adds Access-Control-Allow-Origin: *.
+  // NOTE: audio (ogg/mp3) is NOT here — same CORS issue when loaded via Web Audio API.
+  // NOTE: 3D models (.glb), data files (.track) are NOT here — need proper base URL resolution.
+]);
+
+function isPassthrough(url) {
+  try {
+    const path = new URL(url).pathname.toLowerCase();
+    const ext = path.split('.').pop().split('?')[0];
+    return PASSTHROUGH_EXTENSIONS.has(ext);
+  } catch { return false; }
+}
+
 /**
  * Convert any URL to a proxied URL.
  * Handles: absolute URLs, protocol-relative URLs, relative URLs.
  */
 function rewriteURL(url, base) {
-  // Skip data URIs, blob URLs, anchors, and already-proxied URLs
+  const prefix = PROXY_PREFIX || (new URL(self.registration.scope).pathname + 'proxy/');
+  // Skip non-navigable schemes and already-proxied URLs
   if (
     url.startsWith('data:') ||
     url.startsWith('blob:') ||
     url.startsWith('#') ||
     url.startsWith('javascript:') ||
-    url.startsWith('/TVP/proxy/')
+    url.startsWith(prefix)
   ) {
     return url;
   }
 
   try {
     const absolute = new URL(url, base).href;
-    return '/TVP/proxy/' + encodeURIComponent(absolute);
+    // Images, fonts, and media load fine cross-origin without a proxy.
+    // Sending them through Flask hammers CDNs and causes 429 rate-limits.
+    if (isPassthrough(absolute)) return absolute;
+    return prefix + encodeURIComponent(absolute);
   } catch {
-    return url; // If we can't parse it, leave it alone
+    return url;
   }
 }
 

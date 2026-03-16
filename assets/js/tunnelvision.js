@@ -15,7 +15,13 @@ const TV = {
   statusEl: null,
   logEl: null,
 
-  PROXY_PREFIX: '/TVP/proxy/',
+  // These are set by window.TV_CONFIG, injected by the Jekyll page
+  // via a <script> block using {{ site.baseurl }} Liquid tags.
+  get BASEURL()      { return (window.TV_CONFIG && window.TV_CONFIG.baseurl)      || ''; },
+  get PROXY_PREFIX() { return (window.TV_CONFIG && window.TV_CONFIG.proxyPrefix)  || '/TVP/proxy/'; },
+  get SW_PATH()      { return (window.TV_CONFIG && window.TV_CONFIG.swPath)       || '/tunnelvision-sw.js'; },
+  get SW_SCOPE()     { return (window.TV_CONFIG && window.TV_CONFIG.swScope)      || '/TVP/'; },
+  get BACKEND_URL()  { return (window.TV_CONFIG && window.TV_CONFIG.backendURL)   || 'http://localhost:4601'; },
 
   async init() {
     this.iframe = document.getElementById('tv-frame');
@@ -42,8 +48,8 @@ const TV = {
 
     try {
       const reg = await navigator.serviceWorker.register(
-        '/assets/js/tunnelvision-sw.js',
-        { scope: '/TVP/' }
+        this.SW_PATH,
+        { scope: this.SW_SCOPE }
       );
       this.log('SW registered', `Scope: ${reg.scope}`);
 
@@ -57,8 +63,15 @@ const TV = {
       }
 
       this.sw = reg;
+      // Tell the SW its proxy prefix (needed because it can't read Liquid vars)
+      const sw = reg.active || reg.installing || reg.waiting;
+      const config = { type: 'SET_CONFIG', proxyPrefix: this.PROXY_PREFIX, backendURL: this.BACKEND_URL };
+      if (sw) sw.postMessage(config);
+      navigator.serviceWorker.ready.then((r) => {
+        r.active.postMessage(config);
+      });
       this.setStatus('ready', 'Service Worker active — proxy ready');
-      this.log('SW activated', 'All requests under /TVP/ are now intercepted');
+      this.log('SW activated', `Intercepting: ${this.SW_SCOPE}`);
     } catch (err) {
       this.setStatus('error', `SW registration failed: ${err.message}`);
       this.log('SW error', err.message);
@@ -112,7 +125,7 @@ const TV = {
       if (src.includes(this.PROXY_PREFIX)) {
         try {
           const encoded = src.replace(location.origin + this.PROXY_PREFIX, '');
-          const real = decodeURIComponent(encoded);
+          const real = decodeURIComponent(encoded.split('?')[0]);
           this.urlBar.value = real;
           this.setStatus('ready', `Loaded: ${real}`);
           this.log('Page loaded', real);
@@ -132,6 +145,75 @@ const TV = {
     document.getElementById('tv-how-toggle').addEventListener('click', () => {
       panel.classList.toggle('tv-hidden');
     });
+
+    // Localized button — checks if Flask proxy backend is reachable
+    this.initLocalized();
+  },
+
+  initLocalized() {
+    const btn      = document.getElementById('tv-localized');
+    const modal    = document.getElementById('tv-local-modal');
+    const statusEl = document.getElementById('tv-local-status');
+    const closeBtn = document.getElementById('tv-local-close');
+    let pollTimer  = null;
+
+    const check = async () => {
+      btn.classList.remove('state-unknown', 'state-up', 'state-down');
+      btn.classList.add('state-checking');
+      try {
+        const r = await fetch(`${this.BACKEND_URL}/health`, { signal: AbortSignal.timeout(2000) });
+        const data = await r.json();
+        if (data.status === 'ok') {
+          btn.classList.replace('state-checking', 'state-up');
+          btn.title = 'Backend connected';
+          statusEl.textContent = '● Backend connected — proxy is active';
+          statusEl.className = 'tv-modal-status up';
+          // Stop polling once connected
+          clearInterval(pollTimer);
+          pollTimer = null;
+          return true;
+        }
+      } catch {}
+      btn.classList.replace('state-checking', 'state-down');
+      btn.title = 'Backend not running — click for instructions';
+      statusEl.textContent = '● Not running — start the server and wait…';
+      statusEl.className = 'tv-modal-status down';
+      return false;
+    };
+
+    // Start polling every 2s so the button auto-turns green when server starts
+    const startPolling = () => {
+      if (pollTimer) return;
+      pollTimer = setInterval(check, 2000);
+    };
+
+    btn.addEventListener('click', async () => {
+      modal.classList.add('open');
+      await check();
+      startPolling(); // Keep checking while modal is open
+    });
+
+    closeBtn.addEventListener('click', () => {
+      modal.classList.remove('open');
+    });
+
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) modal.classList.remove('open');
+    });
+
+    // Copy buttons
+    modal.querySelectorAll('[data-copy]').forEach((b) => {
+      b.addEventListener('click', () => {
+        navigator.clipboard.writeText(b.dataset.copy).then(() => {
+          const orig = b.textContent;
+          b.textContent = 'Copied!';
+          setTimeout(() => { b.textContent = orig; }, 1500);
+        });
+      });
+    });
+
+    // Initial silent check on load (no modal)
+    check().then((up) => { if (!up) startPolling(); });
   },
 
   setStatus(state, message) {

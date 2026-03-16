@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pkill -f proxy-server.js)",
+      "Bash(pkill -f proxy-server.py)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" \"http://localhost:4601/fetch?url=https%3A%2F%2Fexample.com\")"
+    ]
+  }
+}
