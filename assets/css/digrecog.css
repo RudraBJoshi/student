@@ -35,7 +35,7 @@ body {
 }
 
 .header p {
-    color: #7f8c8d;
+    color: #4f5d6a;
     font-size: 1rem;
 }
 
@@ -108,7 +108,7 @@ body {
 #drawing-canvas {
     width: 100%;
     height: auto;
-    border: 2px solid #aaa;
+    border: 2px solid #777;
     border-radius: 4px;
     cursor: crosshair;
     background: #fff;
@@ -224,7 +224,7 @@ body {
 
 .result-confidence {
     font-size: 1.1rem;
-    color: #7f8c8d;
+    color: #4f5d6a;
 }
 
 .individual-digits {
@@ -304,7 +304,7 @@ body {
 
 .digit-top3 {
     font-size: 0.85rem;
-    color: #7f8c8d;
+    color: #4f5d6a;
 }
 
 /* Info Section */
@@ -463,8 +463,9 @@ body {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    color: #2c3e50;
-    font-weight: 600;
+    color: #1a252f;
+    text-shadow: 0 0 4px #fff, 0 0 4px #fff, 0 0 4px #fff;
+    font-weight: 700;
     font-size: 0.9rem;
 }
 
@@ -554,7 +555,7 @@ body {
 
 .arrow {
     font-size: 1.5rem;
-    color: #7f8c8d;
+    color: #4f5d6a;
 }
 
 /* Pool Demo */
@@ -730,7 +731,7 @@ body {
     width: 10px;
     height: 10px;
     border-radius: 50%;
-    background: #ddd;
+    background: #8a9baa;
     cursor: pointer;
     transition: all 0.3s;
 }
@@ -777,7 +778,7 @@ body {
 }
 
 .slide-number {
-    color: #7f8c8d;
+    color: #4f5d6a;
     font-size: 0.8rem;
     margin-bottom: 10px;
     font-weight: 500;
@@ -1032,7 +1033,7 @@ body {
 
 .preview-label {
     font-size: 0.9rem;
-    color: #7f8c8d;
+    color: #4f5d6a;
     font-weight: 500;
 }
 
@@ -1170,12 +1171,12 @@ body {
     text-align: center;
     margin-top: 8px;
     font-size: 0.85rem;
-    color: #7f8c8d;
+    color: #4f5d6a;
 }
 
 .pool-arrow {
     font-size: 2rem;
-    color: #7f8c8d;
+    color: #4f5d6a;
 }
 
 .pool-after {
@@ -1376,4 +1377,20 @@ body {
 
 .next-btn {
     margin-left: auto;
+}
+
+/* Override Nighthawk theme's !important color rules for headings and paragraphs */
+.digit-recognizer-container h1,
+.digit-recognizer-container h2,
+.digit-recognizer-container h3,
+.digit-recognizer-container h4 {
+    color: #2c3e50 !important;
+}
+
+.digit-recognizer-container p {
+    color: #555 !important;
+}
+
+.digit-recognizer-container .header p {
+    color: #4f5d6a !important;
 }
