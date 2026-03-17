@@ -1,0 +1,7 @@
+flask
+flask-restful
+flask-cors
+flask-sqlalchemy
+flask-jwt-extended
+werkzeug
+requests
