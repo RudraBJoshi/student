@@ -131,44 +131,6 @@ The `/api/predict` route handler directly calls `find_connected_components`, `ad
 
 ---
 
-## Proposed Refactor
-
-Split into focused modules, each with one reason to change:
-
-### `model_loader.py`
-**Responsibility:** Load and expose the primary model and ensemble.
-- `load_primary(path)` → returns Keras model
-- `load_ensemble(pattern)` → returns list of Keras models
-- **One reason to change:** model format or loading strategy changes
-
-### `segmentation.py`
-**Responsibility:** Find digit bounding boxes in an image.
-- `find_connected_components(img_array)` → list of `{bbox, center_x}`
-- **One reason to change:** segmentation algorithm or tuning changes
-
-### `preprocessing.py`
-**Responsibility:** Prepare a cropped digit region for model input.
-- `preprocess_digit(img_array, bbox)` → 28×28 float32 numpy array
-- **One reason to change:** preprocessing pipeline or MNIST alignment changes
-
-### `inference.py`
-**Responsibility:** Run predictions given a preprocessed image.
-- `predict_with_tta(image, model, ensemble, num_augmentations)` → probability array
-- **One reason to change:** augmentation strategy or ensemble logic changes
-
-### `visualization.py`
-**Responsibility:** Extract and encode layer activations for display.
-- `extract_layer_activations(image, model)` → list of layer dicts with base64 images
-- **One reason to change:** visualization format or layer selection changes
-
-### `digit_api.py` (routes only)
-**Responsibility:** Parse HTTP requests and delegate to the above modules.
-- `/api/health`, `/api/predict`, `/api/visualize`
-- No business logic — only request parsing, delegation, and response formatting
-- **One reason to change:** API contract or HTTP handling changes
-
----
-
 ## Before vs. After
 
 ```
@@ -203,3 +165,136 @@ digit_api.py                        model_loader.py
 - **Reusability** — `preprocessing.py` and `inference.py` can be reused in a batch script or CLI tool without importing Flask
 - **Clearer ownership** — the filename tells you exactly what the module does
 - **Reduced risk** — a bug in TTA logic cannot accidentally break the image decoder or route handler
+
+---
+
+## Migration — What Was Changed
+
+The refactor produced five new files and a slimmed-down `digit_api.py`. All logic is identical — only the organization changed.
+
+### `model_loader.py` — was: global side-effects on import
+
+**Before** (runs on every import of `digit_api.py`):
+```python
+model = keras.models.load_model(MODEL_PATH)   # side-effect on import
+
+ensemble_models = []
+for i in range(5):
+    if os.path.exists(f'ensemble_model_{i}.keras'):
+        ensemble_models.append(keras.models.load_model(f'ensemble_model_{i}.keras'))
+```
+
+**After** (explicit functions, called once at startup):
+```python
+# model_loader.py
+def load_primary(path: str):
+    """Load and return the primary Keras model from the given path."""
+    return keras.models.load_model(path)
+
+def load_ensemble(count: int = 5) -> list:
+    """Load and return a list of ensemble Keras models (up to count)."""
+    models = []
+    for i in range(count):
+        model_path = f'ensemble_model_{i}.keras'
+        if os.path.exists(model_path):
+            models.append(keras.models.load_model(model_path))
+    return models
+```
+
+**Why this enforces SRP:** loading strategy is now isolated. Switching to lazy loading or a model registry only touches this file.
+
+---
+
+### `inference.py` — was: closed over globals
+
+**Before** (`model` and `ensemble_models` captured from module scope):
+```python
+def predict_with_tta(image, num_augmentations=8):
+    predictions.append(model.predict(...))       # implicit global
+
+    if ensemble_models:                          # implicit global
+        for ens_model in ensemble_models:
+            predictions.append(ens_model.predict(...))
+```
+
+**After** (model and ensemble passed as explicit arguments):
+```python
+# inference.py
+def predict_with_tta(image, model, ensemble_models, num_augmentations: int = 8) -> np.ndarray:
+    predictions.append(model.predict(image.reshape(1, 28, 28, 1), verbose=0)[0])
+
+    if ensemble_models:
+        for ens_model in ensemble_models:
+            predictions.append(ens_model.predict(image.reshape(1, 28, 28, 1), verbose=0)[0])
+
+    return np.mean(predictions, axis=0)
+```
+
+**Why this enforces SRP:** the function no longer depends on where models come from. It can be tested by passing any mock model object.
+
+---
+
+### `visualization.py` — was: embedded in `digit_api.py`
+
+**Before** (defined in the same file as Flask routes, with implicit `model` global):
+```python
+def extract_layer_activations(image):
+    activation_model = Model(inputs=model.input, ...)  # implicit global
+    ...
+```
+
+**After** (standalone module, model injected):
+```python
+# visualization.py
+def extract_layer_activations(image, model) -> list:
+    input_data = image.reshape(1, 28, 28, 1)
+    activation_model = Model(inputs=model.input, outputs=outputs_to_extract)
+    activations = activation_model.predict(input_data, verbose=0)
+    ...
+    return visualizations
+```
+
+**Why this enforces SRP:** visualization logic is fully decoupled from Flask. The function can be called from a notebook or CLI with no HTTP context.
+
+---
+
+### `digit_api.py` — was: everything; now: routes only
+
+**Before** — business logic inline in the route:
+```python
+@app.route('/api/predict', methods=['POST'])
+def predict():
+    # HTTP parsing + segmentation + preprocessing + inference + encoding all here
+    components = find_connected_components(img_array)
+    processed = advanced_preprocess_digit(img_array, bbox)
+    predictions = predict_with_tta(processed, num_augmentations=8)
+    ...
+```
+
+**After** — route only delegates:
+```python
+# digit_api.py
+from model_loader import load_primary, load_ensemble
+from segmentation import find_connected_components
+from preprocessing import preprocess_digit
+from inference import predict_with_tta
+from visualization import extract_layer_activations
+
+model = load_primary(MODEL_PATH)
+ensemble_models = load_ensemble(count=5)
+
+@app.route('/api/predict', methods=['POST'])
+def predict():
+    # Only HTTP concerns live here
+    img_array = np.array(Image.open(io.BytesIO(base64.b64decode(image_data))).convert('L'))
+    components = find_connected_components(img_array)
+    processed_digits = [preprocess_digit(img_array, c['bbox']) for c in components]
+
+    for component, processed in zip(components, processed_digits):
+        predictions = predict_with_tta(processed, model, ensemble_models, num_augmentations=8)
+        ...
+
+    return jsonify({'success': True, 'digits': results, 'number': full_number, 'count': len(results)})
+```
+
+**Why this enforces SRP:** the route handler has exactly one reason to change — the HTTP API contract. All business logic changes happen in their own files.

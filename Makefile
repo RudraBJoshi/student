@@ -11,7 +11,7 @@ SHELL = /bin/bash -c
 
 # List all .ipynb files in the _notebooks directory
 NOTEBOOK_FILES := $(shell find _notebooks -name '*.ipynb')
-CSP_NOTEBOOK_FILES := $(shell find _notebooks/CSP -name '*.ipynb')
+CSP_NOTEBOOK_FILES := $(shell find _notebooks/CSP -name '*.ipynb' 2>/dev/null || true)
 
 # Specify the target directory for the converted Markdown files
 DESTINATION_DIRECTORY = _posts
@@ -42,7 +42,7 @@ default: server
 			echo "Server started in $$COUNTER seconds"; \
 			break; \
 		fi; \
-		if [ $$COUNTER -eq 60 ]; then \
+		if [ $$COUNTER -eq 300 ]; then \
 			echo "Server timed out after $$COUNTER seconds."; \
 			echo "Review errors from $(LOG_FILE)."; \
 			cat $(LOG_FILE); \
@@ -74,7 +74,7 @@ csp: cspserver
 			echo "Server started in $$COUNTER seconds"; \
 			break; \
 		fi; \
-		if [ $$COUNTER -eq 60 ]; then \
+		if [ $$COUNTER -eq 300 ]; then \
 			echo "Server timed out after $$COUNTER seconds."; \
 			echo "Review errors from $(LOG_FILE)."; \
 			cat $(LOG_FILE); \
