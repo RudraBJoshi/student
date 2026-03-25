@@ -7,7 +7,7 @@ SHELL = /bin/bash -c
 .SHELLFLAGS = -e # Exceptions will stop make, works on MacOS
 
 # Phony Targets, makefile housekeeping for below definitions
-.PHONY: default server issues convert clean stop
+.PHONY: default server issues convert clean stop force
 
 # List all .ipynb files in the _notebooks directory
 NOTEBOOK_FILES := $(shell find _notebooks -name '*.ipynb')
@@ -149,4 +149,14 @@ reload:
 refresh:
 	@make stop
 	@make clean
+	@make
+
+# force kills all related processes and restarts
+force:
+	@echo "Force stopping all jekyll and bundle processes..."
+	@pkill -9 -f "jekyll" 2>/dev/null || true
+	@pkill -9 -f "bundle exec" 2>/dev/null || true
+	@@lsof -ti :$(PORT) | xargs kill -9 >/dev/null 2>&1 || true
+	@rm -f $(LOG_FILE)
+	@echo "Force start..."
 	@make

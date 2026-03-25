@@ -205,6 +205,42 @@ body{background:#050d1a;color:#e0f0ff;font-family:'Courier New',monospace;overfl
         <div style="font-size:11px;color:#5af;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Mission</div>
         <div style="font-size:12px;color:#779;line-height:1.6">Build a secure network.<br>Wire all devices.<br>Configure each one.<br>Then test it.</div>
       </div>
+      <div style="margin-top:12px;padding-top:10px;border-top:1px solid #0af2">
+        <div style="font-size:11px;color:#fa0;text-transform:uppercase;letter-spacing:1px;margin-bottom:5px">MTU Simulation</div>
+        <div style="font-size:10px;color:#8bc;margin-bottom:2px">Payload: <span id="b-payload-val" style="color:#0df">4000</span>B</div>
+        <input id="b-payload-input" type="range" min="100" max="18000" value="4000" step="100"
+          oninput="onMTUChange()" style="width:100%;accent-color:#fa0;margin-bottom:6px">
+        <div style="font-size:10px;color:#8bc;margin-bottom:2px">MTU: <span id="b-mtu-val" style="color:#0df">1500</span>B</div>
+        <input id="b-mtu-input" type="range" min="576" max="9000" value="1500" step="1"
+          oninput="onMTUChange()" style="width:100%;accent-color:#0af;margin-bottom:4px">
+        <div id="b-mtu-display" style="font-size:11px;font-weight:bold;color:#0f6;margin-bottom:5px">1 fragment</div>
+        <div style="display:flex;gap:3px;flex-wrap:wrap;margin-bottom:6px">
+          <button onclick="bSetMTU(576)"  style="padding:2px 5px;font-size:9px;background:#002;border:1px solid #0af4;color:#8bc;border-radius:3px;cursor:pointer">576</button>
+          <button onclick="bSetMTU(1280)" style="padding:2px 5px;font-size:9px;background:#002;border:1px solid #0af4;color:#8bc;border-radius:3px;cursor:pointer">1280</button>
+          <button onclick="bSetMTU(1500)" style="padding:2px 5px;font-size:9px;background:#002;border:1px solid #0af4;color:#8bc;border-radius:3px;cursor:pointer">1500</button>
+          <button onclick="bSetMTU(9000)" style="padding:2px 5px;font-size:9px;background:#002;border:1px solid #0af4;color:#8bc;border-radius:3px;cursor:pointer">9000</button>
+        </div>
+        <div style="margin-top:10px;padding-top:8px;border-top:1px solid #0af1">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">
+            <span style="font-size:10px;color:#8bc">Network Integrity</span>
+            <span id="b-integrity-val" style="font-size:11px;font-weight:bold;color:#0f6">100%</span>
+          </div>
+          <div style="width:100%;height:7px;background:#040e1c;border-radius:4px;margin-bottom:4px;overflow:hidden;border:1px solid #0af2">
+            <div id="b-integrity-bar" style="height:100%;width:100%;background:linear-gradient(90deg,#0f6,#0af);border-radius:4px;transition:width 0.15s,background 0.2s"></div>
+          </div>
+          <input id="b-integrity-input" type="range" min="1" max="100" value="100"
+            oninput="onIntegrityChange()" style="width:100%;accent-color:#0f6;margin-bottom:5px">
+          <div style="display:flex;gap:3px;flex-wrap:wrap;margin-bottom:5px">
+            <button onclick="bSetIntegrity(100)" style="padding:2px 5px;font-size:9px;background:#002;border:1px solid #0f64;color:#8bc;border-radius:3px;cursor:pointer">100%</button>
+            <button onclick="bSetIntegrity(75)"  style="padding:2px 5px;font-size:9px;background:#002;border:1px solid #0f64;color:#8bc;border-radius:3px;cursor:pointer">75%</button>
+            <button onclick="bSetIntegrity(50)"  style="padding:2px 5px;font-size:9px;background:#002;border:1px solid #0f64;color:#8bc;border-radius:3px;cursor:pointer">50%</button>
+            <button onclick="bSetIntegrity(10)"  style="padding:2px 5px;font-size:9px;background:#002;border:1px solid #0f64;color:#8bc;border-radius:3px;cursor:pointer">10%</button>
+            <button onclick="bSetIntegrity(1)"   style="padding:2px 5px;font-size:9px;background:#002;border:1px solid #0f64;color:#8bc;border-radius:3px;cursor:pointer">1%</button>
+          </div>
+          <div id="b-success-prob" style="font-size:9px;color:#556;line-height:1.5"></div>
+        </div>
+        <div style="font-size:9px;color:#446;line-height:1.6;margin-top:6px">▶ Test sends fragments.<br>Click mid-flight to drop one.</div>
+      </div>
     </div>
     <div id="b-canvas-wrap">
       <canvas id="b-canvas"></canvas>
@@ -218,6 +254,10 @@ body{background:#050d1a;color:#e0f0ff;font-family:'Courier New',monospace;overfl
         </div>
         <div id="b-debug-output"></div>
       </div>
+      <!-- MTU sim banner (shown during/after fragment animation) -->
+      <div id="b-mtu-banner" style="display:none;position:absolute;bottom:10px;left:50%;transform:translateX(-50%);
+        z-index:15;padding:8px 20px;border-radius:8px;font-family:'Courier New',monospace;font-size:13px;
+        font-weight:bold;white-space:nowrap;pointer-events:none"></div>
     </div>
     <div id="b-config">
       <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#5af;margin-bottom:8px">Config Panel</div>
@@ -328,16 +368,18 @@ graph LR
 },
 {
   name:"Protocols", desc:"Every conversation on the internet follows rules called protocols. Learn the ones that matter.",
-  tags:["TCP vs UDP","HTTP/HTTPS","Port Numbers","TLS Encryption"],
+  tags:["TCP vs UDP","HTTP/HTTPS","3-Way Handshake","Port Numbers","Protocol Selection","TLS Encryption"],
   nodes:[
-    {id:"pc",    label:"Client",    x:0.06,y:0.50,color:"#00aaff"},
-    {id:"tcp",   label:"TCP/UDP",   x:0.30,y:0.30,color:"#00ff88"},
-    {id:"http",  label:"HTTP",      x:0.55,y:0.55,color:"#ffaa00"},
-    {id:"tls",   label:"TLS/HTTPS", x:0.75,y:0.28,color:"#aa00ff"},
-    {id:"server",label:"Web Server",x:0.94,y:0.50,color:"#ff5555"},
+    {id:"pc",     label:"Client",     x:0.06,y:0.50,color:"#00aaff"},
+    {id:"tcp",    label:"TCP/UDP",    x:0.20,y:0.28,color:"#00ff88"},
+    {id:"tcpq2",  label:"Handshake",  x:0.38,y:0.64,color:"#00ddaa"},
+    {id:"tcpq3",  label:"Port/Proto", x:0.56,y:0.28,color:"#00ffcc"},
+    {id:"http",   label:"HTTP",       x:0.70,y:0.64,color:"#ffaa00"},
+    {id:"tls",    label:"TLS/HTTPS",  x:0.82,y:0.28,color:"#aa00ff"},
+    {id:"server", label:"Web Server", x:0.94,y:0.50,color:"#ff5555"},
   ],
-  edges:[["pc","tcp"],["tcp","http"],["http","tls"],["tls","server"],["tcp","tls"]],
-  path:["pc","tcp","http","tls","server"],
+  edges:[["pc","tcp"],["tcp","tcpq2"],["tcpq2","tcpq3"],["tcpq3","http"],["http","tls"],["tls","server"],["tcp","tcpq3"]],
+  path:["pc","tcp","tcpq2","tcpq3","http","tls","server"],
   stops:{
     "tcp":{
       teach:`<b>TCP</b> and <b>UDP</b> are the two main transport protocols:<br><br>
@@ -356,6 +398,51 @@ Rule of thumb: <b>TCP for correctness</b> (files, email, web), <b>UDP for speed<
       correct:0,
       bad:`TCP would actually hurt video calls. When a packet is lost, TCP waits and retransmits it — by the time it arrives, it's too old to use. You'd get a laggy, stuttery call. UDP drops it and moves on.`,
       good:`Exactly. Apps like Zoom, FaceTime, and Google Meet all use UDP under the hood. A brief glitch is better than a frozen screen.`
+    },
+    "tcpq2":{
+      teach:`The <b>TCP 3-Way Handshake</b> establishes a reliable connection before any data flows:<br><br>
+<div class="mermaid">
+sequenceDiagram
+  participant C as Client
+  participant S as Server
+  C->>S: SYN (seq=100)
+  S-->>C: SYN-ACK (seq=200, ack=101)
+  C->>S: ACK (ack=201)
+  Note over C,S: Connection open — data can now flow
+</div>
+<b>What each step does:</b><br>
+• <b>SYN</b> — "I want to connect; my sequence numbers start at 100"<br>
+• <b>SYN-ACK</b> — "Accepted; my sequences start at 200, I confirm yours at 101"<br>
+• <b>ACK</b> — "I confirm yours at 201 — we're in sync"<br><br>
+Sequence numbers let the receiver reassemble out-of-order packets and detect lost ones.<br><br>
+<b>UDP skips all of this</b> — it fires packets immediately with zero handshake. Faster, but no delivery guarantee and no ordering.`,
+      scenario:`A client sends a SYN packet. The server replies with SYN-ACK. What is the <i>only</i> valid next step to complete the TCP connection?`,
+      opts:["Client sends ACK — completing the 3-way handshake","Client sends another SYN to re-confirm","Server sends a second SYN-ACK","Data transfer begins immediately after the SYN-ACK"],
+      correct:0,
+      bad:`After SYN-ACK, the client must send an ACK to confirm receipt of the server's sequence number. Only then does the connection become "ESTABLISHED." Skipping ACK leaves the server in a SYN-RECEIVED state — half-open and unusable.`,
+      good:`Correct. SYN→SYN-ACK→ACK is the complete handshake. Each side proves it can both send and receive before any data flows. This is what "connection-oriented" means.`
+    },
+    "tcpq3":{
+      teach:`Choosing between TCP and UDP comes down to one question: <b>is stale data worse than no data?</b><br><br>
+<table style="border-collapse:collapse;width:100%;font-size:13px;margin:8px 0">
+<tr style="color:#0df;border-bottom:1px solid #048">
+  <th style="padding:5px 8px;text-align:left">Application</th>
+  <th style="padding:5px 8px">Protocol</th>
+  <th style="padding:5px 8px;text-align:left">Reason</th>
+</tr>
+<tr style="border-bottom:1px solid #023"><td style="padding:4px 8px">Web (HTTP/S)</td><td style="padding:4px 8px;text-align:center;color:#0f9">TCP</td><td style="padding:4px 8px;color:#8bc">Page must arrive complete</td></tr>
+<tr style="border-bottom:1px solid #023"><td style="padding:4px 8px">File Transfer</td><td style="padding:4px 8px;text-align:center;color:#0f9">TCP</td><td style="padding:4px 8px;color:#8bc">Missing bytes = corrupt file</td></tr>
+<tr style="border-bottom:1px solid #023"><td style="padding:4px 8px">Email (SMTP)</td><td style="padding:4px 8px;text-align:center;color:#0f9">TCP</td><td style="padding:4px 8px;color:#8bc">Message must be intact</td></tr>
+<tr style="border-bottom:1px solid #023"><td style="padding:4px 8px">DNS Lookup</td><td style="padding:4px 8px;text-align:center;color:#fa0">UDP</td><td style="padding:4px 8px;color:#8bc">One request/reply, speed beats reliability</td></tr>
+<tr style="border-bottom:1px solid #023"><td style="padding:4px 8px">Live Video</td><td style="padding:4px 8px;text-align:center;color:#fa0">UDP</td><td style="padding:4px 8px;color:#8bc">Old frames are useless when they arrive late</td></tr>
+<tr><td style="padding:4px 8px">Online Gaming</td><td style="padding:4px 8px;text-align:center;color:#fa0">UDP</td><td style="padding:4px 8px;color:#8bc">Low latency beats perfect delivery</td></tr>
+</table>
+<b>The retransmission trap:</b> TCP retransmits lost packets — but for real-time audio/video, a packet that arrives 300ms late is worthless. You'd rather skip it and move on.`,
+      scenario:`Your multiplayer game sends 80 bytes of player position every 50ms. A packet is lost mid-game. Which protocol and reasoning is correct?`,
+      opts:["UDP — the next position update arrives in 50ms anyway; TCP's retransmit would cause a visible lag spike","TCP — positions must arrive in order or the game breaks","UDP — because game servers can't use TCP","TCP — UDP doesn't support the port numbers games use"],
+      correct:0,
+      bad:`UDP is correct. Game position is refreshed constantly — a lost update is superseded by the next one 50ms later. TCP would stall the pipeline waiting for the retransmit, causing exactly the kind of lag that ruins online games.`,
+      good:`Exactly. This is the "stale data" principle: when your data has a short shelf life, UDP's best-effort delivery is the right choice. The next update makes the lost one irrelevant.`
     },
     "http":{
       teach:`<b>HTTP (HyperText Transfer Protocol)</b> is how browsers and servers talk. It's a <b>request-response</b> protocol:<br><br>
@@ -404,6 +491,105 @@ Symmetric is used for data because it's 1000× faster than asymmetric.`,
       correct:0,
       bad:`Many people assume the padlock means "safe". TLS only guarantees the connection is encrypted and you're talking to the real server at that domain — it says nothing about whether that domain is a scam.`,
       good:`Important distinction. TLS = encrypted connection. It doesn't mean the site behind it is honest. Phishing sites use HTTPS all the time.`
+    }
+  }
+},
+{
+  name:"OSI vs TCP/IP Models", desc:"Master the blueprint of all networking. See how the 7-layer OSI model maps to the 5-layer TCP/IP stack — and why every packet is an onion.",
+  tags:["OSI 7 Layers","TCP/IP 5 Layers","Encapsulation","PDUs","Layer Comparison","L2 vs L3"],
+  nodes:[
+    {id:"app",      label:"Application",  x:0.06,y:0.50,color:"#00aaff"},
+    {id:"transport",label:"Transport",    x:0.28,y:0.28,color:"#00ff88"},
+    {id:"network",  label:"Network",      x:0.52,y:0.62,color:"#ffaa00"},
+    {id:"datalink", label:"Data Link",    x:0.76,y:0.28,color:"#aa00ff"},
+    {id:"physical", label:"Physical",     x:0.94,y:0.50,color:"#ff5555"},
+  ],
+  edges:[["app","transport"],["transport","network"],["network","datalink"],["datalink","physical"],["transport","datalink"]],
+  path:["app","transport","network","datalink","physical"],
+  stops:{
+    "transport":{
+      teach:`The OSI model has <b>7 layers</b>; TCP/IP collapses those into <b>5 practical layers</b>:<br><br>
+<div class="mermaid">
+graph LR
+  subgraph OSI["OSI — 7 layers"]
+    O7[7 · Application]
+    O6[6 · Presentation]
+    O5[5 · Session]
+    O4[4 · Transport]
+    O3[3 · Network]
+    O2[2 · Data Link]
+    O1[1 · Physical]
+  end
+  subgraph TCP["TCP/IP — 5 layers"]
+    T5[5 · Application]
+    T4[4 · Transport]
+    T3[3 · Internet]
+    T2[2 · Data Link]
+    T1[1 · Physical]
+  end
+  O7 --> T5
+  O6 --> T5
+  O5 --> T5
+  O4 --> T4
+  O3 --> T3
+  O2 --> T2
+  O1 --> T1
+  style O7 fill:#003366,stroke:#0af,color:#cef
+  style O6 fill:#003366,stroke:#0af,color:#cef
+  style O5 fill:#003366,stroke:#0af,color:#cef
+  style T5 fill:#001a33,stroke:#06f,color:#adf
+</div>
+OSI layers 5/6/7 (Session, Presentation, Application) are all merged into TCP/IP's <b>Application layer</b>. In practice your app handles encryption (L6), sessions (L5), and data (L7).<br><br>
+<b>Key PDU names:</b> L4 = Segment (TCP) / Datagram (UDP) · L3 = Packet · L2 = Frame · L1 = Bits`,
+      scenario:`A web browser sends an HTTPS request. At which OSI layer does TLS encryption/decryption happen?`,
+      opts:["Layer 6 (Presentation) in OSI — maps to Application layer in TCP/IP; TLS handles encoding and encryption","Layer 4 (Transport) — TLS runs inside TCP","Layer 3 (Network) — encryption protects routing","Layer 2 (Data Link) — the WiFi card encrypts it"],
+      correct:0,
+      bad:`TLS is technically OSI Layer 6 (Presentation), which handles data format, encoding, and encryption. In TCP/IP that whole OSI top-3 block collapses into one Application layer. TLS runs above TCP (Layer 4), not inside it.`,
+      good:`Right. OSI Layer 6 = encryption, encoding, compression. In TCP/IP it lives inside the Application layer. TLS sits above TCP but below HTTP — which is why changing HTTP to HTTPS doesn't change the port/transport, only the Presentation-layer wrapper.`
+    },
+    "network":{
+      teach:`<b>Encapsulation</b>: as data travels <i>down</i> the stack, each layer wraps it with its own header:<br><br>
+<div class="mermaid">
+graph TD
+  A["HTTP Data  ← Application layer"]
+  B["TCP Header + HTTP Data  ← Transport (Segment)"]
+  C["IP Header + TCP Segment  ← Network (Packet)"]
+  D["ETH Header + IP Packet + FCS  ← Data Link (Frame)"]
+  E["10101001...  ← Physical (Bits)"]
+  A --> B --> C --> D --> E
+  style A fill:#003355,stroke:#0af,color:#cef
+  style B fill:#004400,stroke:#0f6,color:#cfc
+  style C fill:#442200,stroke:#f80,color:#fdb
+  style D fill:#330044,stroke:#a0f,color:#daf
+  style E fill:#220000,stroke:#f44,color:#faa
+</div>
+At the receiver, each layer strips its header (<b>de-encapsulation</b>) going back up the stack. A router only reads up to Layer 3 (IP header) — it never sees your HTTP data.`,
+      scenario:`Your browser sends 1 KB of JSON. By the time it leaves your network card, what is the <i>outermost-to-innermost</i> wrapping order?`,
+      opts:["Ethernet Frame → IP Packet → TCP Segment → JSON data","IP Packet → Ethernet Frame → TCP Segment → data","TCP Segment → IP Packet → Ethernet Frame → data","HTTP header → Ethernet → IP → data"],
+      correct:0,
+      bad:`Encapsulation wraps from the bottom up. Ethernet (L2) is added last before hitting the wire, so it's the outermost layer. Then IP (L3), then TCP (L4), then your application data at the core.`,
+      good:`Correct. Ethernet is outermost because it's added last (L2) before the physical medium. When a router receives this, it strips the Ethernet frame, reads the IP header to decide where to forward, then re-wraps in a brand new Ethernet frame for the next hop.`
+    },
+    "datalink":{
+      teach:`The single biggest confusion in networking: <b>why do we have both IP addresses and MAC addresses?</b><br><br>
+• <b>IP (Layer 3)</b> — end-to-end addressing. Your laptop's IP and the server's IP stay the same across every hop.<br>
+• <b>MAC (Layer 2)</b> — hop-by-hop addressing. Changes at every router.<br><br>
+<div class="mermaid">
+graph LR
+  PC["Laptop\nIP: 10.0.0.5\nMAC: AA:BB"] -- "Frame src=AA:BB\ndst=CC:DD" --> RT["Router\nMAC: CC:DD / EE:FF"]
+  RT -- "Frame src=EE:FF\ndst=GG:HH" --> SV["Server\nIP: 93.1.2.3\nMAC: GG:HH"]
+  PC -- "Packet src=10.0.0.5 dst=93.1.2.3" --> RT
+  RT -- "Packet src=10.0.0.5 dst=93.1.2.3" --> SV
+  style PC fill:#003355,stroke:#0af,color:#fff
+  style RT fill:#442200,stroke:#f80,color:#fff
+  style SV fill:#220033,stroke:#f5f,color:#fff
+</div>
+Switches (L2) forward based on MAC. Routers (L3) forward based on IP. This split is why you can move a server to a different datacenter (new MAC, new router) without changing its public IP.`,
+      scenario:`A packet travels from your laptop (IP: 10.0.0.5) to a server (IP: 93.184.216.34) through 3 routers. How many distinct MAC address pairs are used for the full journey?`,
+      opts:["4 pairs — one per link (laptop→R1, R1→R2, R2→R3, R3→server)","1 pair — MACs don't change in transit","2 pairs — one for each network boundary","3 pairs — one per router hop"],
+      correct:0,
+      bad:`Each link has its own MAC pair. With 3 routers there are 4 links: laptop→R1, R1→R2, R2→R3, R3→server. At every router, the Ethernet frame is stripped and rebuilt with new MACs for the next link. The IP src/dst never changes.`,
+      good:`Exactly. N routers = N+1 links = N+1 MAC pairs. IP addresses are end-to-end (unchanged). MAC addresses are link-local (regenerated at every hop). This is the fundamental difference between Layer 2 and Layer 3.`
     }
   }
 },
@@ -1025,7 +1211,9 @@ function startBuilder(){
 
   B={devices:[], wires:[], cfgs:{}, selected:null, wireFrom:null,
      dragging:null, dragOX:0, dragOY:0, mode:'select',
-     bc:null, bctx:null, baf:null, pkt:null, hover:null};
+     bc:null, bctx:null, baf:null, pkt:null, hover:null,
+     pkts:[], fragDropped:new Set(), simPhase:null,
+     mtu:1500, payload:4000, bparticles:[]};
 
   B.bc   = document.getElementById('b-canvas');
   B.bctx = B.bc.getContext('2d');
@@ -1084,6 +1272,17 @@ function deviceAt(mx,my){
 // ── pointer events ──
 function onBDown(e){
   const {mx,my}=canvasXY(e);
+  // Fragment click — drop a fragment mid-flight
+  if(B.simPhase==='flying' && B.pkts.length>0){
+    let hit=false;
+    for(const pkt of B.pkts){
+      if(pkt.dropped||pkt.done) continue;
+      if(Math.hypot(pkt.x-mx,pkt.y-my)<42){
+        dropFragPkt(pkt); e.preventDefault(); hit=true; break;
+      }
+    }
+    if(hit) return;
+  }
   const hit=deviceAt(mx,my);
 
   if(B.mode==='wire'){
@@ -1300,7 +1499,7 @@ function testNetwork(){
   }
   // animate whenever configs are correct (even without full topology)
   if(configsPass){
-    if(topoOk) animatePacket(topoPath);
+    if(topoOk) animateFragments(topoPath);
     else       animatePacketPartial();
   }
   document.getElementById('b-config-inner').innerHTML=h;
@@ -1546,12 +1745,73 @@ function bDrawLoop(){
     bctx.fillText(def.label,x,y+DH/2+11);
   });
 
-  // packet
-  if(B.pkt&&!B.pkt.done){
+  // Advance fragment packets (driven here so bDrawLoop never stops)
+  if(B.simPhase==='flying'&&B.pkts.length>0){
+    let allSettled=true;
+    B.pkts.forEach(pkt=>{
+      if(pkt.done||pkt.dropped) return;
+      if(pkt.delay>0){pkt.delay--;allSettled=false;return;}
+      allSettled=false;
+      pkt.t+=0.010; // slowed down
+      if(pkt.t>=1){
+        pkt.t=0;pkt.step++;
+        if(pkt.step>=pkt.route.length-1){pkt.done=true;return;}
+      }
+      // Auto-drop: network integrity check
+      if(pkt.willDrop&&pkt.step===pkt.dropStep&&pkt.t>=pkt.dropT){
+        dropFragPkt(pkt); return;
+      }
+      const fp=pkt.getPos(pkt.route[pkt.step]),tp=pkt.getPos(pkt.route[pkt.step+1]);
+      const e=easeInOut(pkt.t);
+      pkt.x=fp.x+(tp.x-fp.x)*e;
+      pkt.y=fp.y+(tp.y-fp.y)*e+pkt.yOff;
+    });
+    if(allSettled){
+      B.simPhase='result';
+      const p=B.fragParams||{};
+      setTimeout(()=>showFragResult(B.fragDropped.size===0,p.totalFrags,p.payload,p.mtu,p.mss),300);
+    }
+  }
+
+  // fragment packets (MTU simulation)
+  if(B.pkts&&B.pkts.length>0){
+    B.pkts.forEach(pkt=>{
+      if(pkt.delay>0) return; // not launched yet
+      const W=54, H=22;
+      bctx.save();
+      if(pkt.dropped){
+        bctx.globalAlpha=0.85;
+        const shake=(pkt.shakeFrames>0)?(Math.sin(btick*1.8)*3):0;
+        bctx.translate(pkt.x+shake,pkt.y);
+        bctx.strokeStyle='#f44'; bctx.fillStyle='rgba(140,10,10,0.85)';
+        if(pkt.shakeFrames>0) pkt.shakeFrames--;
+      } else if(pkt.done){
+        bctx.globalAlpha=0.2;
+        bctx.translate(pkt.x,pkt.y);
+        bctx.strokeStyle=pkt.color; bctx.fillStyle=pkt.color+'22';
+      } else {
+        bctx.shadowColor=pkt.color; bctx.shadowBlur=10;
+        bctx.translate(pkt.x,pkt.y);
+        bctx.strokeStyle=pkt.color; bctx.fillStyle=pkt.color+'33';
+        // clickable hint pulse
+        bctx.globalAlpha=0.6+0.4*Math.sin(btick*0.18);
+      }
+      bctx.lineWidth=1.5;
+      bctx.beginPath(); bctx.roundRect(-W/2,-H/2,W,H,4); bctx.fill(); bctx.stroke();
+      bctx.globalAlpha=1;
+      bctx.fillStyle=pkt.dropped?'#f66':pkt.done?pkt.color+'66':pkt.color;
+      bctx.font=`bold 9px Courier New`; bctx.textAlign='center'; bctx.textBaseline='middle';
+      bctx.fillText(pkt.dropped?`✗ ${pkt.label}`:pkt.label,0,-3);
+      bctx.font=`8px Courier New`;
+      bctx.fillStyle=pkt.dropped?'#f88':pkt.done?'#5f966':'rgba(200,230,255,0.7)';
+      bctx.fillText(pkt.dropped?'DROPPED':pkt.done?'✓ RX':`${pkt.size}B`,0,6);
+      bctx.restore();
+    });
+  } else if(B.pkt&&!B.pkt.done){
+    // fallback: single packet triangle (partial animation)
     const pulse=1+0.15*Math.sin(btick*0.2);
     bctx.save();
-    bctx.shadowColor='#0ff'; bctx.shadowBlur=14;
-    bctx.fillStyle='#fff';
+    bctx.shadowColor='#0ff'; bctx.shadowBlur=14; bctx.fillStyle='#fff';
     bctx.beginPath();
     bctx.moveTo(B.pkt.x,B.pkt.y-10*pulse);
     bctx.lineTo(B.pkt.x+7*pulse,B.pkt.y+5*pulse);
@@ -1560,7 +1820,215 @@ function bDrawLoop(){
     bctx.restore();
   }
 
+  // builder particles
+  B.bparticles=B.bparticles.filter(p=>p.life>0);
+  B.bparticles.forEach(p=>{
+    p.x+=p.vx; p.y+=p.vy; p.life-=2;
+    bctx.globalAlpha=p.life/80;
+    bctx.fillStyle=p.color;
+    bctx.beginPath(); bctx.arc(p.x,p.y,p.r,0,Math.PI*2); bctx.fill();
+  });
+  bctx.globalAlpha=1;
+
   B.baf=requestAnimationFrame(bDrawLoop);
+}
+
+// ══════════════════════════════════════════════════════
+//  MTU — INTEGRATED INTO TEST
+// ══════════════════════════════════════════════════════
+function onMTUChange(){
+  B.mtu=parseInt(document.getElementById('b-mtu-input').value);
+  B.payload=parseInt(document.getElementById('b-payload-input').value);
+  const mss=B.mtu-40;
+  const frags=Math.ceil(B.payload/mss);
+  const presets={576:'dial-up',1280:'IPv6 min',1500:'Ethernet',9000:'Jumbo'};
+  const fc=frags===1?'#0f6':frags<=4?'#fa0':'#f55';
+  document.getElementById('b-mtu-val').textContent=B.mtu;
+  document.getElementById('b-payload-val').textContent=B.payload;
+  document.getElementById('b-mtu-display').innerHTML=
+    `<span style="color:${fc};font-weight:bold">${frags} fragment${frags!==1?'s':''}</span>`+
+    (presets[B.mtu]?` <span style="color:#fa0;font-size:9px">(${presets[B.mtu]})</span>`:'')+
+    ` <span style="color:#446;font-size:9px">MSS=${mss}B</span>`;
+  updateSuccessProb();
+}
+
+function bSetMTU(v){
+  document.getElementById('b-mtu-input').value=v;
+  onMTUChange();
+}
+
+function onIntegrityChange(){
+  const integrity=parseInt(document.getElementById('b-integrity-input').value);
+  const col=integrity>70?'#0f6':integrity>30?'#fa0':'#f55';
+  const barBg=integrity>70?'linear-gradient(90deg,#0f6,#0af)':
+               integrity>30?'linear-gradient(90deg,#fa0,#f80)':
+                            'linear-gradient(90deg,#f44,#f80)';
+  document.getElementById('b-integrity-val').textContent=integrity+'%';
+  document.getElementById('b-integrity-val').style.color=col;
+  document.getElementById('b-integrity-bar').style.width=integrity+'%';
+  document.getElementById('b-integrity-bar').style.background=barBg;
+  document.getElementById('b-integrity-input').style.accentColor=col;
+  updateSuccessProb();
+}
+
+function bSetIntegrity(v){
+  document.getElementById('b-integrity-input').value=v;
+  onIntegrityChange();
+}
+
+function updateSuccessProb(){
+  const el=document.getElementById('b-success-prob');
+  if(!el) return;
+  const integrity=parseInt(document.getElementById('b-integrity-input')?.value??'100');
+  const p=integrity/100;
+  const mtu=B.mtu||1500, payload=B.payload||4000;
+  const frags=Math.ceil(payload/(mtu-40));
+  // P(Fi survives) = p^(i+1), P(all) = product = p^(1+2+...+N) = p^(N(N+1)/2)
+  const totalExp=frags*(frags+1)/2;
+  const pSuccess=Math.pow(p,totalExp)*100;
+  const fc=n=>n>70?'#0f6':n>20?'#fa0':'#f55';
+  const fmt=n=>n<0.01?'<0.01':n.toFixed(n<1?2:n<10?1:0);
+  const f1=(p*100).toFixed(0), fN=(Math.pow(p,frags)*100);
+  const col=fc(pSuccess);
+  el.innerHTML=frags===1
+    ?`F1 survival: <b style="color:${fc(p*100)}">${f1}%</b><br>`+
+     `P(success) = <b style="color:${col}">${fmt(pSuccess)}%</b>`
+    :`F1: <b style="color:${fc(p*100)}">${f1}%</b> → `+
+     `F${frags}: <b style="color:${fc(fN)}">${fmt(fN)}%</b><br>`+
+     `P(all ${frags} arrive) = <b style="color:${col}">${fmt(pSuccess)}%</b>`;
+}
+
+// ── fragment animation (replaces single-packet animatePacket for full test) ──
+function animateFragments(path){
+  if(path.length<6) return;
+  const mtu=B.mtu||1500, payload=B.payload||4000;
+  const mss=mtu-40; // IP+TCP headers
+  const fragCount=Math.ceil(payload/mss);
+  const maxFrags=Math.min(fragCount,12);
+
+  const [pcId,swId,rtId,fwId,dnId,svId]=path;
+  const route=[pcId,swId,rtId,fwId,dnId,fwId,svId];
+  const getPos=id=>{const d=B.devices.find(x=>x.id===id);return d?{x:d.x,y:d.y}:{x:0,y:0};};
+
+  // clear previous
+  B.pkts=[]; B.fragDropped=new Set(); B.simPhase='flying'; B.bparticles=[];
+  hideMTUBanner();
+
+  const hues=[200,160,120,80,40,0,280,240,320,60,180,300];
+  const STAGGER=14; // frames between launches
+  const integrity=parseInt(document.getElementById('b-integrity-input')?.value??'100');
+
+  for(let i=0;i<maxFrags;i++){
+    const isLast=i===fragCount-1;
+    const size=isLast?(payload%mss||mss):mss;
+    const color=`hsl(${hues[i%hues.length]},80%,60%)`;
+    const startPos=getPos(route[0]);
+    const yOff=(i-(maxFrags-1)/2)*18;
+    // Compounding drop rate: each fragment has lower survival than the last
+    // F0 = integrity%, F1 = integrity%^2, F2 = integrity%^3...
+    const fragSurvival=Math.pow(integrity/100, i+1);
+    const willDrop=integrity<100&&Math.random()>fragSurvival;
+    // Pick a random mid-route step to drop at (not first, not last)
+    const dropStep=willDrop?(1+Math.floor(Math.random()*(route.length-2))):-1;
+    const dropT=willDrop?(0.25+Math.random()*0.5):-1;
+    B.pkts.push({id:i,route,getPos,step:0,t:0,
+      x:startPos.x,y:startPos.y+yOff,yOff,
+      done:false,dropped:false,shakeFrames:0,
+      color,label:`F${i+1}`,size,delay:i*STAGGER,
+      willDrop,dropStep,dropT});
+  }
+
+  // Update config panel to show live status
+  document.getElementById('b-config-inner').innerHTML=
+    `<div style="color:#0df;font-size:13px;font-weight:bold;margin-bottom:8px">
+       📡 Transmitting ${fragCount} fragment${fragCount>1?'s':''}...</div>
+     <div style="font-size:11px;color:#8bc;line-height:1.8;margin-bottom:8px">
+       MTU <b style="color:#0df">${mtu}B</b> → MSS <b style="color:#0df">${mss}B</b><br>
+       Payload <b style="color:#fa0">${payload}B</b> ÷ ${mss}B = <b style="color:#0df">${fragCount} fragment${fragCount>1?'s':''}</b>
+     </div>
+     <div style="font-size:11px;color:#f80;padding:7px;border:1px solid #f805;border-radius:5px;background:rgba(40,20,0,0.5)">
+       ⚡ <b>Click any fragment</b> on the canvas to drop it and trigger reassembly failure.
+     </div>`;
+
+  // Store params so bDrawLoop can call showFragResult when done
+  B.fragParams={totalFrags:fragCount,payload,mtu,mss};
+  // Animation is driven by bDrawLoop — no separate RAF needed
+}
+
+function dropFragPkt(pkt){
+  pkt.dropped=true;
+  pkt.shakeFrames=12;
+  B.fragDropped.add(pkt.id);
+  // Burst particles at drop site
+  for(let i=0;i<12;i++){
+    const a=Math.random()*Math.PI*2, s=1+Math.random()*3;
+    B.bparticles.push({x:pkt.x,y:pkt.y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,
+      life:60+Math.random()*40,color:'#ff4444',r:2+Math.random()*3});
+  }
+  showMTUBanner(`✗ Fragment ${pkt.label} dropped — waiting for others...`,
+    'rgba(80,10,10,0.9)','#f44');
+}
+
+function showFragResult(success,totalFrags,payload,mtu,mss){
+  B.simPhase='done';
+  if(success){
+    const overhead=totalFrags>1?(totalFrags*20):0;
+    document.getElementById('b-config-inner').innerHTML=
+      `<div style="padding:10px;background:rgba(0,60,30,0.7);border:2px solid #0f6;border-radius:8px;margin-bottom:10px">
+         <div style="color:#0f6;font-size:14px;font-weight:bold;margin-bottom:6px">✅ TRANSMISSION COMPLETE</div>
+         <div style="font-size:12px;color:#9db;line-height:1.9">
+           All <b style="color:#0df">${totalFrags}</b> fragment${totalFrags>1?'s':''} received intact.<br>
+           ${totalFrags>1?`Reassembled into <b>${payload}B</b> payload at receiver.<br>
+           Fragmentation overhead: <b style="color:#fa0">${overhead}B</b> extra IP headers.`:`No fragmentation — single segment, zero overhead.`}
+         </div>
+       </div>
+       ${totalFrags>1?`<div style="font-size:11px;color:#556;padding:8px;border-radius:5px;background:rgba(0,20,40,0.6);margin-bottom:8px">
+         💡 Raising MTU reduces fragments and overhead. Set MTU to 9000 (Jumbo Frame) → only ${Math.ceil(payload/(9000-40))} fragment${Math.ceil(payload/(9000-40))>1?'s':''}.
+       </div>`:''}
+       <button onclick="resetFragSim()" style="margin-top:4px;padding:6px 14px;background:#003060;border:1px solid #0af;color:#0df;border-radius:6px;cursor:pointer;font-family:'Courier New',monospace;font-size:12px">↺ Simulate Again</button>
+       <button onclick="builderWin()" style="margin-top:4px;margin-left:6px;padding:6px 14px;background:#004f30;border:1px solid #0f6;color:#0f6;border-radius:6px;cursor:pointer;font-family:'Courier New',monospace;font-size:12px">✓ Complete →</button>`;
+    showMTUBanner(`✓ All ${totalFrags} fragments received — reassembly complete`,'rgba(0,60,30,0.95)','#0f6');
+    for(let i=0;i<20;i++){
+      const a=Math.random()*Math.PI*2,s=1+Math.random()*4;
+      B.bparticles.push({x:bW()/2,y:bH()/2,vx:Math.cos(a)*s,vy:Math.sin(a)*s,
+        life:80+Math.random()*50,color:'#00ff88',r:2+Math.random()*4});
+    }
+  } else {
+    const dropped=[...B.fragDropped].map(i=>`F${i+1}`).join(', ');
+    document.getElementById('b-config-inner').innerHTML=
+      `<div style="padding:10px;background:rgba(80,10,10,0.8);border:2px solid #f44;border-radius:8px;margin-bottom:10px">
+         <div style="color:#f55;font-size:14px;font-weight:bold;margin-bottom:6px">✗ REASSEMBLY FAILED</div>
+         <div style="font-size:12px;color:#fbb;line-height:1.9">
+           Fragment${B.fragDropped.size>1?'s':''} <b style="color:#f44">${dropped}</b> lost in transit.<br>
+           <b>All ${totalFrags} fragments discarded.</b><br>
+           Receiver cannot reconstruct incomplete data — entire <b>${payload}B</b> payload must be retransmitted from scratch.
+         </div>
+       </div>
+       <div style="font-size:11px;color:#a88;padding:8px;border-radius:5px;background:rgba(40,10,0,0.6);margin-bottom:8px">
+         💡 This is why IP fragmentation is dangerous: 1 lost fragment = entire payload retransmit.<br>
+         <b>Path MTU Discovery (PMTUD)</b> finds the correct MTU before sending to avoid this.
+       </div>
+       <button onclick="resetFragSim()" style="padding:6px 14px;background:#300;border:1px solid #f44;color:#f88;border-radius:6px;cursor:pointer;font-family:'Courier New',monospace;font-size:12px">↺ Retry</button>`;
+    showMTUBanner(`✗ Reassembly FAILED — ${B.fragDropped.size} fragment${B.fragDropped.size>1?'s':''} lost, full retransmit required`,'rgba(80,5,5,0.95)','#f44');
+  }
+}
+
+function resetFragSim(){
+  B.pkts=[]; B.fragDropped=new Set(); B.simPhase=null; B.bparticles=[]; B.pkt=null;
+  hideMTUBanner();
+  renderConfigPanel(null);
+}
+
+function showMTUBanner(msg,bg,col){
+  const el=document.getElementById('b-mtu-banner');
+  el.style.display='block';
+  el.style.background=bg;
+  el.style.border=`2px solid ${col}`;
+  el.style.color=col;
+  el.textContent=msg;
+}
+function hideMTUBanner(){
+  document.getElementById('b-mtu-banner').style.display='none';
 }
 
 </script>
