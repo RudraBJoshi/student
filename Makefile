@@ -27,7 +27,7 @@ default: server
 	@# tail and awk work together to extract Jekyll regeneration messages
 	@# When a _notebook is detected in the log, call make convert in the background
 	@# Note: We use the "if ($$0 ~ /_notebooks\/.*\.ipynb/) { system(\"make convert &\") }" to call make convert
-	@(tail -f $(LOG_FILE) | awk '/Server address: http:\/\/127.0.0.1:$(PORT)\/$(REPO_NAME)\// { serverReady=1 } \
+	@(tail -f $(LOG_FILE) | awk '/Server address: http:\/\/localhost:$(PORT)\/$(REPO_NAME)\// { serverReady=1 } \
 	serverReady && /^ *Regenerating:/ { regenerate=1 } \
 	regenerate { \
 		if (/^[[:blank:]]*$$/) { regenerate=0 } \
@@ -39,15 +39,18 @@ default: server
 	@# start an infinite loop with timeout to check log status
 	@for ((COUNTER = 0; ; COUNTER++)); do \
 		if grep -q "Server address:" $(LOG_FILE); then \
+			echo ""; \
 			echo "Server started in $$COUNTER seconds"; \
 			break; \
 		fi; \
 		if [ $$COUNTER -eq 300 ]; then \
+			echo ""; \
 			echo "Server timed out after $$COUNTER seconds."; \
 			echo "Review errors from $(LOG_FILE)."; \
 			cat $(LOG_FILE); \
 			exit 1; \
 		fi; \
+		printf "\rStill starting... (%ds elapsed)" $$COUNTER; \
 		sleep 1; \
 	done
 	@# outputs startup log, removes last line ($$d) as ctl-c message is not applicable for background process
@@ -59,7 +62,7 @@ csp: cspserver
 	@# tail and awk work together to extract Jekyll regeneration messages
 	@# When a _notebook is detected in the log, call make convert in the background
 	@# Note: We use the "if ($$0 ~ /_notebooks\/.*\.ipynb/) { system(\"make convert &\") }" to call make convert
-	@(tail -f $(LOG_FILE) | awk '/Server address: http:\/\/127.0.0.1:$(PORT)\/$(REPO_NAME)\// { serverReady=1 } \
+	@(tail -f $(LOG_FILE) | awk '/Server address: http:\/\/localhost:$(PORT)\/$(REPO_NAME)\// { serverReady=1 } \
 	serverReady && /^ *Regenerating:/ { regenerate=1 } \
 	regenerate { \
 		if (/^[[:blank:]]*$$/) { regenerate=0 } \
@@ -71,15 +74,18 @@ csp: cspserver
 	@# start an infinite loop with timeout to check log status
 	@for ((COUNTER = 0; ; COUNTER++)); do \
 		if grep -q "Server address:" $(LOG_FILE); then \
+			echo ""; \
 			echo "Server started in $$COUNTER seconds"; \
 			break; \
 		fi; \
 		if [ $$COUNTER -eq 300 ]; then \
+			echo ""; \
 			echo "Server timed out after $$COUNTER seconds."; \
 			echo "Review errors from $(LOG_FILE)."; \
 			cat $(LOG_FILE); \
 			exit 1; \
 		fi; \
+		printf "\rStill starting... (%ds elapsed)" $$COUNTER; \
 		sleep 1; \
 	done
 	@# outputs startup log, removes last line ($$d) as ctl-c message is not applicable for background process
@@ -89,14 +95,14 @@ csp: cspserver
 # Start the local web server
 server: stop convert
 	@echo "Starting server..."
-	@@nohup bundle exec jekyll serve -H 127.0.0.1 -P $(PORT) > $(LOG_FILE) 2>&1 & \
+	@@nohup bundle exec jekyll serve -H localhost -P $(PORT) > $(LOG_FILE) 2>&1 & \
 		PID=$$!; \
 		echo "Server PID: $$PID"
 	@@until [ -f $(LOG_FILE) ]; do sleep 1; done
 
 cspserver: stop cspconvert
 	@echo "Starting server..."
-	@@nohup bundle exec jekyll serve -H 127.0.0.1 -P $(PORT) > $(LOG_FILE) 2>&1 & \
+	@@nohup bundle exec jekyll serve -H localhost -P $(PORT) > $(LOG_FILE) 2>&1 & \
 		PID=$$!; \
 		echo "Server PID: $$PID"
 	@@until [ -f $(LOG_FILE) ]; do sleep 1; done
