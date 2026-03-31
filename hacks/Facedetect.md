@@ -14,7 +14,7 @@ permalink: /hacks/facedetect/
     // https://github.com/googlecreativelab/teachablemachine-community/tree/master/libraries/image
 
     // the link to your model provided by Teachable Machine export panel
-    const URL = "https://teachablemachine.withgoogle.com/models/2Rhh-GC5B/";
+    const URL = "/student/assets/tm-model/";
 
     let model, webcam, labelContainer, maxPredictions;
 
@@ -40,25 +40,34 @@ permalink: /hacks/facedetect/
         // append elements to the DOM
         document.getElementById("webcam-container").appendChild(webcam.canvas);
         labelContainer = document.getElementById("label-container");
-        for (let i = 0; i < maxPredictions; i++) { // and class labels
-            labelContainer.appendChild(document.createElement("div"));
+        for (let i = 0; i < maxPredictions; i++) {
+            const wrapper = document.createElement("div");
+            wrapper.style.cssText = "margin: 6px 0; font-size: 14px;";
+            const label = document.createElement("span");
+            const bar = document.createElement("div");
+            bar.style.cssText = "height: 18px; width: 0%; border-radius: 4px; transition: width 0.1s;";
+            wrapper.appendChild(label);
+            wrapper.appendChild(bar);
+            labelContainer.appendChild(wrapper);
         }
     }
 
     async function loop() {
-        webcam.update(); // update the webcam frame
+        webcam.update();
         await predict();
         window.requestAnimationFrame(loop);
     }
 
-    // run the webcam image through the image model
     async function predict() {
-        // predict can take in an image, video or canvas html element
         const prediction = await model.predict(webcam.canvas);
         for (let i = 0; i < maxPredictions; i++) {
-            const classPrediction =
-                prediction[i].className + ": " + prediction[i].probability.toFixed(2);
-            labelContainer.childNodes[i].innerHTML = classPrediction;
+            const prob = prediction[i].probability;
+            const name = prediction[i].className;
+            const wrapper = labelContainer.childNodes[i];
+            wrapper.childNodes[0].textContent = name + ": " + prob.toFixed(2) + " ";
+            const bar = wrapper.childNodes[1];
+            bar.style.width = (prob * 100).toFixed(1) + "%";
+            bar.style.backgroundColor = name.toLowerCase() === "green" ? "#22c55e" : "#ef4444";
         }
     }
 </script>
