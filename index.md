@@ -215,6 +215,7 @@ permalink: /
 
 <!-- ── HERO ── -->
 <div class="hero">
+  <div style="font-size:clamp(.85rem,2vw,1rem);letter-spacing:.2em;text-transform:uppercase;color:#00ff41;opacity:.7;margin-bottom:.6rem;">Rudra Joshi</div>
   <div style="display:flex;justify-content:center;align-items:center;gap:1.5rem;margin-bottom:1rem;flex-wrap:wrap;">
     <img src="{{ site.baseurl }}/images/about/RJ.png" alt="RJ initials" style="width:110px;height:110px;border-radius:50%;object-fit:cover;border:3px solid rgba(0,255,65,.4);">
     <img src="{{ site.baseurl }}/images/about/Portrait.png" alt="Rudra Joshi" style="width:110px;height:110px;border-radius:50%;object-fit:cover;border:3px solid rgba(0,255,65,.4);">
