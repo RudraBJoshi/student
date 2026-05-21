@@ -109,7 +109,7 @@
             {%- assign page_paths = site.header_pages | default: default_paths -%}
             {%- assign titles_size = site.pages | map: 'title' | join: '' | size -%}
             <a class="site-title" rel="author" href="{{ "/" | relative_url }}" data-value="{{ site.title | escape }}">
-                <img src="{{ site.baseurl }}/images/logo.png" alt="Logo" style="height: 40px; vertical-align: middle; margin-right: 10px;">
+                <img src="{{ site.baseurl }}/images/about/RJ.png" alt="RJ" style="height: 40px; vertical-align: middle; margin-right: 10px;">
             </a>
 
             {%- if titles_size > 0 -%}
@@ -137,7 +137,7 @@
                     </a>
                     {%- endif -%}
                     {%- endfor -%}
-                    <a id="loginArea" href="{{ site.baseurl }}/login">Login</a>
+
                 </div>
             </nav>
             {%- endif -%}
