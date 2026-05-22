@@ -1480,18 +1480,33 @@ document.getElementById('clear-editor').addEventListener('click', () => {
   editor.setValue(''); clearOutput();
 });
 
+let fpcMeta = {};
+
+function fpcChecksum(str) {
+  let h = 5381;
+  for (let i = 0; i < str.length; i++) h = Math.imul(h, 33) ^ str.charCodeAt(i);
+  return (h >>> 0).toString(16).padStart(8, '0');
+}
+
 function fpcSerialize(code) {
-  // Rule 1: version line first
-  // Rule 2: metadata key:value pairs
-  // Rule 3: separator
-  // Rule 7: body is raw — no normalization
-  const now   = new Date().toISOString();
-  const lines = code.split('\n').length;
-  return 'FPC:1.1\n'
-    + `created:${now}\n`
-    + `lines:${lines}\n`
-    + '---\n'
-    + code;
+  const now       = new Date().toISOString();
+  const created   = fpcMeta.created || now;
+  const author    = fpcMeta.author  || '';
+  const lineCount = code.split('\n').length;
+  const checksum  = fpcChecksum(code);
+
+  let out = 'FPC:1.2\n'
+    + 'engine:pseudoscript-1.0\n'
+    + `created:${created}\n`
+    + `updated:${now}\n`
+    + `lines:${lineCount}\n`
+    + `checksum:${checksum}\n`
+    + 'canonical:spaces=insignificant,case=sensitive,arrow=←,whitespace=preserved\n'
+    + 'types:string=quoted,integer=-?\\d+,float=numeric,boolean=TRUE|FALSE\n';
+
+  if (author) out += `author:${author}\n`;
+
+  return out + '---\n' + code;
 }
 
 function fpcParse(raw) {
@@ -1500,21 +1515,45 @@ function fpcParse(raw) {
 
   // Step 1: version line — must start with "FPC:", else treat as plain text
   if (!lines[i] || !lines[i].startsWith('FPC:')) return raw;
+  const version = lines[i].slice(4);
   i++;
 
-  // Step 2: parse metadata until "---" — unknown keys are silently ignored (Rule 8)
-  const meta = {};
+  // Step 2: parse all metadata until "---" — unknown keys silently ignored (Rule 8)
+  fpcMeta = { _version: version };
   while (i < lines.length && lines[i] !== '---') {
     const colon = lines[i].indexOf(':');
-    if (colon !== -1) meta[lines[i].slice(0, colon)] = lines[i].slice(colon + 1);
+    if (colon !== -1) fpcMeta[lines[i].slice(0, colon)] = lines[i].slice(colon + 1);
     i++;
   }
 
-  // Step 3: skip the "---" separator line
+  // Step 3: skip separator — fail gracefully if missing
   if (lines[i] === '---') i++;
 
-  // Step 4 + Rule 7: rejoin remaining lines byte-for-byte — lossless guarantee
-  return lines.slice(i).join('\n');
+  // Step 4: extract body byte-for-byte (lossless guarantee)
+  const body = lines.slice(i).join('\n');
+
+  // Validation (Rule 10) — warn but never block loading
+  const warns = [];
+  if (!fpcMeta.created)  warns.push('missing required key: created');
+  if (!fpcMeta.lines)    warns.push('missing required key: lines');
+  if (!fpcMeta.checksum) warns.push('missing required key: checksum');
+
+  if (fpcMeta.lines) {
+    const exp = parseInt(fpcMeta.lines, 10);
+    const act = body.split('\n').length;
+    if (!isNaN(exp) && exp !== act) warns.push(`lines mismatch: header=${exp}, body=${act}`);
+  }
+
+  if (fpcMeta.checksum) {
+    const act = fpcChecksum(body);
+    if (act !== fpcMeta.checksum) warns.push('checksum mismatch — file may be corrupted');
+  }
+
+  if (warns.length) {
+    setTimeout(() => warns.forEach(w => appendOutput(`[FPC] ${w}`, 'out-error')), 0);
+  }
+
+  return body;
 }
 
 document.getElementById('save-file').addEventListener('click', () => {
