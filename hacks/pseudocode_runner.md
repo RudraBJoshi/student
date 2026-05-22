@@ -56,7 +56,7 @@ permalink: /pseudocode-runner/
   .menu-action:hover { background:rgba(0,255,65,.12); color:#00ff41; }
   .menu-sep { border-top:1px solid rgba(0,255,65,.1); margin:.22rem 0; }
   .menu-run {
-    margin-left:auto; padding:0 1.2rem;
+    padding:0 1.2rem;
     background:rgba(0,255,65,.16); border:none;
     border-left:1px solid rgba(0,255,65,.18);
     color:#00ff41; font-family:'Courier New',monospace;
@@ -404,6 +404,7 @@ permalink: /pseudocode-runner/
     </div>
 
     <button class="menu-run" id="run-btn">▶ Run</button>
+
   </div>
 
   <div class="runner-layout">
