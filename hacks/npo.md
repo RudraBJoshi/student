@@ -24,4 +24,4 @@ The panel provided us with valuable feedback on our pitch. They praised our idea
 Participating in the pitching to the panel was a great experience for me. It allowed me to practice my communication skills and receive feedback from industry professionals. It also gave me the opportunity to contribute to a cause that I am passionate about, which is promoting inclusivity and diversity in the esports industry. I am grateful for the opportunity to participate in this panel and I look forward to continuing to work on my pitch and contribute to the Unified Esports League in the future.
 
 
-![alt text]({{site.baseurl}}/images/about/npo.png)
+<img src="{{site.baseurl}}/images/about/npo.png" alt="NPO pitch" style="max-width:600px;width:100%">
