@@ -1480,9 +1480,29 @@ document.getElementById('clear-editor').addEventListener('click', () => {
   editor.setValue(''); clearOutput();
 });
 
+function fpcSerialize(code) {
+  const now = new Date().toISOString();
+  const lines = code.split('\n').length;
+  return [
+    'FPC:1.0',
+    `created:${now}`,
+    `lines:${lines}`,
+    '---',
+    code
+  ].join('\n');
+}
+
+function fpcParse(raw) {
+  const sep = raw.indexOf('\n---\n');
+  if (sep === -1) return raw; // plain text fallback
+  const header = raw.slice(0, sep);
+  if (!header.startsWith('FPC:')) return raw; // not an fpc file
+  return raw.slice(sep + 5);
+}
+
 document.getElementById('save-file').addEventListener('click', () => {
   const code = editor.getValue();
-  const blob = new Blob([code], { type: 'text/plain' });
+  const blob = new Blob([fpcSerialize(code)], { type: 'text/plain' });
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement('a');
   a.href     = url;
@@ -1499,7 +1519,7 @@ document.getElementById('file-open-input').addEventListener('change', e => {
   const file = e.target.files[0];
   if (!file) return;
   const reader = new FileReader();
-  reader.onload = ev => { editor.setValue(ev.target.result); editor.focus(); };
+  reader.onload = ev => { editor.setValue(fpcParse(ev.target.result)); editor.focus(); };
   reader.readAsText(file);
   e.target.value = '';
 });
