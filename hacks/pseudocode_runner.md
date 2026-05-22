@@ -1482,9 +1482,19 @@ document.getElementById('clear-editor').addEventListener('click', () => {
 
 let fpcMeta = {};
 
-function fpcChecksum(str) {
+// Immutable engine rules — defined here, never overridable by file contents.
+// These appear in the file as informational documentation only.
+const FPC_ENGINE = {
+  canonical: 'spaces=insignificant,case=sensitive,arrow=←,whitespace=preserved',
+  types:     'string=quoted,integer=-?\\d+,float=numeric,boolean=TRUE|FALSE',
+};
+
+// Checksum definition: djb2 hash of the program body string only
+// (all content after the "---\n" separator, exactly as stored).
+// Uses UTF-16 code units (JS charCodeAt) — deterministic within browser environments.
+function fpcChecksum(body) {
   let h = 5381;
-  for (let i = 0; i < str.length; i++) h = Math.imul(h, 33) ^ str.charCodeAt(i);
+  for (let i = 0; i < body.length; i++) h = Math.imul(h, 33) ^ body.charCodeAt(i);
   return (h >>> 0).toString(16).padStart(8, '0');
 }
 
@@ -1493,18 +1503,23 @@ function fpcSerialize(code) {
   const created   = fpcMeta.created || now;
   const author    = fpcMeta.author  || '';
   const lineCount = code.split('\n').length;
+
+  // Checksum hashes program body only — exactly the string written after "---\n"
   const checksum  = fpcChecksum(code);
 
+  // --- file-declared (mutable) fields ---
   let out = 'FPC:1.2\n'
     + 'engine:pseudoscript-1.0\n'
     + `created:${created}\n`
     + `updated:${now}\n`
     + `lines:${lineCount}\n`
-    + `checksum:${checksum}\n`
-    + 'canonical:spaces=insignificant,case=sensitive,arrow=←,whitespace=preserved\n'
-    + 'types:string=quoted,integer=-?\\d+,float=numeric,boolean=TRUE|FALSE\n';
+    + `checksum:${checksum}\n`;
 
   if (author) out += `author:${author}\n`;
+
+  // --- engine info fields (informational only — engine ignores these on parse) ---
+  out += `canonical:${FPC_ENGINE.canonical}\n`
+      +  `types:${FPC_ENGINE.types}\n`;
 
   return out + '---\n' + code;
 }
@@ -1518,7 +1533,10 @@ function fpcParse(raw) {
   const version = lines[i].slice(4);
   i++;
 
-  // Step 2: parse all metadata until "---" — unknown keys silently ignored (Rule 8)
+  // Step 2: parse all metadata until "---"
+  // Engine info fields (canonical, types) are stored but NEVER used to change
+  // parsing behavior — FPC_ENGINE constants are authoritative, not the file.
+  // Unknown keys silently ignored (Rule 8).
   fpcMeta = { _version: version };
   while (i < lines.length && lines[i] !== '---') {
     const colon = lines[i].indexOf(':');
@@ -1526,13 +1544,13 @@ function fpcParse(raw) {
     i++;
   }
 
-  // Step 3: skip separator — fail gracefully if missing
+  // Step 3: skip separator
   if (lines[i] === '---') i++;
 
   // Step 4: extract body byte-for-byte (lossless guarantee)
   const body = lines.slice(i).join('\n');
 
-  // Validation (Rule 10) — warn but never block loading
+  // Validation — warn but never block loading
   const warns = [];
   if (!fpcMeta.created)  warns.push('missing required key: created');
   if (!fpcMeta.lines)    warns.push('missing required key: lines');
@@ -1541,12 +1559,12 @@ function fpcParse(raw) {
   if (fpcMeta.lines) {
     const exp = parseInt(fpcMeta.lines, 10);
     const act = body.split('\n').length;
-    if (!isNaN(exp) && exp !== act) warns.push(`lines mismatch: header=${exp}, body=${act}`);
+    if (!isNaN(exp) && exp !== act) warns.push(`lines mismatch: header says ${exp}, body has ${act}`);
   }
 
   if (fpcMeta.checksum) {
     const act = fpcChecksum(body);
-    if (act !== fpcMeta.checksum) warns.push('checksum mismatch — file may be corrupted');
+    if (act !== fpcMeta.checksum) warns.push('checksum mismatch — program body may be corrupted');
   }
 
   if (warns.length) {
