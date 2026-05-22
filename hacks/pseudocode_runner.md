@@ -1481,23 +1481,40 @@ document.getElementById('clear-editor').addEventListener('click', () => {
 });
 
 function fpcSerialize(code) {
-  const now = new Date().toISOString();
+  // Rule 1: version line first
+  // Rule 2: metadata key:value pairs
+  // Rule 3: separator
+  // Rule 7: body is raw — no normalization
+  const now   = new Date().toISOString();
   const lines = code.split('\n').length;
-  return [
-    'FPC:1.0',
-    `created:${now}`,
-    `lines:${lines}`,
-    '---',
-    code
-  ].join('\n');
+  return 'FPC:1.1\n'
+    + `created:${now}\n`
+    + `lines:${lines}\n`
+    + '---\n'
+    + code;
 }
 
 function fpcParse(raw) {
-  const sep = raw.indexOf('\n---\n');
-  if (sep === -1) return raw; // plain text fallback
-  const header = raw.slice(0, sep);
-  if (!header.startsWith('FPC:')) return raw; // not an fpc file
-  return raw.slice(sep + 5);
+  const lines = raw.split('\n');
+  let i = 0;
+
+  // Step 1: version line — must start with "FPC:", else treat as plain text
+  if (!lines[i] || !lines[i].startsWith('FPC:')) return raw;
+  i++;
+
+  // Step 2: parse metadata until "---" — unknown keys are silently ignored (Rule 8)
+  const meta = {};
+  while (i < lines.length && lines[i] !== '---') {
+    const colon = lines[i].indexOf(':');
+    if (colon !== -1) meta[lines[i].slice(0, colon)] = lines[i].slice(colon + 1);
+    i++;
+  }
+
+  // Step 3: skip the "---" separator line
+  if (lines[i] === '---') i++;
+
+  // Step 4 + Rule 7: rejoin remaining lines byte-for-byte — lossless guarantee
+  return lines.slice(i).join('\n');
 }
 
 document.getElementById('save-file').addEventListener('click', () => {
