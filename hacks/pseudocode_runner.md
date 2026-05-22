@@ -47,11 +47,15 @@ permalink: /pseudocode-runner/
     color:#3a6a3a; padding:.45rem 1rem .1rem; cursor:default;
   }
   .menu-action {
-    display:block; width:100%; text-align:left;
+    display:flex; justify-content:space-between; align-items:center;
+    width:100%; text-align:left;
     background:transparent; border:none; color:#c8ffc8;
     font-family:'Courier New',monospace; font-size:.8rem;
     padding:.3rem 1rem; cursor:pointer; white-space:nowrap;
-    transition:background .1s;
+    transition:background .1s; gap:1.5rem;
+  }
+  .menu-kbd {
+    font-size:.7rem; opacity:.45; letter-spacing:.02em;
   }
   .menu-action:hover { background:rgba(0,255,65,.12); color:#00ff41; }
   .menu-sep { border-top:1px solid rgba(0,255,65,.1); margin:.22rem 0; }
@@ -346,12 +350,12 @@ permalink: /pseudocode-runner/
     <div class="menu-wrap">
       <button class="menu-trigger">File</button>
       <div class="menu-dropdown">
-        <button class="menu-action" id="save-file">Save to File</button>
-        <button class="menu-action" id="open-file">Open File…</button>
+        <button class="menu-action" id="save-file">Save to File<span class="menu-kbd">Ctrl+S</span></button>
+        <button class="menu-action" id="open-file">Open File…<span class="menu-kbd">Ctrl+O</span></button>
         <div class="menu-sep"></div>
         <button class="menu-action" id="load-sample">Load Sample</button>
         <div class="menu-sep"></div>
-        <button class="menu-action" id="clear-editor">Clear Editor</button>
+        <button class="menu-action" id="clear-editor">Clear Editor<span class="menu-kbd">Ctrl+L</span></button>
       </div>
     </div>
 
@@ -403,7 +407,7 @@ permalink: /pseudocode-runner/
       </div>
     </div>
 
-    <button class="menu-run" id="run-btn">▶ Run</button>
+    <button class="menu-run" id="run-btn">▶ Run <span class="menu-kbd" style="opacity:.5">Ctrl+↵</span></button>
 
   </div>
 
@@ -1333,7 +1337,17 @@ document.querySelectorAll('.menu-trigger').forEach(trigger => {
 });
 
 document.addEventListener('click', closeMenus);
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeMenus(); });
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { closeMenus(); return; }
+  const ctrl = e.ctrlKey || e.metaKey;
+  if (!ctrl) return;
+  switch (e.key) {
+    case 'Enter': e.preventDefault(); document.getElementById('run-btn').click(); break;
+    case 's':     e.preventDefault(); document.getElementById('save-file').click(); break;
+    case 'o':     e.preventDefault(); document.getElementById('open-file').click(); break;
+    case 'l':     e.preventDefault(); document.getElementById('clear-editor').click(); break;
+  }
+});
 
 document.querySelectorAll('.menu-action[data-snip]').forEach(btn => {
   btn.addEventListener('click', () => {
