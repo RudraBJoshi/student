@@ -1480,18 +1480,9 @@ document.getElementById('clear-editor').addEventListener('click', () => {
   editor.setValue(''); clearOutput();
 });
 
-let fpcMeta = {};
-
-// ── FPC Rule Precedence (strict, non-negotiable) ────────────────────────────
-// Layer 1 — Engine (FPC_ENGINE): defines execution semantics. Always wins.
-// Layer 2 — File canonical/types fields: parsing/serialization expectations.
-//           Validated against Layer 1 on load. Cannot override it.
-// Layer 3 — Runtime behavior: driven entirely by Layer 1.
-//
-// A file's canonical/types fields are assertions about what engine produced it.
-// If they mismatch FPC_ENGINE, that signals spec drift or a version mismatch —
-// the engine still runs its own rules; the mismatch is surfaced as a warning.
-// ────────────────────────────────────────────────────────────────────────────
+// layconf1 — engine identity (execution authority, always wins)
+// layconf2 — canonical/types (parsing & serialization expectations, informational)
+// layconf3 — runtime metadata (file provenance, integrity)
 const FPC_ENGINE = {
   version:   '1.2',
   engine:    'pseudoscript-1.0',
@@ -1499,9 +1490,10 @@ const FPC_ENGINE = {
   types:     'string=quoted,integer=-?\\d+,float=numeric,boolean=TRUE|FALSE',
 };
 
-// Checksum definition: djb2 hash of the program body string only
-// (all content after the "---\n" separator, exactly as stored).
-// Uses UTF-16 code units (JS charCodeAt) — deterministic within browser environments.
+let fpcMeta = { layconf1: {}, layconf2: {}, layconf3: {} };
+
+// Checksum: djb2 hash of program body only (content after "---\n").
+// Uses UTF-16 code units — deterministic within browser environments.
 function fpcChecksum(body) {
   let h = 5381;
   for (let i = 0; i < body.length; i++) h = Math.imul(h, 33) ^ body.charCodeAt(i);
@@ -1510,26 +1502,24 @@ function fpcChecksum(body) {
 
 function fpcSerialize(code) {
   const now       = new Date().toISOString();
-  const created   = fpcMeta.created || now;
-  const author    = fpcMeta.author  || '';
+  const created   = fpcMeta.layconf3.created || now;
+  const author    = fpcMeta.layconf3.author  || '';
   const lineCount = code.split('\n').length;
-
-  // Checksum hashes program body only — exactly the string written after "---\n"
   const checksum  = fpcChecksum(code);
 
-  // --- file-declared (mutable) fields ---
   let out = 'FPC:1.2\n'
-    + 'engine:pseudoscript-1.0\n'
+    + '[layconf1]\n'
+    + `engine:${FPC_ENGINE.engine}\n`
+    + '[layconf2]\n'
+    + `canonical:${FPC_ENGINE.canonical}\n`
+    + `types:${FPC_ENGINE.types}\n`
+    + '[layconf3]\n'
     + `created:${created}\n`
     + `updated:${now}\n`
     + `lines:${lineCount}\n`
     + `checksum:${checksum}\n`;
 
   if (author) out += `author:${author}\n`;
-
-  // --- engine info fields (informational only — engine ignores these on parse) ---
-  out += `canonical:${FPC_ENGINE.canonical}\n`
-      +  `types:${FPC_ENGINE.types}\n`;
 
   return out + '---\n' + code;
 }
@@ -1538,19 +1528,25 @@ function fpcParse(raw) {
   const lines = raw.split('\n');
   let i = 0;
 
-  // Step 1: version line — must start with "FPC:", else treat as plain text
+  // Step 1: version line
   if (!lines[i] || !lines[i].startsWith('FPC:')) return raw;
   const version = lines[i].slice(4);
   i++;
 
-  // Step 2: parse all metadata until "---"
-  // Engine info fields (canonical, types) are stored but NEVER used to change
-  // parsing behavior — FPC_ENGINE constants are authoritative, not the file.
-  // Unknown keys silently ignored (Rule 8).
-  fpcMeta = { _version: version };
+  // Step 2: parse layered metadata until "---"
+  // layconf2 fields are informational only — FPC_ENGINE is authoritative (Rule 8).
+  // Unknown keys silently ignored for forward compatibility.
+  fpcMeta = { _version: version, layconf1: {}, layconf2: {}, layconf3: {} };
+  let currentLayer = 'layconf3'; // default bucket for untagged keys
   while (i < lines.length && lines[i] !== '---') {
-    const colon = lines[i].indexOf(':');
-    if (colon !== -1) fpcMeta[lines[i].slice(0, colon)] = lines[i].slice(colon + 1);
+    const line = lines[i];
+    if (line === '[layconf1]') { currentLayer = 'layconf1'; }
+    else if (line === '[layconf2]') { currentLayer = 'layconf2'; }
+    else if (line === '[layconf3]') { currentLayer = 'layconf3'; }
+    else {
+      const colon = line.indexOf(':');
+      if (colon !== -1) fpcMeta[currentLayer][line.slice(0, colon)] = line.slice(colon + 1);
+    }
     i++;
   }
 
@@ -1562,34 +1558,35 @@ function fpcParse(raw) {
 
   // Validation — warn but never block loading
   const warns = [];
+  const lc3 = fpcMeta.layconf3;
+  const lc1 = fpcMeta.layconf1;
+  const lc2 = fpcMeta.layconf2;
 
-  // Required metadata keys
-  if (!fpcMeta.created)  warns.push('missing required key: created');
-  if (!fpcMeta.lines)    warns.push('missing required key: lines');
-  if (!fpcMeta.checksum) warns.push('missing required key: checksum');
+  // layconf3 required keys
+  if (!lc3.created)  warns.push('[layconf3] missing required key: created');
+  if (!lc3.lines)    warns.push('[layconf3] missing required key: lines');
+  if (!lc3.checksum) warns.push('[layconf3] missing required key: checksum');
 
   // Line count integrity
-  if (fpcMeta.lines) {
-    const exp = parseInt(fpcMeta.lines, 10);
+  if (lc3.lines) {
+    const exp = parseInt(lc3.lines, 10);
     const act = body.split('\n').length;
-    if (!isNaN(exp) && exp !== act) warns.push(`lines mismatch: header says ${exp}, body has ${act}`);
+    if (!isNaN(exp) && exp !== act) warns.push(`[layconf3] lines mismatch: header says ${exp}, body has ${act}`);
   }
 
   // Checksum integrity
-  if (fpcMeta.checksum) {
-    const act = fpcChecksum(body);
-    if (act !== fpcMeta.checksum) warns.push('checksum mismatch — program body may be corrupted');
-  }
+  if (lc3.checksum && fpcChecksum(body) !== lc3.checksum)
+    warns.push('[layconf3] checksum mismatch — program body may be corrupted');
 
-  // Layer precedence check — file's declared engine info must match FPC_ENGINE.
-  // Mismatches mean the file came from a different engine version (spec drift).
-  // Engine Layer 1 always runs its own rules regardless.
-  if (fpcMeta.engine    && fpcMeta.engine    !== FPC_ENGINE.engine)
-    warns.push(`engine mismatch: file=${fpcMeta.engine}, runtime=${FPC_ENGINE.engine}`);
-  if (fpcMeta.canonical && fpcMeta.canonical !== FPC_ENGINE.canonical)
-    warns.push(`canonical mismatch: file declares different parsing rules — engine rules apply`);
-  if (fpcMeta.types     && fpcMeta.types     !== FPC_ENGINE.types)
-    warns.push(`types mismatch: file declares different type rules — engine rules apply`);
+  // layconf1 precedence check — engine identity must match runtime
+  if (lc1.engine && lc1.engine !== FPC_ENGINE.engine)
+    warns.push(`[layconf1] engine mismatch: file=${lc1.engine}, runtime=${FPC_ENGINE.engine}`);
+
+  // layconf2 drift check — informational, but flag if different from engine constants
+  if (lc2.canonical && lc2.canonical !== FPC_ENGINE.canonical)
+    warns.push('[layconf2] canonical drift — engine rules apply');
+  if (lc2.types && lc2.types !== FPC_ENGINE.types)
+    warns.push('[layconf2] types drift — engine rules apply');
 
   if (warns.length) {
     setTimeout(() => warns.forEach(w => appendOutput(`[FPC] ${w}`, 'out-error')), 0);
