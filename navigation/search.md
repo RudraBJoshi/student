@@ -237,6 +237,23 @@ permalink: /search/
 
   <div class="proj-card" data-tags="web">
     <div class="proj-card-top">
+      <span class="proj-icon">💻</span>
+      <span class="proj-status live">Live</span>
+    </div>
+    <h3>Pseudocode Runner</h3>
+    <p>Browser-based AP CSP pseudocode editor and interpreter. Supports full syntax, robot tilemap simulation, local storage, and a CodeMirror editor with custom highlighting.</p>
+    <div class="proj-tags">
+      <span class="proj-tag">JavaScript</span>
+      <span class="proj-tag">Interpreter</span>
+      <span class="proj-tag">AP CSP</span>
+    </div>
+    <div class="proj-links">
+      <a class="proj-link primary" href="/student/pseudocode-runner/">Open</a>
+    </div>
+  </div>
+
+  <div class="proj-card" data-tags="web">
+    <div class="proj-card-top">
       <span class="proj-icon">🌐</span>
       <span class="proj-status live">Live</span>
     </div>
