@@ -297,7 +297,7 @@ permalink: /
 <!-- ── CONTACT ── -->
 <div class="section-title reveal">Contact</div>
 <div class="contact-links reveal">
-  <a class="contact-btn" href="mailto:Rudraj2022@gmail.com">&#9993; Email</a>
+  <a class="contact-btn" href="https://mail.google.com/mail/?view=cm&to=Rudraj2022@gmail.com" target="_blank" rel="noopener">&#9993; Email</a>
   <a class="contact-btn" href="https://www.linkedin.com/in/rudra-joshi-a328803a9/" target="_blank" rel="noopener">in LinkedIn</a>
   <a class="contact-btn" href="https://github.com/RudraBJoshi" target="_blank" rel="noopener">&#9095; GitHub</a>
 </div>
