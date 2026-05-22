@@ -336,7 +336,7 @@ permalink: /pseudocode-runner/
 
 <script>document.body.classList.add('no-wrapper-padding');</script>
 
-<input type="file" id="file-open-input" accept=".pseudo,.txt" style="display:none">
+<input type="file" id="file-open-input" accept=".fpc,.txt" style="display:none">
 
 <div class="runner-page">
 
@@ -1486,7 +1486,7 @@ document.getElementById('save-file').addEventListener('click', () => {
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement('a');
   a.href     = url;
-  a.download = 'program.pseudo';
+  a.download = 'program.fpc';
   a.click();
   URL.revokeObjectURL(url);
 });
