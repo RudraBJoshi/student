@@ -1,0 +1,1671 @@
+---
+layout: default
+permalink: /pseudocode-runner/
+---
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+
+<style>
+  body { background:#000 !important; }
+  * { box-sizing: border-box; }
+
+  .runner-page { font-family:'Courier New',monospace; color:#c8ffc8; }
+
+  /* ── Menu Bar ── */
+  .menubar {
+    display:flex; align-items:stretch;
+    background:#030803; border-bottom:1px solid rgba(0,255,65,.14);
+    margin-bottom:.6rem; height:28px; user-select:none; flex-shrink:0;
+  }
+  .menubar-brand {
+    padding:0 .9rem; font-size:.73rem; font-weight:700;
+    color:#00ff41; opacity:.4; letter-spacing:.1em;
+    display:flex; align-items:center;
+    border-right:1px solid rgba(0,255,65,.1); white-space:nowrap;
+  }
+  .menu-wrap { position:relative; display:flex; align-items:stretch; }
+  .menu-trigger {
+    padding:0 .75rem; background:transparent; border:none;
+    color:#c8ffc8; font-family:'Courier New',monospace; font-size:.82rem;
+    cursor:pointer; outline:none; display:flex; align-items:center;
+    transition:background .1s; white-space:nowrap;
+  }
+  .menu-trigger:hover, .menu-wrap.open .menu-trigger {
+    background:rgba(0,255,65,.13); color:#00ff41;
+  }
+  .menu-dropdown {
+    display:none; position:absolute; top:100%; left:0;
+    background:#020c02; border:1px solid rgba(0,255,65,.25);
+    min-width:215px; z-index:9000;
+    box-shadow:0 10px 30px rgba(0,0,0,.8);
+    padding:.25rem 0;
+  }
+  .menu-wrap.open .menu-dropdown { display:block; }
+  .menu-group {
+    font-size:.62rem; letter-spacing:.1em; text-transform:uppercase;
+    color:#3a6a3a; padding:.45rem 1rem .1rem; cursor:default;
+  }
+  .menu-action {
+    display:block; width:100%; text-align:left;
+    background:transparent; border:none; color:#c8ffc8;
+    font-family:'Courier New',monospace; font-size:.8rem;
+    padding:.3rem 1rem; cursor:pointer; white-space:nowrap;
+    transition:background .1s;
+  }
+  .menu-action:hover { background:rgba(0,255,65,.12); color:#00ff41; }
+  .menu-sep { border-top:1px solid rgba(0,255,65,.1); margin:.22rem 0; }
+  .menu-run {
+    margin-left:auto; padding:0 1.2rem;
+    background:rgba(0,255,65,.16); border:none;
+    border-left:1px solid rgba(0,255,65,.18);
+    color:#00ff41; font-family:'Courier New',monospace;
+    font-size:.85rem; font-weight:700; cursor:pointer;
+    display:flex; align-items:center; transition:background .15s;
+  }
+  .menu-run:hover { background:rgba(0,255,65,.3); }
+  /* shared small button used in modals */
+  .tb-btn {
+    padding:.3rem .8rem; border-radius:5px; border:1px solid rgba(0,255,65,.4);
+    background:rgba(0,255,65,.08); color:#00ff41; font-family:'Courier New',monospace;
+    font-size:.82rem; cursor:pointer; transition:background .18s;
+  }
+  .tb-btn:hover { background:rgba(0,255,65,.2); }
+  .tb-btn.run { background:rgba(0,255,65,.18); font-weight:700; }
+  .tb-btn.run:hover { background:rgba(0,255,65,.32); }
+
+  /* ── Main layout ── */
+  .runner-layout {
+    display:grid;
+    grid-template-columns:3fr 2fr;
+    gap:.8rem;
+    height: 520px;
+  }
+  @media(max-width:700px){
+    .runner-layout { grid-template-columns:1fr; height:auto; }
+  }
+
+  /* ── Editor ── */
+  .editor-wrap {
+    display:flex; flex-direction:column;
+    border:1px solid rgba(0,255,65,.25); border-radius:10px; overflow:hidden;
+  }
+  .pane-label {
+    background:rgba(0,20,0,.8); padding:.35rem .8rem;
+    font-size:.75rem; letter-spacing:.1em; color:#00ff41; opacity:.7;
+    text-transform:uppercase; border-bottom:1px solid rgba(0,255,65,.15);
+  }
+  .CodeMirror {
+    height:100% !important;
+    font-family:'Courier New',monospace !important;
+    font-size:.9rem !important;
+    background:#020c02 !important;
+    color:#c8ffc8 !important;
+    flex:1;
+  }
+  .CodeMirror-scroll { min-height:460px; }
+  .CodeMirror-gutters { background:#020c02 !important; border-right:1px solid rgba(0,255,65,.1) !important; }
+  .CodeMirror-linenumber { color:#2a6a2a !important; }
+  .CodeMirror-cursor { border-left:2px solid #00ff41 !important; }
+  .CodeMirror-selected { background:rgba(0,255,65,.12) !important; }
+
+  /* ── Syntax colors ── */
+  .cm-keyword   { color:#00ff41 !important; font-weight:700; }
+  .cm-builtin   { color:#ffcc00 !important; }
+  .cm-operator  { color:#00ccff !important; font-weight:700; }
+  .cm-number    { color:#bb86fc !important; }
+  .cm-string    { color:#ff9944 !important; }
+  .cm-comment   { color:#3a6a3a !important; font-style:italic; }
+  .cm-variable  { color:#c8ffc8 !important; }
+  .cm-atom      { color:#ff6b9d !important; } /* TRUE / FALSE */
+
+  /* ── Right pane ── */
+  .right-pane { display:flex; flex-direction:column; gap:.8rem; }
+
+  .io-box {
+    border:1px solid rgba(0,255,65,.2); border-radius:10px; overflow:hidden;
+    display:flex; flex-direction:column;
+  }
+  .io-box textarea, .io-box .output-area {
+    background:#020c02; color:#c8ffc8; border:none; outline:none;
+    font-family:'Courier New',monospace; font-size:.85rem;
+    padding:.6rem; resize:none; flex:1;
+  }
+  .io-box textarea { height:80px; }
+  .output-area {
+    min-height:200px; max-height:340px; overflow-y:auto;
+    white-space:pre-wrap; line-height:1.6;
+  }
+  .out-line { display:block; }
+  .out-error { color:#ff5555; }
+  .out-info  { color:#3a6a3a; font-style:italic; }
+
+  /* ── Robot canvas ── */
+  .robot-panel {
+    border:1px solid rgba(0,255,65,.2); border-radius:10px; overflow:hidden;
+    display:flex; flex-direction:column;
+  }
+  .robot-controls {
+    display:flex; gap:.4rem; padding:.35rem .5rem;
+    background:rgba(0,20,0,.8); border-top:1px solid rgba(0,255,65,.1);
+    flex-wrap:wrap; align-items:center; flex-shrink:0;
+  }
+  .robot-controls span { font-size:.7rem; opacity:.5; }
+  #robot-canvas {
+    display:block; background:#010801;
+    width:100%; flex:1; min-height:0;
+    image-rendering:pixelated;
+  }
+  .robot-speed {
+    -webkit-appearance:none; appearance:none;
+    width:90px; height:3px;
+    background:rgba(0,255,65,.15);
+    border:1px solid rgba(0,255,65,.25);
+    border-radius:2px;
+    outline:none; cursor:pointer;
+    vertical-align:middle;
+  }
+  .robot-speed::-webkit-slider-runnable-track {
+    height:3px; border-radius:2px;
+    background:rgba(0,255,65,.12);
+  }
+  .robot-speed::-webkit-slider-thumb {
+    -webkit-appearance:none;
+    width:12px; height:12px; margin-top:-5px;
+    border-radius:50%;
+    background:#00ff41;
+    box-shadow:0 0 6px rgba(0,255,65,.7);
+    border:none; cursor:pointer;
+  }
+  .robot-speed::-moz-range-track {
+    height:3px; border-radius:2px;
+    background:rgba(0,255,65,.12); border:none;
+  }
+  .robot-speed::-moz-range-thumb {
+    width:12px; height:12px;
+    border-radius:50%;
+    background:#00ff41;
+    box-shadow:0 0 6px rgba(0,255,65,.7);
+    border:none; cursor:pointer;
+  }
+  .robot-speed:hover::-webkit-slider-thumb { box-shadow:0 0 10px rgba(0,255,65,1); }
+  .robot-speed:hover::-moz-range-thumb     { box-shadow:0 0 10px rgba(0,255,65,1); }
+
+  /* ── Input Modal ── */
+  .input-modal-overlay {
+    display:none; position:fixed; inset:0; z-index:9999;
+    background:rgba(0,0,0,.82); backdrop-filter:blur(6px);
+    align-items:center; justify-content:center;
+  }
+  .input-modal-overlay.open { display:flex; }
+  .input-modal-box {
+    background:#010d01; border:1px solid rgba(0,255,65,.5);
+    border-radius:14px; padding:1.6rem 2rem; min-width:300px; max-width:440px; width:90%;
+    box-shadow:0 0 56px rgba(0,255,65,.18);
+    display:flex; flex-direction:column; gap:1rem;
+  }
+  .input-modal-title {
+    color:#00ff41; font-size:.95rem; font-weight:700;
+    letter-spacing:.06em; text-shadow:0 0 8px rgba(0,255,65,.4);
+  }
+  .input-modal-label { font-size:.8rem; opacity:.55; }
+  .input-modal-field {
+    background:#020c02; border:1px solid rgba(0,255,65,.35);
+    border-radius:6px; color:#c8ffc8; font-family:'Courier New',monospace;
+    font-size:1rem; padding:.55rem .8rem; outline:none; width:100%;
+    transition:border-color .15s, box-shadow .15s;
+  }
+  .input-modal-field:focus { border-color:rgba(0,255,65,.75); box-shadow:0 0 10px rgba(0,255,65,.2); }
+  .input-modal-ok { align-self:flex-end; }
+
+  /* ── Reference card ── */
+  .ref-card {
+    margin-top:1.2rem;
+    border:1px solid rgba(0,255,65,.15); border-radius:10px;
+    background:rgba(0,10,0,.5); padding:1rem 1.2rem;
+  }
+  .ref-card h3 { color:#00ff41; margin:0 0 .8rem; font-size:.95rem; letter-spacing:.05em; }
+  .ref-grid {
+    display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:.5rem 1.5rem;
+  }
+  .ref-item { font-size:.78rem; line-height:1.7; }
+  .ref-item code {
+    background:rgba(0,255,65,.08); border-radius:3px; padding:.05rem .3rem;
+    color:#00ff41; font-family:'Courier New',monospace; font-size:.8rem;
+  }
+  .ref-kw  { color:#00ff41; }
+  .ref-bi  { color:#ffcc00; }
+  .ref-op  { color:#00ccff; }
+
+  /* ── Local Storage Manager ── */
+  .lsm-overlay {
+    display:none; position:fixed; inset:0; z-index:9997;
+    background:rgba(0,0,0,.78); backdrop-filter:blur(5px);
+    align-items:center; justify-content:center;
+  }
+  .lsm-overlay.open { display:flex; }
+  .lsm-box {
+    background:#010d01; border:1px solid rgba(0,255,65,.4);
+    border-radius:14px; padding:1.2rem 1.4rem;
+    width:min(620px,94vw); max-height:88vh; overflow-y:auto;
+    box-shadow:0 0 48px rgba(0,255,65,.14);
+    display:flex; flex-direction:column; gap:.85rem;
+  }
+  .lsm-header { display:flex; justify-content:space-between; align-items:center; }
+  .lsm-header h3 { color:#00ff41; margin:0; font-size:1rem; letter-spacing:.06em; text-shadow:0 0 8px rgba(0,255,65,.4); }
+  .lsm-table { display:flex; flex-direction:column; gap:0; border:1px solid rgba(0,255,65,.15); border-radius:8px; overflow:hidden; }
+  .lsm-row {
+    display:grid; grid-template-columns:1fr 70px 1fr auto;
+    align-items:center; gap:.6rem; padding:.45rem .7rem;
+    border-bottom:1px solid rgba(0,255,65,.08); font-size:.8rem;
+  }
+  .lsm-row:last-child { border-bottom:none; }
+  .lsm-thead { background:rgba(0,20,0,.8); font-size:.68rem; text-transform:uppercase; letter-spacing:.08em; color:#3a6a3a; }
+  .lsm-name { color:#00ff41; font-family:'Courier New',monospace; font-weight:600; }
+  .lsm-type { color:#ffcc00; font-size:.75rem; }
+  .lsm-preview { color:#6a9f6a; font-size:.75rem; font-family:'Courier New',monospace; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .lsm-empty { font-size:.8rem; opacity:.35; text-align:center; padding:.8rem; }
+  .lsm-actions { display:flex; gap:.5rem; }
+
+  /* ── Map Editor Modal ── */
+  .mapeditor-overlay {
+    display:none; position:fixed; inset:0; z-index:9998;
+    background:rgba(0,0,0,.78); backdrop-filter:blur(5px);
+    align-items:center; justify-content:center;
+  }
+  .mapeditor-overlay.open { display:flex; }
+  .mapeditor-box {
+    background:#010d01; border:1px solid rgba(0,255,65,.4);
+    border-radius:14px; padding:1.2rem 1.4rem;
+    width:min(560px,94vw); max-height:88vh; overflow-y:auto;
+    box-shadow:0 0 48px rgba(0,255,65,.14);
+    display:flex; flex-direction:column; gap:.85rem;
+  }
+  .me-header { display:flex; justify-content:space-between; align-items:center; }
+  .me-header h3 { color:#00ff41; margin:0; font-size:1rem; letter-spacing:.06em; text-shadow:0 0 8px rgba(0,255,65,.4); }
+  .me-controls { display:flex; gap:.6rem; align-items:center; flex-wrap:wrap; }
+  .me-controls label { font-size:.78rem; opacity:.7; display:flex; align-items:center; gap:.3rem; }
+  .me-controls input[type="number"] {
+    background:#020c02; border:1px solid rgba(0,255,65,.3); color:#c8ffc8;
+    font-family:'Courier New',monospace; font-size:.82rem;
+    padding:.25rem .4rem; border-radius:4px; outline:none; width:50px;
+  }
+  .me-controls input[type="text"] {
+    background:#020c02; border:1px solid rgba(0,255,65,.3); color:#c8ffc8;
+    font-family:'Courier New',monospace; font-size:.82rem;
+    padding:.25rem .45rem; border-radius:4px; outline:none; width:120px;
+  }
+  .me-controls input:focus { border-color:rgba(0,255,65,.7); }
+  #me-grid { display:grid; gap:3px; user-select:none; width:fit-content; }
+  .me-cell {
+    width:28px; height:28px; border-radius:3px; cursor:pointer;
+    transition:background .07s, box-shadow .07s;
+  }
+  .me-wall {
+    background:rgba(0,255,65,.32); border:1px solid rgba(0,255,65,.55);
+    box-shadow:0 0 4px rgba(0,255,65,.25);
+  }
+  .me-open { background:rgba(0,10,0,.9); border:1px solid rgba(0,255,65,.1); }
+  .me-cell:hover { filter:brightness(1.45); }
+  .me-actions { display:flex; gap:.5rem; }
+  .me-section-label {
+    font-size:.68rem; letter-spacing:.1em; text-transform:uppercase;
+    color:#3a6a3a; padding-bottom:.3rem; border-bottom:1px solid rgba(0,255,65,.1);
+  }
+  .me-saved-row {
+    display:flex; align-items:center; gap:.4rem;
+    padding:.3rem 0; border-bottom:1px solid rgba(0,255,65,.06);
+  }
+  .me-saved-name { flex:1; font-size:.82rem; color:#00ff41; font-family:'Courier New',monospace; }
+  .me-sm { padding:.2rem .55rem !important; font-size:.73rem !important; }
+  .me-del { border-color:rgba(255,60,60,.35) !important; color:#ff5555 !important; }
+  .me-del:hover { background:rgba(255,60,60,.12) !important; }
+  .me-empty { font-size:.75rem; opacity:.35; }
+</style>
+
+<script>document.body.classList.add('no-wrapper-padding');</script>
+
+<div class="runner-page">
+
+  <div class="menubar">
+    <span class="menubar-brand">AP CSP</span>
+
+    <div class="menu-wrap">
+      <button class="menu-trigger">File</button>
+      <div class="menu-dropdown">
+        <button class="menu-action" id="load-sample">Load Sample</button>
+        <div class="menu-sep"></div>
+        <button class="menu-action" id="clear-editor">Clear Editor</button>
+      </div>
+    </div>
+
+    <div class="menu-wrap">
+      <button class="menu-trigger">Edit</button>
+      <div class="menu-dropdown">
+        <div class="menu-group">Conditionals</div>
+        <button class="menu-action" data-snip="if">IF / ELSE IF / ELSE</button>
+        <button class="menu-action" data-snip="if-simple">IF (simple)</button>
+        <div class="menu-group">Loops</div>
+        <button class="menu-action" data-snip="repeat-times">REPEAT n TIMES</button>
+        <button class="menu-action" data-snip="repeat-until">REPEAT UNTIL</button>
+        <button class="menu-action" data-snip="for-each">FOR EACH item IN list</button>
+        <div class="menu-group">Procedures</div>
+        <button class="menu-action" data-snip="procedure">PROCEDURE definition</button>
+        <button class="menu-action" data-snip="procedure-return">PROCEDURE with RETURN</button>
+        <div class="menu-group">Lists</div>
+        <button class="menu-action" data-snip="list-create">Create list</button>
+        <button class="menu-action" data-snip="list-ops">List operations</button>
+        <div class="menu-group">I/O</div>
+        <button class="menu-action" data-snip="display">DISPLAY</button>
+        <button class="menu-action" data-snip="input">INPUT</button>
+      </div>
+    </div>
+
+    <div class="menu-wrap">
+      <button class="menu-trigger">Robot</button>
+      <div class="menu-dropdown">
+        <button class="menu-action" data-snip="robot-setup">Tilemap + SPAWN</button>
+        <button class="menu-action" data-snip="robot-move">MOVE_FORWARD</button>
+        <button class="menu-action" data-snip="robot-rotate">ROTATE_LEFT / RIGHT</button>
+        <button class="menu-action" data-snip="robot-canmove">CAN_MOVE check</button>
+        <button class="menu-action" data-snip="robot-nav">Navigate to wall</button>
+      </div>
+    </div>
+
+    <div class="menu-wrap">
+      <button class="menu-trigger">Tools</button>
+      <div class="menu-dropdown">
+        <button class="menu-action" id="me-open-btn">Map Editor ⊞</button>
+        <button class="menu-action" id="lsm-open-btn">Storage ⛁</button>
+      </div>
+    </div>
+
+    <button class="menu-run" id="run-btn">▶ Run</button>
+  </div>
+
+  <div class="runner-layout">
+
+    <div class="editor-wrap">
+      <div class="pane-label">Editor — use ← or &lt;- for assignment</div>
+      <textarea id="editor"></textarea>
+    </div>
+
+    <div class="right-pane">
+      <div class="io-box" style="flex:1">
+        <div class="pane-label">Output</div>
+        <div class="output-area" id="output"><span class="out-info">// Output appears here</span></div>
+      </div>
+    </div>
+
+    <!-- Robot Panel — 3rd grid column, appears beside output -->
+    <div class="robot-panel" id="robot-panel" style="display:none">
+      <div class="pane-label">Tilemap</div>
+      <canvas id="robot-canvas"></canvas>
+      <div class="robot-controls">
+        <span>Speed:</span>
+        <input type="range" class="robot-speed" id="robot-speed" min="50" max="800" value="300">
+        <button class="tb-btn" id="robot-replay" style="padding:.2rem .55rem;font-size:.73rem">↺</button>
+        <span id="robot-status" style="margin-left:auto;font-size:.72rem;color:#00ff41"></span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Input Modal -->
+  <div class="input-modal-overlay" id="input-modal">
+    <div class="input-modal-box">
+      <div class="input-modal-title">▶ INPUT()</div>
+      <div class="input-modal-label" id="input-modal-label">Enter a value</div>
+      <input type="text" class="input-modal-field" id="input-modal-field"
+             autocomplete="off" spellcheck="false" placeholder="42 / 3.14 / TRUE / hello">
+      <button class="tb-btn run input-modal-ok" id="input-modal-ok">OK &nbsp;↵</button>
+    </div>
+  </div>
+
+  <!-- Local Storage Manager -->
+  <div class="lsm-overlay" id="lsm-modal">
+    <div class="lsm-box">
+      <div class="lsm-header">
+        <h3>⛁ Local Storage</h3>
+        <div style="display:flex;gap:.5rem">
+          <button class="tb-btn me-sm me-del" id="lsm-clear-btn">Clear All</button>
+          <button class="tb-btn me-sm" id="lsm-close-btn">✕</button>
+        </div>
+      </div>
+      <div id="lsm-table"></div>
+    </div>
+  </div>
+
+  <!-- Map Editor Modal -->
+  <div class="mapeditor-overlay" id="mapeditor-modal">
+    <div class="mapeditor-box">
+      <div class="me-header">
+        <h3>⊞ Map Editor</h3>
+        <button class="tb-btn me-sm" id="me-close-btn">✕</button>
+      </div>
+      <div class="me-controls">
+        <label>Rows <input type="number" id="me-rows" value="5" min="2" max="24"></label>
+        <label>Cols <input type="number" id="me-cols" value="5" min="2" max="24"></label>
+        <label>Name <input type="text"   id="me-name" value="myMap" placeholder="map name"></label>
+      </div>
+      <div class="me-section-label">Click or drag to toggle walls</div>
+      <div id="me-grid"></div>
+      <div class="me-actions">
+        <button class="tb-btn run" id="me-save-btn">Save to Local</button>
+        <button class="tb-btn"     id="me-insert-btn">Insert IMPORT</button>
+      </div>
+      <div class="me-section-label">Saved Maps</div>
+      <div id="me-saved-list"></div>
+    </div>
+  </div>
+
+  <!-- Quick Reference -->
+  <div class="ref-card">
+    <h3>Quick Reference</h3>
+    <div class="ref-grid">
+      <div class="ref-item"><span class="ref-kw">IF</span> <code>(cond) { } ELSE { }</code></div>
+      <div class="ref-item"><span class="ref-kw">REPEAT</span> <code>n TIMES { }</code></div>
+      <div class="ref-item"><span class="ref-kw">REPEAT UNTIL</span> <code>(cond) { }</code></div>
+      <div class="ref-item"><span class="ref-kw">FOR EACH</span> <code>x IN list { }</code></div>
+      <div class="ref-item"><span class="ref-kw">PROCEDURE</span> <code>name(p1, p2) { }</code></div>
+      <div class="ref-item"><span class="ref-kw">RETURN</span><code>(expr)</code></div>
+      <div class="ref-item">Assignment: <code>x ← value</code> &nbsp;or&nbsp; <code>x &lt;- value</code></div>
+      <div class="ref-item">List: <code>a ← [1, 2, 3]</code> &nbsp; <code>a[1]</code> (1-indexed)</div>
+      <div class="ref-item"><span class="ref-bi">DISPLAY</span><code>(expr)</code></div>
+      <div class="ref-item"><span class="ref-bi">INPUT</span><code>()</code> — pops a modal prompt</div>
+      <div class="ref-item"><span class="ref-bi">RANDOM</span><code>(a, b)</code> — inclusive</div>
+      <div class="ref-item"><span class="ref-bi">APPEND</span><code>(list, val)</code></div>
+      <div class="ref-item"><span class="ref-bi">INSERT</span><code>(list, i, val)</code></div>
+      <div class="ref-item"><span class="ref-bi">REMOVE</span><code>(list, i)</code></div>
+      <div class="ref-item"><span class="ref-bi">LENGTH</span><code>(list)</code></div>
+      <div class="ref-item">Ops: <span class="ref-op">MOD  AND  OR  NOT</span></div>
+      <div class="ref-item">Compare: <code>= ≠ &lt; &gt; &lt;= &gt;=</code></div>
+      <div class="ref-item">Boolean: <code>TRUE</code> &nbsp; <code>FALSE</code></div>
+      <div class="ref-item">Comment: <code>// this is a comment</code></div>
+      <div class="ref-item"><span class="ref-kw">FROM LOCAL IMPORT</span> <code>name</code> — load saved value</div>
+      <div class="ref-item"><span class="ref-kw">TO LOCAL SAVE</span> <code>name</code> — persist any variable</div>
+      <div class="ref-item"><span class="ref-kw">LIST LOCAL</span> — print all saved keys &amp; previews</div>
+      <div class="ref-item"><span class="ref-kw">DELETE LOCAL</span> <code>name</code> — remove one entry</div>
+      <div class="ref-item"><span class="ref-bi">RENDER</span><code>(map)</code> — draw tilemap (1=wall 0=open)</div>
+      <div class="ref-item"><span class="ref-bi">SPAWN</span><code>(map, row, col)</code> — place robot (1-indexed)</div>
+      <div class="ref-item"><span class="ref-bi">MOVE_FORWARD</span><code>()</code> — move one cell forward</div>
+      <div class="ref-item"><span class="ref-bi">ROTATE_LEFT</span><code>()</code> / <span class="ref-bi">ROTATE_RIGHT</span><code>()</code></div>
+      <div class="ref-item"><span class="ref-bi">CAN_MOVE</span><code>("forward"|"left"|"right"|"backward")</code></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ════════════════════════════════════════════════
+//  1. CodeMirror Custom Mode
+// ════════════════════════════════════════════════
+CodeMirror.defineMode('apcsp', function () {
+  const KW = /^(IF|ELSE|REPEAT|TIMES|UNTIL|FOR|EACH|IN|PROCEDURE|RETURN|FROM|LOCAL|IMPORT|TO|SAVE|LIST|DELETE)\b/;
+  const BI = /^(DISPLAY|INPUT|RANDOM|APPEND|INSERT|REMOVE|LENGTH|RENDER|SPAWN|MOVE_FORWARD|ROTATE_LEFT|ROTATE_RIGHT|CAN_MOVE)\b/;
+  const OP = /^(AND|OR|NOT|MOD)\b/;
+  const AT = /^(TRUE|FALSE)\b/;
+
+  return {
+    token(stream) {
+      if (stream.eatSpace()) return null;
+
+      if (stream.match('//')) { stream.skipToEnd(); return 'comment'; }
+
+      if (stream.match(/^"[^"]*"/)) return 'string';
+      if (stream.match(/^'[^']*'/)) return 'string';
+
+      if (stream.match(/^[0-9]+(\.[0-9]+)?/)) return 'number';
+
+      if (stream.match('←') || stream.match('<-') || stream.match('≠') ||
+          stream.match('≤') || stream.match('≥') ||
+          stream.match('<=') || stream.match('>=') ||
+          stream.match(/^[+\-*\/=<>]/)) return 'operator';
+
+      if (stream.match(AT)) return 'atom';
+      if (stream.match(KW)) return 'keyword';
+      if (stream.match(BI)) return 'builtin';
+      if (stream.match(OP)) return 'operator';
+
+      if (stream.match(/^[a-zA-Z_][a-zA-Z0-9_]*/)) return 'variable';
+
+      stream.next();
+      return null;
+    }
+  };
+});
+
+const editor = CodeMirror.fromTextArea(document.getElementById('editor'), {
+  mode: 'apcsp',
+  lineNumbers: true,
+  indentWithTabs: false,
+  indentUnit: 4,
+  tabSize: 4,
+  extraKeys: { Tab: cm => cm.replaceSelection('    ') },
+});
+
+// ════════════════════════════════════════════════
+//  2. Tokenizer
+// ════════════════════════════════════════════════
+const TT = {
+  NUM:'NUM', STR:'STR', BOOL:'BOOL', IDENT:'IDENT',
+  ASSIGN:'ASSIGN',
+  PLUS:'PLUS', MINUS:'MINUS', STAR:'STAR', SLASH:'SLASH',
+  MOD:'MOD', AND:'AND', OR:'OR', NOT:'NOT',
+  EQ:'EQ', NEQ:'NEQ', LT:'LT', GT:'GT', LTE:'LTE', GTE:'GTE',
+  LPAREN:'LPAREN', RPAREN:'RPAREN',
+  LBRACE:'LBRACE', RBRACE:'RBRACE',
+  LBRACKET:'LBRACKET', RBRACKET:'RBRACKET',
+  COMMA:'COMMA',
+  IF:'IF', ELSE:'ELSE', REPEAT:'REPEAT', TIMES:'TIMES', UNTIL:'UNTIL',
+  FOR:'FOR', EACH:'EACH', IN:'IN',
+  PROCEDURE:'PROCEDURE', RETURN:'RETURN',
+  DISPLAY:'DISPLAY', INPUT:'INPUT', RANDOM:'RANDOM',
+  APPEND:'APPEND', INSERT:'INSERT', REMOVE:'REMOVE', LENGTH:'LENGTH',
+  RENDER:'RENDER', SPAWN:'SPAWN',
+  MOVE_FORWARD:'MOVE_FORWARD', ROTATE_LEFT:'ROTATE_LEFT', ROTATE_RIGHT:'ROTATE_RIGHT',
+  CAN_MOVE:'CAN_MOVE',
+  FROM:'FROM', LOCAL:'LOCAL', IMPORT:'IMPORT',
+  TO:'TO', SAVE:'SAVE',
+  LIST:'LIST', DELETE:'DELETE',
+  EOF:'EOF'
+};
+
+const KEYWORDS = {
+  IF:TT.IF, ELSE:TT.ELSE, REPEAT:TT.REPEAT, TIMES:TT.TIMES, UNTIL:TT.UNTIL,
+  FOR:TT.FOR, EACH:TT.EACH, IN:TT.IN,
+  PROCEDURE:TT.PROCEDURE, RETURN:TT.RETURN,
+  AND:TT.AND, OR:TT.OR, NOT:TT.NOT, MOD:TT.MOD,
+  TRUE:TT.BOOL, FALSE:TT.BOOL,
+  DISPLAY:TT.DISPLAY, INPUT:TT.INPUT, RANDOM:TT.RANDOM,
+  APPEND:TT.APPEND, INSERT:TT.INSERT, REMOVE:TT.REMOVE, LENGTH:TT.LENGTH,
+  RENDER:TT.RENDER, SPAWN:TT.SPAWN,
+  MOVE_FORWARD:TT.MOVE_FORWARD, ROTATE_LEFT:TT.ROTATE_LEFT, ROTATE_RIGHT:TT.ROTATE_RIGHT,
+  CAN_MOVE:TT.CAN_MOVE,
+  FROM:TT.FROM, LOCAL:TT.LOCAL, IMPORT:TT.IMPORT,
+  TO:TT.TO, SAVE:TT.SAVE,
+  LIST:TT.LIST, DELETE:TT.DELETE
+};
+
+class Token {
+  constructor(type, value, line) { this.type=type; this.value=value; this.line=line; }
+}
+
+function tokenize(src) {
+  const tokens = [];
+  let pos = 0, line = 1;
+
+  const peek = (n=0) => src[pos+n];
+  const adv  = () => { const c=src[pos++]; if(c==='\n') line++; return c; };
+  const skip = () => { while(pos<src.length && /[ \t\r]/.test(peek())) adv(); };
+
+  while (pos < src.length) {
+    skip();
+    if (pos >= src.length) break;
+    const ch = peek(), ln = line;
+
+    // Comments
+    if (ch==='/' && peek(1)==='/') { while(pos<src.length && peek()!=='\n') adv(); continue; }
+
+    // Newlines
+    if (ch==='\n') { adv(); continue; }
+
+    // Strings
+    if (ch==='"' || ch==='"' || ch==='"') {
+      adv();
+      let s='';
+      while(pos<src.length && peek()!=='"' && peek()!=='"') s+=adv();
+      adv();
+      tokens.push(new Token(TT.STR, s, ln));
+      continue;
+    }
+
+    // Numbers
+    if (/[0-9]/.test(ch)) {
+      let n='';
+      while(pos<src.length && /[0-9.]/.test(peek())) n+=adv();
+      tokens.push(new Token(TT.NUM, parseFloat(n), ln));
+      continue;
+    }
+
+    // ← or <-
+    if (ch==='←') { adv(); tokens.push(new Token(TT.ASSIGN,'←',ln)); continue; }
+    if (ch==='<' && peek(1)==='-') { adv();adv(); tokens.push(new Token(TT.ASSIGN,'←',ln)); continue; }
+
+    // ≠ ≤ ≥
+    if (ch==='≠') { adv(); tokens.push(new Token(TT.NEQ,'≠',ln)); continue; }
+    if (ch==='≤') { adv(); tokens.push(new Token(TT.LTE,'≤',ln)); continue; }
+    if (ch==='≥') { adv(); tokens.push(new Token(TT.GTE,'≥',ln)); continue; }
+
+    // Two-char ops
+    if (ch==='<' && peek(1)==='=') { adv();adv(); tokens.push(new Token(TT.LTE,'<=',ln)); continue; }
+    if (ch==='>' && peek(1)==='=') { adv();adv(); tokens.push(new Token(TT.GTE,'>=',ln)); continue; }
+
+    // Single char
+    const singles = {'+':TT.PLUS,'-':TT.MINUS,'*':TT.STAR,'/':TT.SLASH,
+      '<':TT.LT,'>':TT.GT,'=':TT.EQ,
+      '(':TT.LPAREN,')':TT.RPAREN,'{':TT.LBRACE,'}':TT.RBRACE,
+      '[':TT.LBRACKET,']':TT.RBRACKET,',':TT.COMMA};
+    if (singles[ch]) { adv(); tokens.push(new Token(singles[ch],ch,ln)); continue; }
+
+    // Identifiers / keywords
+    if (/[a-zA-Z_]/.test(ch)) {
+      let id='';
+      while(pos<src.length && /[a-zA-Z0-9_]/.test(peek())) id+=adv();
+      const up = id.toUpperCase();
+      const kw = KEYWORDS[up];
+      if (kw) {
+        const val = kw===TT.BOOL ? (up==='TRUE') : up;
+        tokens.push(new Token(kw, val, ln));
+      } else {
+        tokens.push(new Token(TT.IDENT, id, ln));
+      }
+      continue;
+    }
+
+    adv(); // skip unknown
+  }
+  tokens.push(new Token(TT.EOF, null, line));
+  return tokens;
+}
+
+// ════════════════════════════════════════════════
+//  3. Parser
+// ════════════════════════════════════════════════
+class Parser {
+  constructor(tokens) { this.t=tokens; this.i=0; }
+  peek()         { return this.t[this.i]; }
+  adv()          { return this.t[this.i++]; }
+  check(tp)      { return this.peek().type===tp; }
+  match(...tps)  { if(tps.includes(this.peek().type)) return this.adv(); return null; }
+  expect(tp,msg) {
+    if(this.check(tp)) return this.adv();
+    const tok=this.peek();
+    throw new Error(`Line ${tok.line}: expected ${msg}, got '${tok.value}'`);
+  }
+
+  parse() {
+    const stmts=[];
+    while(!this.check(TT.EOF)) stmts.push(this.stmt());
+    return stmts;
+  }
+
+  stmt() {
+    const tok=this.peek();
+    if(tok.type===TT.PROCEDURE)  return this.procDef();
+    if(tok.type===TT.IF)         return this.ifStmt();
+    if(tok.type===TT.REPEAT)     return this.repeatStmt();
+    if(tok.type===TT.FOR)        return this.forEach();
+    if(tok.type===TT.RETURN)     return this.returnStmt();
+    if(tok.type===TT.DISPLAY)    return this.displayStmt();
+    if([TT.APPEND,TT.INSERT,TT.REMOVE,
+        TT.RENDER,TT.SPAWN,TT.MOVE_FORWARD,TT.ROTATE_LEFT,TT.ROTATE_RIGHT,TT.CAN_MOVE
+       ].includes(tok.type)) return this.builtinStmt();
+    if(tok.type===TT.FROM)       return this.fromLocalImport();
+    if(tok.type===TT.TO)         return this.toLocalSave();
+    if(tok.type===TT.LIST)       return this.listLocal();
+    if(tok.type===TT.DELETE)     return this.deleteLocal();
+    if(tok.type===TT.IDENT)      return this.assignOrCall();
+    throw new Error(`Line ${tok.line}: unexpected '${tok.value}'`);
+  }
+
+  fromLocalImport() {
+    const ln=this.adv().line;
+    this.expect(TT.LOCAL,'LOCAL');
+    this.expect(TT.IMPORT,'IMPORT');
+    const name=this.expect(TT.IDENT,'variable name').value;
+    return {type:'FromLocalImport',name,line:ln};
+  }
+
+  toLocalSave() {
+    const ln=this.adv().line;
+    this.expect(TT.LOCAL,'LOCAL');
+    this.expect(TT.SAVE,'SAVE');
+    const name=this.expect(TT.IDENT,'variable name').value;
+    return {type:'ToLocalSave',name,line:ln};
+  }
+
+  listLocal() {
+    const ln=this.adv().line;
+    this.expect(TT.LOCAL,'LOCAL');
+    return {type:'ListLocal',line:ln};
+  }
+
+  deleteLocal() {
+    const ln=this.adv().line;
+    this.expect(TT.LOCAL,'LOCAL');
+    const name=this.expect(TT.IDENT,'variable name').value;
+    return {type:'DeleteLocal',name,line:ln};
+  }
+
+  procDef() {
+    this.adv();
+    const name=this.expect(TT.IDENT,'procedure name').value;
+    this.expect(TT.LPAREN,'(');
+    const params=[];
+    if(!this.check(TT.RPAREN)){
+      params.push(this.expect(TT.IDENT,'parameter').value);
+      while(this.match(TT.COMMA)) params.push(this.expect(TT.IDENT,'parameter').value);
+    }
+    this.expect(TT.RPAREN,')');
+    return {type:'ProcDef',name,params,body:this.block()};
+  }
+
+  ifStmt() {
+    this.adv();
+    this.expect(TT.LPAREN,'('); const cond=this.expr(); this.expect(TT.RPAREN,')');
+    const then=this.block();
+    const elseifs=[];
+    let elseBranch=null;
+    while(this.check(TT.ELSE)){
+      this.adv();
+      if(this.check(TT.IF)){
+        this.adv();
+        this.expect(TT.LPAREN,'('); const c=this.expr(); this.expect(TT.RPAREN,')');
+        elseifs.push({cond:c,body:this.block()});
+      } else { elseBranch=this.block(); break; }
+    }
+    return {type:'If',cond,then,elseifs,else:elseBranch};
+  }
+
+  repeatStmt() {
+    this.adv();
+    if(this.check(TT.UNTIL)){
+      this.adv();
+      this.expect(TT.LPAREN,'('); const cond=this.expr(); this.expect(TT.RPAREN,')');
+      return {type:'RepeatUntil',cond,body:this.block()};
+    }
+    const count=this.expr();
+    this.expect(TT.TIMES,'TIMES');
+    return {type:'RepeatTimes',count,body:this.block()};
+  }
+
+  forEach() {
+    this.adv();
+    this.expect(TT.EACH,'EACH');
+    const v=this.expect(TT.IDENT,'variable').value;
+    this.expect(TT.IN,'IN');
+    const list=this.expr();
+    return {type:'ForEach',var:v,list,body:this.block()};
+  }
+
+  returnStmt() {
+    const ln=this.adv().line;
+    this.expect(TT.LPAREN,'('); const val=this.expr(); this.expect(TT.RPAREN,')');
+    return {type:'Return',value:val,line:ln};
+  }
+
+  displayStmt() {
+    const ln=this.adv().line;
+    this.expect(TT.LPAREN,'('); const args=this.args(); this.expect(TT.RPAREN,')');
+    return {type:'Display',args,line:ln};
+  }
+
+  builtinStmt() {
+    const tok=this.adv();
+    this.expect(TT.LPAREN,'('); const args=this.args(); this.expect(TT.RPAREN,')');
+    return {type:'BuiltinStmt',name:tok.value,args,line:tok.line};
+  }
+
+  assignOrCall() {
+    const tok=this.adv();
+    // list index assign: a[i] ←
+    if(this.check(TT.LBRACKET)){
+      this.adv(); const idx=this.expr(); this.expect(TT.RBRACKET,']');
+      this.expect(TT.ASSIGN,'←'); const val=this.expr();
+      return {type:'ListAssign',name:tok.value,index:idx,value:val,line:tok.line};
+    }
+    // regular assign: x ←
+    if(this.check(TT.ASSIGN)){
+      this.adv(); const val=this.expr();
+      return {type:'Assign',name:tok.value,value:val,line:tok.line};
+    }
+    // call: f(...)
+    if(this.check(TT.LPAREN)){
+      this.adv(); const args=this.args(); this.expect(TT.RPAREN,')');
+      return {type:'Call',name:tok.value,args,line:tok.line};
+    }
+    throw new Error(`Line ${tok.line}: expected ← or ( after '${tok.value}'`);
+  }
+
+  block() {
+    this.expect(TT.LBRACE,'{');
+    const stmts=[];
+    while(!this.check(TT.RBRACE)&&!this.check(TT.EOF)) stmts.push(this.stmt());
+    this.expect(TT.RBRACE,'}');
+    return stmts;
+  }
+
+  args() {
+    const a=[];
+    if(this.check(TT.RPAREN)) return a;
+    a.push(this.expr());
+    while(this.match(TT.COMMA)) a.push(this.expr());
+    return a;
+  }
+
+  // ── Expression precedence ──
+  expr()    { return this.or(); }
+  or()      { let l=this.and();    while(this.check(TT.OR))  {this.adv();l={type:'BinOp',op:'OR', left:l,right:this.and()};}  return l; }
+  and()     { let l=this.not();    while(this.check(TT.AND)) {this.adv();l={type:'BinOp',op:'AND',left:l,right:this.not()};} return l; }
+  not()     { if(this.check(TT.NOT)){this.adv();return{type:'UnOp',op:'NOT',expr:this.not()};} return this.compare(); }
+  compare() {
+    let l=this.add();
+    const ops=[TT.EQ,TT.NEQ,TT.LT,TT.GT,TT.LTE,TT.GTE];
+    if(ops.includes(this.peek().type)){const op=this.adv().value;l={type:'BinOp',op,left:l,right:this.add()};}
+    return l;
+  }
+  add() {
+    let l=this.mul();
+    while([TT.PLUS,TT.MINUS].includes(this.peek().type)){const op=this.adv().value;l={type:'BinOp',op,left:l,right:this.mul()};}
+    return l;
+  }
+  mul() {
+    let l=this.unary();
+    while([TT.STAR,TT.SLASH,TT.MOD].includes(this.peek().type)){const op=this.adv().value;l={type:'BinOp',op,left:l,right:this.unary()};}
+    return l;
+  }
+  unary() { if(this.check(TT.MINUS)){this.adv();return{type:'UnOp',op:'-',expr:this.primary()};} return this.primary(); }
+
+  primary() {
+    const tok=this.peek();
+    if(tok.type===TT.NUM)  {this.adv();return{type:'Num',value:tok.value};}
+    if(tok.type===TT.STR)  {this.adv();return{type:'Str',value:tok.value};}
+    if(tok.type===TT.BOOL) {this.adv();return{type:'Bool',value:tok.value};}
+
+    if(tok.type===TT.LPAREN){
+      this.adv(); const e=this.expr(); this.expect(TT.RPAREN,')'); return e;
+    }
+
+    if(tok.type===TT.LBRACKET){
+      this.adv();
+      const items=[];
+      if(!this.check(TT.RBRACKET)){items.push(this.expr());while(this.match(TT.COMMA))items.push(this.expr());}
+      this.expect(TT.RBRACKET,']');
+      return{type:'List',items};
+    }
+
+    // Built-ins used as expressions
+    const BIS=[TT.INPUT,TT.RANDOM,TT.LENGTH,TT.APPEND,TT.INSERT,TT.REMOVE,
+               TT.RENDER,TT.SPAWN,TT.MOVE_FORWARD,TT.ROTATE_LEFT,TT.ROTATE_RIGHT,TT.CAN_MOVE];
+    if(BIS.includes(tok.type)){
+      this.adv(); this.expect(TT.LPAREN,'(');
+      const args=this.args(); this.expect(TT.RPAREN,')');
+      return{type:'Builtin',name:tok.value,args};
+    }
+
+    if(tok.type===TT.IDENT){
+      this.adv();
+      if(this.check(TT.LPAREN)){
+        this.adv(); const args=this.args(); this.expect(TT.RPAREN,')');
+        return{type:'Call',name:tok.value,args};
+      }
+      let node={type:'Var',name:tok.value};
+      while(this.check(TT.LBRACKET)){
+        this.adv(); const idx=this.expr(); this.expect(TT.RBRACKET,']');
+        node={type:'Index',list:node,index:idx};
+      }
+      return node;
+    }
+
+    throw new Error(`Line ${tok.line}: unexpected '${tok.value}'`);
+  }
+}
+
+// ════════════════════════════════════════════════
+//  4. Interpreter
+// ════════════════════════════════════════════════
+class ReturnSignal { constructor(v){this.value=v;} }
+
+class Interpreter {
+  constructor(out) {
+    this.scopes = [{}];
+    this.procs  = {};
+    this.out    = out;
+    this.steps  = 0;
+  }
+
+  tick() { if(++this.steps>50000) throw new Error('Step limit reached — possible infinite loop'); }
+
+  get(name) {
+    for(let i=this.scopes.length-1;i>=0;i--) {
+      if(name in this.scopes[i]) return this.scopes[i][name];
+    }
+    throw new Error(`Undefined variable '${name}'`);
+  }
+
+  set(name, val) {
+    for(let i=this.scopes.length-1;i>=0;i--) {
+      if(name in this.scopes[i]){this.scopes[i][name]=val;return;}
+    }
+    this.scopes[this.scopes.length-1][name]=val;
+  }
+
+  push() { this.scopes.push({}); }
+  pop()  { this.scopes.pop(); }
+
+  async run(stmts) {
+    for(const s of stmts) await this.exec(s);
+  }
+
+  async exec(s) {
+    this.tick();
+    switch(s.type) {
+
+      case 'Assign': this.set(s.name, await this.eval(s.value)); break;
+
+      case 'ListAssign': {
+        const list=this.get(s.name);
+        if(!Array.isArray(list)) throw new Error(`'${s.name}' is not a list`);
+        const i=await this.eval(s.index);
+        if(!Number.isInteger(i)||i<1||i>list.length)
+          throw new Error(`Index ${i} out of bounds (length ${list.length}, 1-indexed)`);
+        list[i-1]=await this.eval(s.value); break;
+      }
+
+      case 'If': {
+        if(await this.eval(s.cond)){
+          this.push();await this.run(s.then);this.pop();
+        } else {
+          let done=false;
+          for(const ei of s.elseifs){
+            if(await this.eval(ei.cond)){this.push();await this.run(ei.body);this.pop();done=true;break;}
+          }
+          if(!done&&s.else){this.push();await this.run(s.else);this.pop();}
+        }
+        break;
+      }
+
+      case 'RepeatTimes': {
+        const n=await this.eval(s.count);
+        if(!Number.isFinite(n)||n<0) throw new Error('REPEAT count must be a non-negative number');
+        for(let i=0;i<n;i++){this.tick();this.push();await this.run(s.body);this.pop();}
+        break;
+      }
+
+      case 'RepeatUntil': {
+        let guard=0;
+        while(!await this.eval(s.cond)){
+          this.tick();if(++guard>50000) throw new Error('REPEAT UNTIL exceeded iteration limit');
+          this.push();await this.run(s.body);this.pop();
+        }
+        break;
+      }
+
+      case 'ForEach': {
+        const list=await this.eval(s.list);
+        if(!Array.isArray(list)) throw new Error('FOR EACH requires a list');
+        for(const item of list){
+          this.tick();this.push();
+          this.scopes[this.scopes.length-1][s.var]=item;
+          await this.run(s.body);this.pop();
+        }
+        break;
+      }
+
+      case 'FromLocalImport': {
+        const stored=localStorage.getItem('apcsp_local_'+s.name);
+        if(!stored) throw new Error(`FROM LOCAL IMPORT: nothing saved as '${s.name}'. Use TO LOCAL SAVE or the Map Editor.`);
+        this.set(s.name, JSON.parse(stored)); break;
+      }
+
+      case 'ToLocalSave': {
+        let val;
+        try { val=this.get(s.name); }
+        catch(e){ throw new Error(`TO LOCAL SAVE: variable '${s.name}' is not defined`); }
+        localStorage.setItem('apcsp_local_'+s.name, JSON.stringify(val));
+        this.out(`// '${s.name}' saved to local (${Array.isArray(val)?'list':typeof val})`);
+        break;
+      }
+
+      case 'ListLocal': {
+        const keys=Object.keys(localStorage).filter(k=>k.startsWith('apcsp_local_')).sort();
+        if(!keys.length){ this.out('// Local storage is empty'); break; }
+        this.out('// Local storage:');
+        for(const k of keys){
+          const name=k.slice('apcsp_local_'.length);
+          let raw=localStorage.getItem(k), preview='', type='';
+          try {
+            const v=JSON.parse(raw);
+            type=Array.isArray(v)?`list[${v.length}]`:typeof v;
+            preview=Array.isArray(v)?`[${v.slice(0,3).map(r=>Array.isArray(r)?'[…]':r).join(', ')}${v.length>3?', …':''}]`:String(v).slice(0,40);
+          } catch { type='raw'; preview=raw.slice(0,40); }
+          this.out(`//   ${name}  (${type})  ${preview}`);
+        }
+        break;
+      }
+
+      case 'DeleteLocal': {
+        const key='apcsp_local_'+s.name;
+        if(!localStorage.getItem(key)) throw new Error(`DELETE LOCAL: nothing saved as '${s.name}'`);
+        localStorage.removeItem(key);
+        this.out(`// '${s.name}' deleted from local storage`);
+        break;
+      }
+
+      case 'ProcDef': this.procs[s.name]=s; break;
+
+      case 'Return': throw new ReturnSignal(await this.eval(s.value));
+
+      case 'Display': {
+        const vals=[];
+        for(const a of s.args) vals.push(await this.eval(a));
+        this.out(vals.map(v=>this.fmt(v)).join(' ')); break;
+      }
+
+      case 'BuiltinStmt':
+      case 'Call': await this.evalCall(s.name, s.args); break;
+    }
+  }
+
+  async eval(node) {
+    switch(node.type){
+      case 'Num':  return node.value;
+      case 'Str':  return node.value;
+      case 'Bool': return node.value;
+      case 'Var':  return this.get(node.name);
+      case 'List': { const items=[]; for(const i of node.items) items.push(await this.eval(i)); return items; }
+
+      case 'Index': {
+        const list=await this.eval(node.list);
+        if(!Array.isArray(list)) throw new Error('Subscript on non-list');
+        const i=await this.eval(node.index);
+        if(!Number.isInteger(i)||i<1||i>list.length)
+          throw new Error(`Index ${i} out of bounds (length ${list.length}, 1-indexed)`);
+        return list[i-1];
+      }
+
+      case 'BinOp': {
+        const l=await this.eval(node.left), r=await this.eval(node.right);
+        switch(node.op){
+          case '+': return (typeof l==='string'||typeof r==='string')? String(l)+String(r): l+r;
+          case '-': return l-r;
+          case '*': return l*r;
+          case '/': if(r===0) throw new Error('Division by zero'); return l/r;
+          case 'MOD': return ((l%r)+r)%r;
+          case '=':  return l===r;
+          case '≠':  return l!==r;
+          case '<':  return l<r;
+          case '>':  return l>r;
+          case '<=': return l<=r;
+          case '>=': return l>=r;
+          case 'AND': return Boolean(l)&&Boolean(r);
+          case 'OR':  return Boolean(l)||Boolean(r);
+        }
+        break;
+      }
+
+      case 'UnOp': {
+        const v=await this.eval(node.expr);
+        if(node.op==='NOT') return !v;
+        if(node.op==='-')   return -v;
+        break;
+      }
+
+      case 'Builtin': return await this.evalBuiltin(node.name, node.args);
+      case 'Call':    return await this.evalCall(node.name, node.args);
+    }
+    throw new Error('Unknown AST node: '+node.type);
+  }
+
+  async evalBuiltin(name, args) {
+    const v = [];
+    for(const a of args) v.push(await this.eval(a));
+    switch(name){
+      case 'INPUT': {
+        const raw = await showInputModal();
+        const line = raw.trim();
+        if(/^".*"$/.test(line)||/^'.*'$/.test(line)) return line.slice(1,-1);
+        if(/^-?\d+$/.test(line)) return parseInt(line,10);
+        const f=Number(line); if(!isNaN(f)&&line!=='') return f;
+        if(line==='TRUE') return true;
+        if(line==='FALSE') return false;
+        return line;
+      }
+      case 'RANDOM': return Math.floor(Math.random()*(v[1]-v[0]+1))+v[0];
+      case 'LENGTH': {
+        if(Array.isArray(v[0])) return v[0].length;
+        if(typeof v[0]==='string') return v[0].length;
+        throw new Error('LENGTH requires a list or string');
+      }
+      case 'APPEND': {
+        if(!Array.isArray(v[0])) throw new Error('APPEND requires a list as first argument');
+        v[0].push(v[1]); return v[0];
+      }
+      case 'INSERT': {
+        if(!Array.isArray(v[0])) throw new Error('INSERT requires a list as first argument');
+        v[0].splice(v[1]-1,0,v[2]); return v[0];
+      }
+      case 'REMOVE': {
+        if(!Array.isArray(v[0])) throw new Error('REMOVE requires a list as first argument');
+        v[0].splice(v[1]-1,1); return v[0];
+      }
+
+      // ── Robot commands ──
+      case 'RENDER': {
+        const map = v[0];
+        if(!Array.isArray(map)||!Array.isArray(map[0])) throw new Error('RENDER requires a 2D list');
+        robotRecordFrame(map, null, null, null); return;
+      }
+      case 'SPAWN': {
+        const [map,row,col] = v;
+        if(!Array.isArray(map)||!Array.isArray(map[0])) throw new Error('SPAWN requires a 2D list as first argument');
+        robotInit(map, row-1, col-1);
+        robotRecordFrame(map, row-1, col-1, robotDir); return;
+      }
+      case 'MOVE_FORWARD': { robotMove(); return; }
+      case 'ROTATE_LEFT':  { robotDir=(robotDir+3)%4; robotRecordFrame(robotMap,robotRow,robotCol,robotDir); return; }
+      case 'ROTATE_RIGHT': { robotDir=(robotDir+1)%4; robotRecordFrame(robotMap,robotRow,robotCol,robotDir); return; }
+      case 'CAN_MOVE':     { return robotCanMove(v[0]); }
+    }
+  }
+
+  async evalCall(name, args) {
+    const builtins=['INPUT','RANDOM','LENGTH','APPEND','INSERT','REMOVE',
+                    'RENDER','SPAWN','MOVE_FORWARD','ROTATE_LEFT','ROTATE_RIGHT','CAN_MOVE'];
+    if(builtins.includes(name)) return await this.evalBuiltin(name,args);
+
+    const proc=this.procs[name];
+    if(!proc) throw new Error(`Undefined procedure '${name}'`);
+    if(args.length!==proc.params.length)
+      throw new Error(`'${name}' expects ${proc.params.length} arg(s), got ${args.length}`);
+
+    const vals=[];
+    for(const a of args) vals.push(await this.eval(a));
+    this.push();
+    proc.params.forEach((p,i)=>{ this.scopes[this.scopes.length-1][p]=vals[i]; });
+    let result=null;
+    try { await this.run(proc.body); }
+    catch(e){ if(e instanceof ReturnSignal) result=e.value; else throw e; }
+    this.pop();
+    return result;
+  }
+
+  fmt(v) {
+    if(Array.isArray(v)) return '['+v.map(i=>this.fmt(i)).join(', ')+']';
+    if(typeof v==='boolean') return v?'TRUE':'FALSE';
+    return String(v);
+  }
+}
+
+// ════════════════════════════════════════════════
+//  5. UI wiring
+// ════════════════════════════════════════════════
+const outputEl    = document.getElementById('output');
+const runnerLayout = document.querySelector('.runner-layout');
+
+function clearOutput() { outputEl.innerHTML=''; }
+
+function showInputModal(label='Enter a value') {
+  return new Promise(resolve => {
+    const overlay = document.getElementById('input-modal');
+    const field   = document.getElementById('input-modal-field');
+    const ok      = document.getElementById('input-modal-ok');
+    document.getElementById('input-modal-label').textContent = label;
+    field.value = '';
+    overlay.classList.add('open');
+    requestAnimationFrame(() => field.focus());
+    function submit() {
+      overlay.classList.remove('open');
+      ok.onclick = null;
+      field.onkeydown = null;
+      resolve(field.value);
+    }
+    ok.onclick = submit;
+    field.onkeydown = e => { if(e.key==='Enter') submit(); };
+  });
+}
+
+function appendOutput(text, cls='') {
+  const span = document.createElement('span');
+  span.className = 'out-line' + (cls?' '+cls:'');
+  span.textContent = text;
+  outputEl.appendChild(span);
+  outputEl.appendChild(document.createTextNode('\n'));
+  outputEl.scrollTop = outputEl.scrollHeight;
+}
+
+document.getElementById('run-btn').addEventListener('click', async () => {
+  clearOutput();
+  robotMap=null; robotRow=0; robotCol=0; robotDir=0; robotFrames=[];
+  if(robotAnimTimer) clearTimeout(robotAnimTimer);
+  robotPanel.style.display='none';
+  runnerLayout.style.gridTemplateColumns='';
+  robotStatus.textContent='';
+
+  const src = editor.getValue();
+  if(!src.trim()){ appendOutput('// Nothing to run','out-info'); return; }
+
+  try {
+    const tokens = tokenize(src);
+    const ast    = new Parser(tokens).parse();
+    const interp = new Interpreter(text => appendOutput(text));
+    await interp.run(ast);
+    appendOutput('// Done ✓','out-info');
+  } catch(e) {
+    appendOutput(e.message, 'out-error');
+  }
+
+  if(robotFrames.length){
+    robotPanel.style.display='flex';
+    runnerLayout.style.gridTemplateColumns='3fr 2fr 2fr';
+    requestAnimationFrame(()=>animateRobot(robotFrames));
+  }
+});
+
+// ── Snippet blocks ──
+const SNIPPETS = {
+  'if': `IF (condition) {\n    \n} ELSE IF (condition) {\n    \n} ELSE {\n    \n}`,
+  'if-simple': `IF (condition) {\n    \n}`,
+  'repeat-times': `REPEAT 10 TIMES {\n    \n}`,
+  'repeat-until': `REPEAT UNTIL (condition) {\n    \n}`,
+  'for-each': `FOR EACH item IN myList {\n    DISPLAY(item)\n}`,
+  'procedure': `PROCEDURE myProcedure(param1, param2) {\n    \n}`,
+  'procedure-return': `PROCEDURE myProcedure(param1) {\n    result ← param1\n    RETURN(result)\n}`,
+  'list-create': `myList ← [1, 2, 3]\nmyList[1] ← 10\nDISPLAY(LENGTH(myList))`,
+  'list-ops': `APPEND(myList, value)\nINSERT(myList, index, value)\nREMOVE(myList, index)\nDISPLAY(LENGTH(myList))`,
+  'display': `DISPLAY(value)`,
+  'input': `x ← INPUT()`,
+  'robot-setup':
+`map ← [[1,1,1,1,1,1,1],
+        [1,0,0,0,0,0,1],
+        [1,0,1,1,0,0,1],
+        [1,0,0,0,0,0,1],
+        [1,0,0,1,0,0,1],
+        [1,0,0,0,0,0,1],
+        [1,1,1,1,1,1,1]]
+RENDER(map)
+SPAWN(map, 2, 2)`,
+  'robot-move':   `MOVE_FORWARD()`,
+  'robot-rotate': `ROTATE_LEFT()\nROTATE_RIGHT()`,
+  'robot-canmove':
+`IF (CAN_MOVE("forward")) {\n    MOVE_FORWARD()\n}`,
+  'robot-nav':
+`REPEAT UNTIL (NOT CAN_MOVE("forward")) {\n    MOVE_FORWARD()\n}`,
+};
+
+let openMenu = null;
+function closeMenus() {
+  document.querySelectorAll('.menu-wrap.open').forEach(m => m.classList.remove('open'));
+  openMenu = null;
+}
+
+document.querySelectorAll('.menu-trigger').forEach(trigger => {
+  const wrap = trigger.closest('.menu-wrap');
+  trigger.addEventListener('click', e => {
+    e.stopPropagation();
+    if (openMenu === wrap) { closeMenus(); return; }
+    closeMenus(); wrap.classList.add('open'); openMenu = wrap;
+  });
+  trigger.addEventListener('mouseenter', () => {
+    if (openMenu && openMenu !== wrap) { closeMenus(); wrap.classList.add('open'); openMenu = wrap; }
+  });
+});
+
+document.addEventListener('click', closeMenus);
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeMenus(); });
+
+document.querySelectorAll('.menu-action[data-snip]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    closeMenus();
+    const snip = SNIPPETS[btn.dataset.snip];
+    if (!snip) return;
+    const cursor = editor.getCursor();
+    const indent = editor.getLine(cursor.line).match(/^(\s*)/)[1];
+    const indented = snip.split('\n').map((l, i) => i === 0 ? l : indent + l).join('\n');
+    editor.replaceRange('\n' + indent + indented + '\n', {line: cursor.line, ch: editor.getLine(cursor.line).length});
+    editor.focus();
+  });
+});
+
+// Auto-replace symbol shortcuts
+const SYMBOL_MAP = [
+  { seq: '<-', rep: '←' },
+  { seq: '!=', rep: '≠' },
+  { seq: '<=', rep: '≤' },
+  { seq: '>=', rep: '≥' },
+];
+
+editor.on('change', (cm, change) => {
+  if (change.origin !== '+input') return;
+  const cursor = cm.getCursor();
+  const line   = cm.getLine(cursor.line);
+  const col    = cursor.ch;
+  for (const { seq, rep } of SYMBOL_MAP) {
+    if (col >= seq.length && line.slice(col - seq.length, col) === seq) {
+      cm.replaceRange(rep, {line: cursor.line, ch: col - seq.length}, {line: cursor.line, ch: col});
+      break;
+    }
+  }
+});
+
+// ════════════════════════════════════════════════
+//  6. Robot Engine
+// ════════════════════════════════════════════════
+const DIRS = [{dr:-1,dc:0},{dr:0,dc:1},{dr:1,dc:0},{dr:0,dc:-1}]; // UP RIGHT DOWN LEFT
+const DIR_NAMES = ['up','right','down','left'];
+let robotMap=null, robotRow=0, robotCol=0, robotDir=0; // 0=UP
+let robotFrames=[];
+
+function robotInit(map,row,col){ robotMap=map; robotRow=row; robotCol=col; robotDir=0; }
+
+function robotRecordFrame(map,row,col,dir){
+  robotFrames.push({map:map.map(r=>[...r]), row, col, dir});
+}
+
+function robotCanMove(dirStr) {
+  if(!robotMap) throw new Error('No robot spawned. Call SPAWN first.');
+  let d = robotDir;
+  const s = typeof dirStr==='string' ? dirStr.toLowerCase() : 'forward';
+  if(s==='forward')  d = robotDir;
+  else if(s==='backward') d = (robotDir+2)%4;
+  else if(s==='left')     d = (robotDir+3)%4;
+  else if(s==='right')    d = (robotDir+1)%4;
+  else throw new Error(`CAN_MOVE: unknown direction "${dirStr}". Use "forward","backward","left","right"`);
+  const nr = robotRow + DIRS[d].dr;
+  const nc = robotCol + DIRS[d].dc;
+  if(nr<0||nr>=robotMap.length||nc<0||nc>=robotMap[0].length) return false;
+  return robotMap[nr][nc]===0;
+}
+
+function robotMove() {
+  if(!robotMap) throw new Error('No robot spawned. Call SPAWN first.');
+  if(!robotCanMove('forward')) throw new Error('MOVE_FORWARD: robot hit a wall!');
+  robotRow += DIRS[robotDir].dr;
+  robotCol += DIRS[robotDir].dc;
+  robotRecordFrame(robotMap, robotRow, robotCol, robotDir);
+}
+
+// ── Canvas rendering ──
+const robotCanvas = document.getElementById('robot-canvas');
+const rctx = robotCanvas.getContext('2d');
+const robotPanel = document.getElementById('robot-panel');
+const robotStatus = document.getElementById('robot-status');
+
+function drawFrame(frame) {
+  if(!frame) return;
+  const {map,row,col,dir} = frame;
+  const rows=map.length, cols=map[0].length;
+  const cw = robotCanvas.clientWidth  || 200;
+  const ch = robotCanvas.clientHeight || 400;
+  const CELL = Math.min(Math.floor(ch/rows), Math.floor(cw/cols), 36);
+  robotCanvas.width  = cols*CELL;
+  robotCanvas.height = rows*CELL;
+
+  for(let r=0;r<rows;r++){
+    for(let c=0;c<cols;c++){
+      if(map[r][c]===1){
+        rctx.fillStyle='#0a1a0a';
+        rctx.fillRect(c*CELL,r*CELL,CELL,CELL);
+        rctx.strokeStyle='rgba(0,255,65,0.15)';
+        rctx.strokeRect(c*CELL+.5,r*CELL+.5,CELL-1,CELL-1);
+      } else {
+        rctx.fillStyle='#010d01';
+        rctx.fillRect(c*CELL,r*CELL,CELL,CELL);
+        rctx.strokeStyle='rgba(0,255,65,0.05)';
+        rctx.strokeRect(c*CELL+.5,r*CELL+.5,CELL-1,CELL-1);
+      }
+    }
+  }
+
+  // Draw robot
+  if(row!==null && col!==null){
+    const cx=col*CELL+CELL/2, cy=row*CELL+CELL/2, sz=CELL*0.38;
+    const angle = [0, Math.PI*0.5, Math.PI, Math.PI*1.5][dir];
+    rctx.save();
+    rctx.translate(cx,cy);
+    rctx.rotate(angle);
+    // body
+    rctx.fillStyle='rgba(0,255,65,0.9)';
+    rctx.shadowColor='#00ff41'; rctx.shadowBlur=10;
+    rctx.beginPath();
+    rctx.moveTo(0,-sz);
+    rctx.lineTo(sz*0.7,sz*0.7);
+    rctx.lineTo(0,sz*0.3);
+    rctx.lineTo(-sz*0.7,sz*0.7);
+    rctx.closePath();
+    rctx.fill();
+    rctx.restore();
+  }
+}
+
+let robotAnimTimer=null;
+function animateRobot(frames, idx=0) {
+  if(!frames.length) return;
+  const speed = 850 - parseInt(document.getElementById('robot-speed').value);
+  drawFrame(frames[idx]);
+  robotStatus.textContent = `Step ${idx+1}/${frames.length}`;
+  if(idx < frames.length-1){
+    robotAnimTimer = setTimeout(()=>animateRobot(frames,idx+1), speed);
+  } else {
+    robotStatus.textContent = `Done (${frames.length} steps)`;
+  }
+}
+
+document.getElementById('robot-replay').addEventListener('click',()=>{
+  if(robotAnimTimer) clearTimeout(robotAnimTimer);
+  if(robotFrames.length) animateRobot(robotFrames);
+});
+
+document.getElementById('clear-editor').addEventListener('click', () => {
+  editor.setValue(''); clearOutput();
+});
+
+document.getElementById('load-sample').addEventListener('click', () => {
+  editor.setValue(
+`// ── Fibonacci sequence ──
+n ← 10
+a ← 0
+b ← 1
+REPEAT n TIMES {
+    DISPLAY(a)
+    temp ← a + b
+    a ← b
+    b ← temp
+}
+
+// ── Sum of a list ──
+PROCEDURE sumList(nums) {
+    total ← 0
+    FOR EACH x IN nums {
+        total ← total + x
+    }
+    RETURN(total)
+}
+
+myList ← [4, 7, 2, 9, 1]
+DISPLAY("Sum:")
+DISPLAY(sumList(myList))
+`);
+  clearOutput();
+});
+
+// ════════════════════════════════════════════════
+//  7. Map Editor
+// ════════════════════════════════════════════════
+const ME_PREFIX = 'apcsp_local_';
+let meGrid = [], meRows = 5, meCols = 5;
+let meIsPainting = false, mePaintVal = 1;
+
+function meBuildGrid() {
+  const next = [];
+  for (let r = 0; r < meRows; r++) {
+    next.push([]);
+    for (let c = 0; c < meCols; c++)
+      next[r][c] = (meGrid[r] && meGrid[r][c] !== undefined) ? meGrid[r][c] : 0;
+  }
+  meGrid = next;
+  meRenderGrid();
+}
+
+function meRenderGrid() {
+  const el = document.getElementById('me-grid');
+  el.innerHTML = '';
+  el.style.gridTemplateColumns = `repeat(${meCols}, 28px)`;
+  for (let r = 0; r < meRows; r++) {
+    for (let c = 0; c < meCols; c++) {
+      const cell = document.createElement('div');
+      cell.className = 'me-cell ' + (meGrid[r][c] ? 'me-wall' : 'me-open');
+      cell.addEventListener('mousedown', e => {
+        mePaintVal = meGrid[r][c] ? 0 : 1;
+        meIsPainting = true;
+        meToggle(r, c, mePaintVal);
+        e.preventDefault();
+      });
+      cell.addEventListener('mouseenter', () => { if (meIsPainting) meToggle(r, c, mePaintVal); });
+      el.appendChild(cell);
+    }
+  }
+}
+
+function meToggle(r, c, val) {
+  meGrid[r][c] = val;
+  const cells = document.querySelectorAll('#me-grid .me-cell');
+  const idx = r * meCols + c;
+  if (cells[idx]) cells[idx].className = 'me-cell ' + (val ? 'me-wall' : 'me-open');
+}
+
+document.addEventListener('mouseup', () => { meIsPainting = false; });
+
+function meSave() {
+  const name = document.getElementById('me-name').value.trim();
+  if (!name) return;
+  localStorage.setItem(ME_PREFIX + name, JSON.stringify(meGrid));
+  meRefreshList();
+}
+
+function meLoad(name) {
+  const stored = localStorage.getItem(ME_PREFIX + name);
+  if (!stored) return;
+  meGrid = JSON.parse(stored);
+  meRows = meGrid.length; meCols = meGrid[0].length;
+  document.getElementById('me-rows').value = meRows;
+  document.getElementById('me-cols').value = meCols;
+  document.getElementById('me-name').value = name;
+  meRenderGrid();
+}
+
+function meDelete(name) {
+  localStorage.removeItem(ME_PREFIX + name);
+  meRefreshList();
+}
+
+function meInsertImport(name) {
+  const cur = editor.getCursor();
+  editor.replaceRange('FROM LOCAL IMPORT ' + name + '\n', cur);
+  editor.focus();
+}
+
+function meRefreshList() {
+  const list = document.getElementById('me-saved-list');
+  list.innerHTML = '';
+  const keys = Object.keys(localStorage).filter(k => k.startsWith(ME_PREFIX)).sort();
+  if (!keys.length) { list.innerHTML = '<span class="me-empty">No saved maps yet</span>'; return; }
+  keys.forEach(k => {
+    const name = k.slice(ME_PREFIX.length);
+    const row = document.createElement('div');
+    row.className = 'me-saved-row';
+    row.innerHTML =
+      `<span class="me-saved-name">${name}</span>` +
+      `<button class="tb-btn me-sm" onclick="meLoad('${name}')">Load</button>` +
+      `<button class="tb-btn me-sm" onclick="meInsertImport('${name}')">Import</button>` +
+      `<button class="tb-btn me-sm me-del" onclick="meDelete('${name}')">✕</button>`;
+    list.appendChild(row);
+  });
+}
+
+document.getElementById('me-open-btn').addEventListener('click', () => {
+  document.getElementById('mapeditor-modal').classList.add('open');
+  meBuildGrid();
+  meRefreshList();
+});
+document.getElementById('me-close-btn').addEventListener('click', () => {
+  document.getElementById('mapeditor-modal').classList.remove('open');
+});
+document.getElementById('me-rows').addEventListener('change', e => {
+  meRows = Math.max(2, Math.min(24, parseInt(e.target.value) || 5));
+  e.target.value = meRows; meBuildGrid();
+});
+document.getElementById('me-cols').addEventListener('change', e => {
+  meCols = Math.max(2, Math.min(24, parseInt(e.target.value) || 5));
+  e.target.value = meCols; meBuildGrid();
+});
+document.getElementById('me-save-btn').addEventListener('click', meSave);
+document.getElementById('me-insert-btn').addEventListener('click', () => {
+  const name = document.getElementById('me-name').value.trim();
+  if (name) meInsertImport(name);
+});
+
+meBuildGrid();
+
+// ════════════════════════════════════════════════
+//  8. Local Storage Manager
+// ════════════════════════════════════════════════
+function lsmTypeOf(v) {
+  if(Array.isArray(v)){
+    if(v.length && Array.isArray(v[0])) return `map ${v.length}×${v[0].length}`;
+    return `list[${v.length}]`;
+  }
+  return typeof v;
+}
+
+function lsmPreview(v) {
+  if(Array.isArray(v)){
+    if(v.length && Array.isArray(v[0]))
+      return v.map(r=>r.map(c=>c?'▪':'·').join('')).join(' / ').slice(0,48);
+    return '['+v.slice(0,4).join(', ')+(v.length>4?', …':'')+']';
+  }
+  return String(v).slice(0,52);
+}
+
+function lsmRefresh() {
+  const wrap = document.getElementById('lsm-table');
+  const keys = Object.keys(localStorage).filter(k=>k.startsWith('apcsp_local_')).sort();
+  if(!keys.length){ wrap.innerHTML='<div class="lsm-empty">Nothing saved yet</div>'; return; }
+
+  wrap.innerHTML='';
+  const table = document.createElement('div');
+  table.className='lsm-table';
+
+  const head = document.createElement('div');
+  head.className='lsm-row lsm-thead';
+  head.innerHTML='<span>Name</span><span>Type</span><span>Preview</span><span></span>';
+  table.appendChild(head);
+
+  keys.forEach(k => {
+    const name=k.slice('apcsp_local_'.length);
+    let type='?', preview='';
+    try { const v=JSON.parse(localStorage.getItem(k)); type=lsmTypeOf(v); preview=lsmPreview(v); }
+    catch { type='raw'; preview=localStorage.getItem(k).slice(0,40); }
+
+    const row=document.createElement('div');
+    row.className='lsm-row';
+    row.innerHTML=
+      `<span class="lsm-name">${name}</span>`+
+      `<span class="lsm-type">${type}</span>`+
+      `<span class="lsm-preview">${preview}</span>`+
+      `<button class="tb-btn me-sm me-del" onclick="lsmDelete('${name}')">✕</button>`;
+    table.appendChild(row);
+  });
+  wrap.appendChild(table);
+}
+
+function lsmDelete(name) {
+  localStorage.removeItem('apcsp_local_'+name);
+  lsmRefresh();
+  meRefreshList();
+}
+
+document.getElementById('lsm-open-btn').addEventListener('click', ()=>{
+  document.getElementById('lsm-modal').classList.add('open');
+  lsmRefresh();
+});
+document.getElementById('lsm-close-btn').addEventListener('click', ()=>{
+  document.getElementById('lsm-modal').classList.remove('open');
+});
+document.getElementById('lsm-clear-btn').addEventListener('click', ()=>{
+  if(!confirm('Delete ALL local storage entries?')) return;
+  Object.keys(localStorage).filter(k=>k.startsWith('apcsp_local_')).forEach(k=>localStorage.removeItem(k));
+  lsmRefresh(); meRefreshList();
+});
+</script>

@@ -1,5 +1,30 @@
 @import "nighthawk/main";
 
+// ── Full-bleed kill switch ────────────────────────────────────────────
+// Add `full-bleed: true` to a page's front matter, then wrap content
+// in <div class="full-bleed-page"> to escape the wrapper's constraints.
+.full-bleed-page {
+  // pull the wrapper's padding back out on both sides
+  margin-left:  calc(-1 * var(--wrapper-padding, 30px));
+  margin-right: calc(-1 * var(--wrapper-padding, 30px));
+  width: calc(100% + 2 * var(--wrapper-padding, 30px));
+
+  // nuke the wrapper's max-width for this subtree only
+  .page-content > .wrapper > & {
+    max-width: none;
+  }
+}
+
+// Stronger kill: slap .no-wrapper-padding on <body> or <main> via JS/liquid
+// and the wrapper loses all constraints globally for that page.
+body.no-wrapper-padding .page-content > .wrapper,
+.no-wrapper-padding.page-content > .wrapper {
+  max-width:     100% !important;
+  width:         100% !important;
+  padding-left:  0.8rem !important;
+  padding-right: 0.8rem !important;
+}
+
 // ── Space / Matrix Theme ──────────────────────────────────────────────
 $matrix-green:       #00ff41;
 $matrix-green-dim:   #00cc33;

@@ -366,11 +366,11 @@ permalink: /
   window.addEventListener('resize', resize);
 
   function draw() {
-    ctx.fillStyle = 'rgba(0,0,0,0.045)';
+    ctx.fillStyle = 'rgba(0,0,0,0.06)';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     for (let i = 0; i < cols; i++) {
-      const bright = Math.random() > 0.97;
-      ctx.fillStyle = bright ? '#ffffff' : (Math.random() > 0.5 ? '#00ff41' : '#00cc33');
+      const bright = Math.random() > 0.98;
+      ctx.fillStyle = bright ? 'rgba(200,255,200,0.85)' : (Math.random() > 0.5 ? 'rgba(0,220,60,0.6)' : 'rgba(0,180,50,0.45)');
       ctx.font = FS + 'px monospace';
       ctx.fillText(CHARS[Math.floor(Math.random() * CHARS.length)], i * FS, drops[i] * FS);
       if (drops[i] * FS > canvas.height && Math.random() > 0.975) drops[i] = 0;
