@@ -336,6 +336,8 @@ permalink: /pseudocode-runner/
 
 <script>document.body.classList.add('no-wrapper-padding');</script>
 
+<input type="file" id="file-open-input" accept=".pseudo,.txt" style="display:none">
+
 <div class="runner-page">
 
   <div class="menubar">
@@ -344,6 +346,9 @@ permalink: /pseudocode-runner/
     <div class="menu-wrap">
       <button class="menu-trigger">File</button>
       <div class="menu-dropdown">
+        <button class="menu-action" id="save-file">Save to File</button>
+        <button class="menu-action" id="open-file">Open File…</button>
+        <div class="menu-sep"></div>
         <button class="menu-action" id="load-sample">Load Sample</button>
         <div class="menu-sep"></div>
         <button class="menu-action" id="clear-editor">Clear Editor</button>
@@ -1473,6 +1478,30 @@ document.getElementById('robot-replay').addEventListener('click',()=>{
 
 document.getElementById('clear-editor').addEventListener('click', () => {
   editor.setValue(''); clearOutput();
+});
+
+document.getElementById('save-file').addEventListener('click', () => {
+  const code = editor.getValue();
+  const blob = new Blob([code], { type: 'text/plain' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = 'program.pseudo';
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+document.getElementById('open-file').addEventListener('click', () => {
+  document.getElementById('file-open-input').click();
+});
+
+document.getElementById('file-open-input').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => { editor.setValue(ev.target.result); editor.focus(); };
+  reader.readAsText(file);
+  e.target.value = '';
 });
 
 document.getElementById('load-sample').addEventListener('click', () => {
