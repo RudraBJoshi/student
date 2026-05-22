@@ -218,13 +218,24 @@ permalink: /pseudocode-runner/
   .input-modal-field:focus { border-color:rgba(0,255,65,.75); box-shadow:0 0 10px rgba(0,255,65,.2); }
   .input-modal-ok { align-self:flex-end; }
 
-  /* ── Reference card ── */
-  .ref-card {
-    margin-top:1.2rem;
-    border:1px solid rgba(0,255,65,.15); border-radius:10px;
-    background:rgba(0,10,0,.5); padding:1rem 1.2rem;
+  /* ── Help Modal ── */
+  .help-overlay {
+    display:none; position:fixed; inset:0; z-index:9996;
+    background:rgba(0,0,0,.78); backdrop-filter:blur(5px);
+    align-items:center; justify-content:center;
   }
-  .ref-card h3 { color:#00ff41; margin:0 0 .8rem; font-size:.95rem; letter-spacing:.05em; }
+  .help-overlay.open { display:flex; }
+  .help-box {
+    background:#010d01; border:1px solid rgba(0,255,65,.4);
+    border-radius:14px; padding:1.2rem 1.4rem;
+    width:min(700px,94vw); max-height:88vh; overflow-y:auto;
+    box-shadow:0 0 48px rgba(0,255,65,.14);
+    display:flex; flex-direction:column; gap:.85rem;
+  }
+  .help-header { display:flex; justify-content:space-between; align-items:center; }
+  .help-header h3 { color:#00ff41; margin:0; font-size:1rem; letter-spacing:.06em; text-shadow:0 0 8px rgba(0,255,65,.4); }
+
+  /* ── Reference card ── */
   .ref-grid {
     display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:.5rem 1.5rem;
   }
@@ -328,7 +339,7 @@ permalink: /pseudocode-runner/
 <div class="runner-page">
 
   <div class="menubar">
-    <span class="menubar-brand">AP CSP</span>
+    <span class="menubar-brand">PSEUDOEDITOR PRO</span>
 
     <div class="menu-wrap">
       <button class="menu-trigger">File</button>
@@ -377,6 +388,13 @@ permalink: /pseudocode-runner/
       <div class="menu-dropdown">
         <button class="menu-action" id="me-open-btn">Map Editor ⊞</button>
         <button class="menu-action" id="lsm-open-btn">Storage ⛁</button>
+      </div>
+    </div>
+
+    <div class="menu-wrap">
+      <button class="menu-trigger">Help</button>
+      <div class="menu-dropdown">
+        <button class="menu-action" id="help-ref-btn">Reference Sheet</button>
       </div>
     </div>
 
@@ -436,6 +454,46 @@ permalink: /pseudocode-runner/
     </div>
   </div>
 
+  <!-- Help Modal -->
+  <div class="help-overlay" id="help-modal">
+    <div class="help-box">
+      <div class="help-header">
+        <h3>Quick Reference</h3>
+        <button class="tb-btn me-sm" id="help-close-btn">✕</button>
+      </div>
+      <div class="ref-grid">
+        <div class="ref-item"><span class="ref-kw">IF</span> <code>(cond) { } ELSE { }</code></div>
+        <div class="ref-item"><span class="ref-kw">REPEAT</span> <code>n TIMES { }</code></div>
+        <div class="ref-item"><span class="ref-kw">REPEAT UNTIL</span> <code>(cond) { }</code></div>
+        <div class="ref-item"><span class="ref-kw">FOR EACH</span> <code>x IN list { }</code></div>
+        <div class="ref-item"><span class="ref-kw">PROCEDURE</span> <code>name(p1, p2) { }</code></div>
+        <div class="ref-item"><span class="ref-kw">RETURN</span><code>(expr)</code></div>
+        <div class="ref-item">Assignment: <code>x ← value</code> &nbsp;or&nbsp; <code>x &lt;- value</code></div>
+        <div class="ref-item">List: <code>a ← [1, 2, 3]</code> &nbsp; <code>a[1]</code> (1-indexed)</div>
+        <div class="ref-item"><span class="ref-bi">DISPLAY</span><code>(expr)</code></div>
+        <div class="ref-item"><span class="ref-bi">INPUT</span><code>()</code> — pops a modal prompt</div>
+        <div class="ref-item"><span class="ref-bi">RANDOM</span><code>(a, b)</code> — inclusive</div>
+        <div class="ref-item"><span class="ref-bi">APPEND</span><code>(list, val)</code></div>
+        <div class="ref-item"><span class="ref-bi">INSERT</span><code>(list, i, val)</code></div>
+        <div class="ref-item"><span class="ref-bi">REMOVE</span><code>(list, i)</code></div>
+        <div class="ref-item"><span class="ref-bi">LENGTH</span><code>(list)</code></div>
+        <div class="ref-item">Ops: <span class="ref-op">MOD  AND  OR  NOT</span></div>
+        <div class="ref-item">Compare: <code>= ≠ &lt; &gt; &lt;= &gt;=</code></div>
+        <div class="ref-item">Boolean: <code>TRUE</code> &nbsp; <code>FALSE</code></div>
+        <div class="ref-item">Comment: <code>// this is a comment</code></div>
+        <div class="ref-item"><span class="ref-kw">FROM LOCAL IMPORT</span> <code>name</code> — load saved value</div>
+        <div class="ref-item"><span class="ref-kw">TO LOCAL SAVE</span> <code>name</code> — persist any variable</div>
+        <div class="ref-item"><span class="ref-kw">LIST LOCAL</span> — print all saved keys &amp; previews</div>
+        <div class="ref-item"><span class="ref-kw">DELETE LOCAL</span> <code>name</code> — remove one entry</div>
+        <div class="ref-item"><span class="ref-bi">RENDER</span><code>(map)</code> — draw tilemap (1=wall 0=open)</div>
+        <div class="ref-item"><span class="ref-bi">SPAWN</span><code>(map, row, col)</code> — place robot (1-indexed)</div>
+        <div class="ref-item"><span class="ref-bi">MOVE_FORWARD</span><code>()</code> — move one cell forward</div>
+        <div class="ref-item"><span class="ref-bi">ROTATE_LEFT</span><code>()</code> / <span class="ref-bi">ROTATE_RIGHT</span><code>()</code></div>
+        <div class="ref-item"><span class="ref-bi">CAN_MOVE</span><code>("forward"|"left"|"right"|"backward")</code></div>
+      </div>
+    </div>
+  </div>
+
   <!-- Map Editor Modal -->
   <div class="mapeditor-overlay" id="mapeditor-modal">
     <div class="mapeditor-box">
@@ -459,40 +517,6 @@ permalink: /pseudocode-runner/
     </div>
   </div>
 
-  <!-- Quick Reference -->
-  <div class="ref-card">
-    <h3>Quick Reference</h3>
-    <div class="ref-grid">
-      <div class="ref-item"><span class="ref-kw">IF</span> <code>(cond) { } ELSE { }</code></div>
-      <div class="ref-item"><span class="ref-kw">REPEAT</span> <code>n TIMES { }</code></div>
-      <div class="ref-item"><span class="ref-kw">REPEAT UNTIL</span> <code>(cond) { }</code></div>
-      <div class="ref-item"><span class="ref-kw">FOR EACH</span> <code>x IN list { }</code></div>
-      <div class="ref-item"><span class="ref-kw">PROCEDURE</span> <code>name(p1, p2) { }</code></div>
-      <div class="ref-item"><span class="ref-kw">RETURN</span><code>(expr)</code></div>
-      <div class="ref-item">Assignment: <code>x ← value</code> &nbsp;or&nbsp; <code>x &lt;- value</code></div>
-      <div class="ref-item">List: <code>a ← [1, 2, 3]</code> &nbsp; <code>a[1]</code> (1-indexed)</div>
-      <div class="ref-item"><span class="ref-bi">DISPLAY</span><code>(expr)</code></div>
-      <div class="ref-item"><span class="ref-bi">INPUT</span><code>()</code> — pops a modal prompt</div>
-      <div class="ref-item"><span class="ref-bi">RANDOM</span><code>(a, b)</code> — inclusive</div>
-      <div class="ref-item"><span class="ref-bi">APPEND</span><code>(list, val)</code></div>
-      <div class="ref-item"><span class="ref-bi">INSERT</span><code>(list, i, val)</code></div>
-      <div class="ref-item"><span class="ref-bi">REMOVE</span><code>(list, i)</code></div>
-      <div class="ref-item"><span class="ref-bi">LENGTH</span><code>(list)</code></div>
-      <div class="ref-item">Ops: <span class="ref-op">MOD  AND  OR  NOT</span></div>
-      <div class="ref-item">Compare: <code>= ≠ &lt; &gt; &lt;= &gt;=</code></div>
-      <div class="ref-item">Boolean: <code>TRUE</code> &nbsp; <code>FALSE</code></div>
-      <div class="ref-item">Comment: <code>// this is a comment</code></div>
-      <div class="ref-item"><span class="ref-kw">FROM LOCAL IMPORT</span> <code>name</code> — load saved value</div>
-      <div class="ref-item"><span class="ref-kw">TO LOCAL SAVE</span> <code>name</code> — persist any variable</div>
-      <div class="ref-item"><span class="ref-kw">LIST LOCAL</span> — print all saved keys &amp; previews</div>
-      <div class="ref-item"><span class="ref-kw">DELETE LOCAL</span> <code>name</code> — remove one entry</div>
-      <div class="ref-item"><span class="ref-bi">RENDER</span><code>(map)</code> — draw tilemap (1=wall 0=open)</div>
-      <div class="ref-item"><span class="ref-bi">SPAWN</span><code>(map, row, col)</code> — place robot (1-indexed)</div>
-      <div class="ref-item"><span class="ref-bi">MOVE_FORWARD</span><code>()</code> — move one cell forward</div>
-      <div class="ref-item"><span class="ref-bi">ROTATE_LEFT</span><code>()</code> / <span class="ref-bi">ROTATE_RIGHT</span><code>()</code></div>
-      <div class="ref-item"><span class="ref-bi">CAN_MOVE</span><code>("forward"|"left"|"right"|"backward")</code></div>
-    </div>
-  </div>
 
 </div>
 
@@ -1667,5 +1691,19 @@ document.getElementById('lsm-clear-btn').addEventListener('click', ()=>{
   if(!confirm('Delete ALL local storage entries?')) return;
   Object.keys(localStorage).filter(k=>k.startsWith('apcsp_local_')).forEach(k=>localStorage.removeItem(k));
   lsmRefresh(); meRefreshList();
+});
+
+// ════════════════════════════════════════════════
+//  9. Help modal
+// ════════════════════════════════════════════════
+document.getElementById('help-ref-btn').addEventListener('click', () => {
+  closeMenus();
+  document.getElementById('help-modal').classList.add('open');
+});
+document.getElementById('help-close-btn').addEventListener('click', () => {
+  document.getElementById('help-modal').classList.remove('open');
+});
+document.getElementById('help-modal').addEventListener('click', e => {
+  if (e.target === e.currentTarget) e.currentTarget.classList.remove('open');
 });
 </script>
