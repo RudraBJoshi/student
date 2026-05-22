@@ -1482,9 +1482,19 @@ document.getElementById('clear-editor').addEventListener('click', () => {
 
 let fpcMeta = {};
 
-// Immutable engine rules — defined here, never overridable by file contents.
-// These appear in the file as informational documentation only.
+// ── FPC Rule Precedence (strict, non-negotiable) ────────────────────────────
+// Layer 1 — Engine (FPC_ENGINE): defines execution semantics. Always wins.
+// Layer 2 — File canonical/types fields: parsing/serialization expectations.
+//           Validated against Layer 1 on load. Cannot override it.
+// Layer 3 — Runtime behavior: driven entirely by Layer 1.
+//
+// A file's canonical/types fields are assertions about what engine produced it.
+// If they mismatch FPC_ENGINE, that signals spec drift or a version mismatch —
+// the engine still runs its own rules; the mismatch is surfaced as a warning.
+// ────────────────────────────────────────────────────────────────────────────
 const FPC_ENGINE = {
+  version:   '1.2',
+  engine:    'pseudoscript-1.0',
   canonical: 'spaces=insignificant,case=sensitive,arrow=←,whitespace=preserved',
   types:     'string=quoted,integer=-?\\d+,float=numeric,boolean=TRUE|FALSE',
 };
@@ -1552,20 +1562,34 @@ function fpcParse(raw) {
 
   // Validation — warn but never block loading
   const warns = [];
+
+  // Required metadata keys
   if (!fpcMeta.created)  warns.push('missing required key: created');
   if (!fpcMeta.lines)    warns.push('missing required key: lines');
   if (!fpcMeta.checksum) warns.push('missing required key: checksum');
 
+  // Line count integrity
   if (fpcMeta.lines) {
     const exp = parseInt(fpcMeta.lines, 10);
     const act = body.split('\n').length;
     if (!isNaN(exp) && exp !== act) warns.push(`lines mismatch: header says ${exp}, body has ${act}`);
   }
 
+  // Checksum integrity
   if (fpcMeta.checksum) {
     const act = fpcChecksum(body);
     if (act !== fpcMeta.checksum) warns.push('checksum mismatch — program body may be corrupted');
   }
+
+  // Layer precedence check — file's declared engine info must match FPC_ENGINE.
+  // Mismatches mean the file came from a different engine version (spec drift).
+  // Engine Layer 1 always runs its own rules regardless.
+  if (fpcMeta.engine    && fpcMeta.engine    !== FPC_ENGINE.engine)
+    warns.push(`engine mismatch: file=${fpcMeta.engine}, runtime=${FPC_ENGINE.engine}`);
+  if (fpcMeta.canonical && fpcMeta.canonical !== FPC_ENGINE.canonical)
+    warns.push(`canonical mismatch: file declares different parsing rules — engine rules apply`);
+  if (fpcMeta.types     && fpcMeta.types     !== FPC_ENGINE.types)
+    warns.push(`types mismatch: file declares different type rules — engine rules apply`);
 
   if (warns.length) {
     setTimeout(() => warns.forEach(w => appendOutput(`[FPC] ${w}`, 'out-error')), 0);
