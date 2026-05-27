@@ -1393,9 +1393,19 @@ const SYMBOL_MAP = [
 editor.on('change', (cm, change) => {
   if (change.origin !== '+input') return;
   const cursor = cm.getCursor();
-  if (cm.getTokenAt(cursor).type === 'string') return;
   const line   = cm.getLine(cursor.line);
   const col    = cursor.ch;
+
+  // Manual string-context check: scan for unescaped quote pairs before cursor.
+  // Avoids relying on getTokenAt, which may not have re-run on very fast input.
+  let inStr = false, qc = '';
+  for (let i = 0; i < col; i++) {
+    const c = line[i];
+    if (!inStr && (c === '"' || c === "'")) { inStr = true; qc = c; }
+    else if (inStr && c === qc && line[i - 1] !== '\\') { inStr = false; qc = ''; }
+  }
+  if (inStr) return;
+
   for (const { seq, rep } of SYMBOL_MAP) {
     if (col >= seq.length && line.slice(col - seq.length, col) === seq) {
       cm.replaceRange(rep, {line: cursor.line, ch: col - seq.length}, {line: cursor.line, ch: col});
@@ -1539,7 +1549,13 @@ function fpcChecksum(body) {
 function fpcSerialize(code) {
   const now       = new Date().toISOString();
   const created   = fpcMeta.layconf3.created || now;
-  const author    = fpcMeta.layconf3.author  || '';
+  // Prompt for author on first save; preserve existing value on re-save; fall back to empty.
+  let author = fpcMeta.layconf3.author;
+  if (author === undefined) {
+    const ans = prompt('Author name for this file (leave blank to skip):', '');
+    author = (ans === null) ? '' : ans.trim();
+    fpcMeta.layconf3.author = author;
+  }
   const lineCount = code.split('\n').length;
   const checksum  = fpcChecksum(code);
 
@@ -1553,9 +1569,8 @@ function fpcSerialize(code) {
     + `created:${created}\n`
     + `updated:${now}\n`
     + `lines:${lineCount}\n`
-    + `checksum:${checksum}\n`;
-
-  if (author) out += `author:${author}\n`;
+    + `checksum:${checksum}\n`
+    + `author:${author}\n`;
 
   return out + '---\n' + code;
 }
@@ -1615,8 +1630,12 @@ function fpcParse(raw) {
     warns.push('[layconf3] checksum mismatch — program body may be corrupted');
 
   // layconf1 precedence check — engine identity must match runtime
-  if (lc1.engine && lc1.engine !== FPC_ENGINE.engine)
-    warns.push(`[layconf1] engine mismatch: file=${lc1.engine}, runtime=${FPC_ENGINE.engine}`);
+  if (lc1.engine && lc1.engine !== FPC_ENGINE.engine) {
+    const hint = lc1.engine < FPC_ENGINE.engine
+      ? ' — re-save this file to upgrade it to the current engine'
+      : ' — this file was created with a newer engine; some features may not work';
+    warns.push(`[layconf1] engine mismatch: file=${lc1.engine}, runtime=${FPC_ENGINE.engine}${hint}`);
+  }
 
   // layconf2 drift check — informational, but flag if different from engine constants
   if (lc2.canonical && lc2.canonical !== FPC_ENGINE.canonical)
