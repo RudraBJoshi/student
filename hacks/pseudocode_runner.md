@@ -398,6 +398,11 @@ permalink: /pseudocode-runner/
       <div class="menu-dropdown">
         <button class="menu-action" id="me-open-btn">Map Editor ⊞</button>
         <button class="menu-action" id="lsm-open-btn">Storage ⛁</button>
+        <div class="menu-sep"></div>
+        <button class="menu-action" id="autocb-toggle">
+          <span>Auto-Brackets</span>
+          <span class="menu-kbd" id="autocb-indicator">ON</span>
+        </button>
       </div>
     </div>
 
@@ -1377,7 +1382,7 @@ document.querySelectorAll('.menu-action[data-snip]').forEach(btn => {
     const indented = snip.split('\n').map((l, i) => i === 0 ? l : indent + l).join('\n');
     editor.setOption('autoCloseBrackets', false);
     editor.replaceRange('\n' + indent + indented + '\n', {line: cursor.line, ch: editor.getLine(cursor.line).length});
-    editor.setOption('autoCloseBrackets', true);
+    editor.setOption('autoCloseBrackets', autoCBEnabled);
     editor.focus();
   });
 });
@@ -1893,7 +1898,26 @@ document.getElementById('lsm-clear-btn').addEventListener('click', ()=>{
 });
 
 // ════════════════════════════════════════════════
-//  9. Help modal
+//  9. Auto-Brackets toggle
+// ════════════════════════════════════════════════
+let autoCBEnabled = true;
+const autoCBIndicator = document.getElementById('autocb-indicator');
+
+function updateAutoCBIndicator() {
+  autoCBIndicator.textContent = autoCBEnabled ? 'ON' : 'OFF';
+  autoCBIndicator.style.color = autoCBEnabled ? '#00ff41' : '#ff5555';
+}
+updateAutoCBIndicator();
+
+document.getElementById('autocb-toggle').addEventListener('click', () => {
+  autoCBEnabled = !autoCBEnabled;
+  editor.setOption('autoCloseBrackets', autoCBEnabled);
+  updateAutoCBIndicator();
+  closeMenus();
+});
+
+// ════════════════════════════════════════════════
+//  10. Help modal
 // ════════════════════════════════════════════════
 document.getElementById('help-ref-btn').addEventListener('click', () => {
   closeMenus();
