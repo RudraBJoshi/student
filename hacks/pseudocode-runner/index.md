@@ -1571,6 +1571,11 @@ editor.on('change', (cm, change) => {
   }
 });
 
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+                  .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
 // ════════════════════════════════════════════════
 //  6. Robot Engine
 // ════════════════════════════════════════════════
@@ -1983,11 +1988,18 @@ function meRefreshList() {
     const name = k.slice(ME_PREFIX.length);
     const row = document.createElement('div');
     row.className = 'me-saved-row';
-    row.innerHTML =
-      `<span class="me-saved-name">${name}</span>` +
-      `<button class="tb-btn me-sm" onclick="meLoad('${name}')">Load</button>` +
-      `<button class="tb-btn me-sm" onclick="meInsertImport('${name}')">Import</button>` +
-      `<button class="tb-btn me-sm me-del" onclick="meDelete('${name}')">✕</button>`;
+    const en = escHtml(name);
+    row.innerHTML = `<span class="me-saved-name">${en}</span>`;
+    const btnLoad = document.createElement('button');
+    btnLoad.className = 'tb-btn me-sm'; btnLoad.textContent = 'Load';
+    btnLoad.addEventListener('click', () => meLoad(name));
+    const btnImport = document.createElement('button');
+    btnImport.className = 'tb-btn me-sm'; btnImport.textContent = 'Import';
+    btnImport.addEventListener('click', () => meInsertImport(name));
+    const btnDel = document.createElement('button');
+    btnDel.className = 'tb-btn me-sm me-del'; btnDel.textContent = '✕';
+    btnDel.addEventListener('click', () => meDelete(name));
+    row.appendChild(btnLoad); row.appendChild(btnImport); row.appendChild(btnDel);
     list.appendChild(row);
   });
 }
@@ -2059,10 +2071,13 @@ function lsmRefresh() {
     const row=document.createElement('div');
     row.className='lsm-row';
     row.innerHTML=
-      `<span class="lsm-name">${name}</span>`+
-      `<span class="lsm-type">${type}</span>`+
-      `<span class="lsm-preview">${preview}</span>`+
-      `<button class="tb-btn me-sm me-del" onclick="lsmDelete('${name}')">✕</button>`;
+      `<span class="lsm-name">${escHtml(name)}</span>`+
+      `<span class="lsm-type">${escHtml(type)}</span>`+
+      `<span class="lsm-preview">${escHtml(preview)}</span>`;
+    const btnDel=document.createElement('button');
+    btnDel.className='tb-btn me-sm me-del'; btnDel.textContent='✕';
+    btnDel.addEventListener('click', () => lsmDelete(name));
+    row.appendChild(btnDel);
     table.appendChild(row);
   });
   wrap.appendChild(table);
