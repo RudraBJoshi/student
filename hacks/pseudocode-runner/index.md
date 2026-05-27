@@ -1,5 +1,6 @@
 ---
 layout: default
+title: AP Computer Science Pseudocode Extended Runner
 permalink: /pseudocode-runner/
 ---
 
