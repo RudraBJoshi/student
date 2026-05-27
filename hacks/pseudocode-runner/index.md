@@ -1016,6 +1016,11 @@ class ReturnSignal { constructor(v){this.value=v;} }
 
 function deepCopy(v) {
   if (Array.isArray(v)) return v.map(deepCopy);
+  if (v !== null && typeof v === 'object') {
+    const out = {};
+    for (const k of Object.keys(v)) out[k] = deepCopy(v[k]);
+    return out;
+  }
   return v;
 }
 
@@ -1087,9 +1092,8 @@ class Interpreter {
       }
 
       case 'RepeatUntil': {
-        let guard=0;
         while(!await this.eval(s.cond)){
-          this.tick();if(++guard>50000) throw new Error('REPEAT UNTIL exceeded iteration limit');
+          this.tick();
           this.push();await this.run(s.body);this.pop();
         }
         break;
@@ -1550,19 +1554,9 @@ const SYMBOL_MAP = [
 editor.on('change', (cm, change) => {
   if (change.origin !== '+input') return;
   const cursor = cm.getCursor();
-  const line   = cm.getLine(cursor.line);
-  const col    = cursor.ch;
-
-  // Manual string-context check: scan for unescaped quote pairs before cursor.
-  // Avoids relying on getTokenAt, which may not have re-run on very fast input.
-  let inStr = false, qc = '';
-  for (let i = 0; i < col; i++) {
-    const c = line[i];
-    if (!inStr && (c === '"' || c === "'")) { inStr = true; qc = c; }
-    else if (inStr && c === qc && line[i - 1] !== '\\') { inStr = false; qc = ''; }
-  }
-  if (inStr) return;
-
+  if (cm.getTokenAt(cursor).type === 'string') return;
+  const line = cm.getLine(cursor.line);
+  const col  = cursor.ch;
   for (const { seq, rep } of SYMBOL_MAP) {
     if (col >= seq.length && line.slice(col - seq.length, col) === seq) {
       cm.replaceRange(rep, {line: cursor.line, ch: col - seq.length}, {line: cursor.line, ch: col});
