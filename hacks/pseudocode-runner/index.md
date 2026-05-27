@@ -1793,10 +1793,19 @@ function fpcParse(raw) {
 
   // FPC format version check
   if (version !== FPC_ENGINE.version) {
-    const fmtHint = version < FPC_ENGINE.version
-      ? ' — re-save to upgrade to FPC:' + FPC_ENGINE.version
-      : ' — saved with a newer format; some fields may not be understood';
-    warns.push(`FPC version mismatch: file=FPC:${version}, runtime=FPC:${FPC_ENGINE.version}${fmtHint}`);
+    if (version < FPC_ENGINE.version) {
+      // Older file — load succeeds but show a prominent banner
+      setTimeout(() => {
+        appendOutput('[FPC] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 'out-error');
+        appendOutput('[FPC] ⚠  THIS IS AN OLDER FORMAT (FPC:' + version + ')', 'out-error');
+        appendOutput('[FPC]    Current runtime: FPC:' + FPC_ENGINE.version, 'out-error');
+        appendOutput('[FPC]    Re-save this file (File → Save to File) to upgrade.', 'out-error');
+        appendOutput('[FPC] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 'out-error');
+      }, 0);
+    } else {
+      // Newer file — runtime may not understand all fields
+      warns.push(`FPC version mismatch: file=FPC:${version}, runtime=FPC:${FPC_ENGINE.version} — saved with a newer format; some fields may not be understood`);
+    }
   }
 
   // layconf1 precedence check — engine identity must match runtime
