@@ -480,7 +480,7 @@ permalink: /pseudocode-runner/
         <div class="ref-item"><span class="ref-kw">RETURN</span><code>(expr)</code></div>
         <div class="ref-item">Assignment: <code>x ← value</code> &nbsp;or&nbsp; <code>x &lt;- value</code></div>
         <div class="ref-item">List: <code>a ← [1, 2, 3]</code> &nbsp; <code>a[1]</code> (1-indexed)</div>
-        <div class="ref-item"><span class="ref-bi">DISPLAY</span><code>(expr)</code></div>
+        <div class="ref-item"><span class="ref-bi">DISPLAY</span><code>(v1, v2, …)</code> — space-joined</div>
         <div class="ref-item"><span class="ref-bi">INPUT</span><code>()</code> — pops a modal prompt</div>
         <div class="ref-item"><span class="ref-bi">RANDOM</span><code>(a, b)</code> — inclusive</div>
         <div class="ref-item"><span class="ref-bi">APPEND</span><code>(list, val)</code></div>
@@ -621,6 +621,13 @@ const KEYWORDS = {
   LIST:TT.LIST, DELETE:TT.DELETE
 };
 
+// Builtin function names require exact uppercase to avoid colliding with user variables
+// (e.g. `input`, `length` stay as IDENTs; `INPUT`, `LENGTH` become builtins)
+const CASE_SENSITIVE_KW = new Set([
+  'DISPLAY','INPUT','RANDOM','APPEND','INSERT','REMOVE','LENGTH',
+  'RENDER','SPAWN','MOVE_FORWARD','ROTATE_LEFT','ROTATE_RIGHT','CAN_MOVE'
+]);
+
 class Token {
   constructor(type, value, line) { this.type=type; this.value=value; this.line=line; }
 }
@@ -687,7 +694,7 @@ function tokenize(src) {
       let id='';
       while(pos<src.length && /[a-zA-Z0-9_]/.test(peek())) id+=adv();
       const up = id.toUpperCase();
-      const kw = KEYWORDS[up];
+      const kw = KEYWORDS[up] && (!CASE_SENSITIVE_KW.has(up) || id === up) ? KEYWORDS[up] : null;
       if (kw) {
         const val = kw===TT.BOOL ? (up==='TRUE') : up;
         tokens.push(new Token(kw, val, ln));
@@ -951,6 +958,11 @@ class Parser {
 // ════════════════════════════════════════════════
 class ReturnSignal { constructor(v){this.value=v;} }
 
+function deepCopy(v) {
+  if (Array.isArray(v)) return v.map(deepCopy);
+  return v;
+}
+
 class Interpreter {
   constructor(out) {
     this.scopes = [{}];
@@ -1205,7 +1217,7 @@ class Interpreter {
       throw new Error(`'${name}' expects ${proc.params.length} arg(s), got ${args.length}`);
 
     const vals=[];
-    for(const a of args) vals.push(await this.eval(a));
+    for(const a of args) vals.push(deepCopy(await this.eval(a)));
     this.push();
     proc.params.forEach((p,i)=>{ this.scopes[this.scopes.length-1][p]=vals[i]; });
     let result=null;
@@ -1277,7 +1289,11 @@ document.getElementById('run-btn').addEventListener('click', async () => {
     await interp.run(ast);
     appendOutput('// Done ✓','out-info');
   } catch(e) {
-    appendOutput(e.message, 'out-error');
+    if (e instanceof ReturnSignal) {
+      appendOutput('// Done ✓','out-info');
+    } else {
+      appendOutput(e.message, 'out-error');
+    }
   }
 
   if(robotFrames.length){
@@ -1373,6 +1389,7 @@ const SYMBOL_MAP = [
 editor.on('change', (cm, change) => {
   if (change.origin !== '+input') return;
   const cursor = cm.getCursor();
+  if (cm.getTokenAt(cursor).type === 'string') return;
   const line   = cm.getLine(cursor.line);
   const col    = cursor.ch;
   for (const { seq, rep } of SYMBOL_MAP) {
