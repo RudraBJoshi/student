@@ -2,6 +2,7 @@
 layout: default
 title: AP Computer Science Pseudocode Extended Runner
 permalink: /pseudocode-runner/
+meta-description: "An interactive AP CSP pseudocode interpreter with robot simulation, turtle graphics, map editor, and package support. Run AP Computer Science Principles pseudocode in your browser."
 ---
 
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
