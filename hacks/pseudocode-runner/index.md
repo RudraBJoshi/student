@@ -1851,8 +1851,20 @@ document.getElementById('open-file').addEventListener('click', () => {
 document.getElementById('file-open-input').addEventListener('change', e => {
   const file = e.target.files[0];
   if (!file) return;
+  const isTxt = file.name.toLowerCase().endsWith('.txt');
   const reader = new FileReader();
-  reader.onload = ev => { editor.setValue(fpcParse(ev.target.result)); editor.focus(); };
+  reader.onload = ev => {
+    editor.setValue(fpcParse(ev.target.result));
+    editor.focus();
+    if (isTxt) {
+      setTimeout(() => {
+        appendOutput('[FILE] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 'out-error');
+        appendOutput('[FILE] ⚠  WARN: FILE MAY NOT WORK AS INTENDED', 'out-error');
+        appendOutput('[FILE]    PLEASE RE-SAVE AS .FPC (File → Save to File)', 'out-error');
+        appendOutput('[FILE] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 'out-error');
+      }, 0);
+    }
+  };
   reader.readAsText(file);
   e.target.value = '';
 });
