@@ -1687,7 +1687,7 @@ document.getElementById('clear-editor').addEventListener('click', () => {
 // layconf2 — canonical/types (parsing & serialization expectations, informational)
 // layconf3 — runtime metadata (file provenance, integrity)
 const FPC_ENGINE = {
-  version:   '1.2',
+  version:   '1.3',
   engine:    'pseudoscript-1.0',
   canonical: 'spaces=insignificant,case=sensitive,arrow=←,whitespace=preserved',
   types:     'string=quoted,integer=-?\\d+,float=numeric,boolean=TRUE|FALSE',
@@ -1720,7 +1720,7 @@ function fpcSerialize(code) {
   const pkgMatches = [...code.matchAll(/FROM\s+LOCAL\.?PKG\s+IMPORT\s+(\w+)/gi)];
   const pkgList = [...new Set(pkgMatches.map(m => m[1].toLowerCase()))].join(',');
 
-  let out = 'FPC:1.2\n'
+  let out = `FPC:${FPC_ENGINE.version}\n`
     + '[layconf1]\n'
     + `engine:${FPC_ENGINE.engine}\n`
     + '[layconf2]\n'
@@ -1790,6 +1790,14 @@ function fpcParse(raw) {
   // Checksum integrity
   if (lc3.checksum && fpcChecksum(body) !== lc3.checksum)
     warns.push('[layconf3] checksum mismatch — program body may be corrupted');
+
+  // FPC format version check
+  if (version !== FPC_ENGINE.version) {
+    const fmtHint = version < FPC_ENGINE.version
+      ? ' — re-save to upgrade to FPC:' + FPC_ENGINE.version
+      : ' — saved with a newer format; some fields may not be understood';
+    warns.push(`FPC version mismatch: file=FPC:${version}, runtime=FPC:${FPC_ENGINE.version}${fmtHint}`);
+  }
 
   // layconf1 precedence check — engine identity must match runtime
   if (lc1.engine && lc1.engine !== FPC_ENGINE.engine) {
