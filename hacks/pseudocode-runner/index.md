@@ -196,6 +196,12 @@ permalink: /pseudocode-runner/
   .robot-speed:hover::-webkit-slider-thumb { box-shadow:0 0 10px rgba(0,255,65,1); }
   .robot-speed:hover::-moz-range-thumb     { box-shadow:0 0 10px rgba(0,255,65,1); }
 
+  /* ── Turtle canvas ── */
+  #turtle-canvas {
+    display:block; background:#010801;
+    width:100%; flex:1; min-height:0;
+  }
+
   /* ── Input Modal ── */
   .input-modal-overlay {
     display:none; position:fixed; inset:0; z-index:9999;
@@ -407,6 +413,23 @@ permalink: /pseudocode-runner/
     </div>
 
     <div class="menu-wrap">
+      <button class="menu-trigger">Packages</button>
+      <div class="menu-dropdown">
+        <div class="menu-group">Import</div>
+        <button class="menu-action" data-snip="pkg-math">math — SQRT ABS FLOOR CEIL POW</button>
+        <button class="menu-action" data-snip="pkg-stats">stats — MIN MAX SUM MEAN</button>
+        <button class="menu-action" data-snip="pkg-turtle">turtle — FORWARD LEFT RIGHT…</button>
+        <button class="menu-action" data-snip="pkg-string">string — UPPER LOWER SPLIT…</button>
+        <div class="menu-sep"></div>
+        <div class="menu-group">Examples</div>
+        <button class="menu-action" data-snip="pkg-math-ex">Math example</button>
+        <button class="menu-action" data-snip="pkg-stats-ex">Stats example</button>
+        <button class="menu-action" data-snip="pkg-turtle-ex">Turtle square</button>
+        <button class="menu-action" data-snip="pkg-string-ex">String example</button>
+      </div>
+    </div>
+
+    <div class="menu-wrap">
       <button class="menu-trigger">Help</button>
       <div class="menu-dropdown">
         <button class="menu-action" id="help-ref-btn">Reference Sheet</button>
@@ -440,6 +463,15 @@ permalink: /pseudocode-runner/
         <input type="range" class="robot-speed" id="robot-speed" min="50" max="800" value="300">
         <button class="tb-btn" id="robot-replay" style="padding:.2rem .55rem;font-size:.73rem">↺</button>
         <span id="robot-status" style="margin-left:auto;font-size:.72rem;color:#00ff41"></span>
+      </div>
+    </div>
+
+    <!-- Turtle Panel — appears when turtle package is imported -->
+    <div class="robot-panel" id="turtle-panel" style="display:none">
+      <div class="pane-label">Turtle Canvas</div>
+      <canvas id="turtle-canvas" width="300" height="280"></canvas>
+      <div class="robot-controls">
+        <button class="tb-btn" id="turtle-clear-btn" style="padding:.2rem .55rem;font-size:.73rem">Clear</button>
       </div>
     </div>
 
@@ -507,6 +539,16 @@ permalink: /pseudocode-runner/
         <div class="ref-item"><span class="ref-bi">ROTATE_LEFT</span><code>()</code> / <span class="ref-bi">ROTATE_RIGHT</span><code>()</code></div>
         <div class="ref-item"><span class="ref-bi">CAN_MOVE</span><code>("forward"|"left"|"right"|"backward")</code></div>
       </div>
+      <div style="border-top:1px solid rgba(0,255,65,.1);margin:.4rem 0"></div>
+      <div style="font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:#3a6a3a;padding-bottom:.3rem">Packages — FROM LOCAL.PKG IMPORT name</div>
+      <div class="ref-grid">
+        <div class="ref-item"><span class="ref-kw">math</span> — <span class="ref-bi">SQRT ABS FLOOR CEIL POW</span><code>(x)</code> / <code>(x,y)</code></div>
+        <div class="ref-item"><span class="ref-kw">stats</span> — <span class="ref-bi">MIN MAX SUM MEAN</span><code>(list)</code></div>
+        <div class="ref-item"><span class="ref-kw">turtle</span> — <span class="ref-bi">FORWARD BACKWARD</span><code>(n)</code> &nbsp; <span class="ref-bi">LEFT RIGHT</span><code>(deg)</code></div>
+        <div class="ref-item"><span class="ref-bi">PEN_UP PEN_DOWN COLOR CLEAR</span> — turtle pen control</div>
+        <div class="ref-item"><span class="ref-kw">string</span> — <span class="ref-bi">UPPER LOWER</span><code>(s)</code></div>
+        <div class="ref-item"><span class="ref-bi">SUBSTRING</span><code>(s, start, len)</code> &nbsp; <span class="ref-bi">CONTAINS</span><code>(s, sub)</code> &nbsp; <span class="ref-bi">SPLIT</span><code>(s, delim)</code></div>
+      </div>
     </div>
   </div>
 
@@ -542,7 +584,7 @@ permalink: /pseudocode-runner/
 // ════════════════════════════════════════════════
 CodeMirror.defineMode('apcsp', function () {
   const KW = /^(IF|ELSE|REPEAT|TIMES|UNTIL|FOR|EACH|IN|PROCEDURE|RETURN|FROM|LOCAL|IMPORT|TO|SAVE|LIST|DELETE)\b/;
-  const BI = /^(DISPLAY|INPUT|RANDOM|APPEND|INSERT|REMOVE|LENGTH|RENDER|SPAWN|MOVE_FORWARD|ROTATE_LEFT|ROTATE_RIGHT|CAN_MOVE)\b/;
+  const BI = /^(DISPLAY|INPUT|RANDOM|APPEND|INSERT|REMOVE|LENGTH|RENDER|SPAWN|MOVE_FORWARD|ROTATE_LEFT|ROTATE_RIGHT|CAN_MOVE|SQRT|ABS|FLOOR|CEIL|POW|MIN|MAX|SUM|MEAN|UPPER|LOWER|SUBSTRING|CONTAINS|SPLIT|FORWARD|BACKWARD|LEFT|RIGHT|PEN_UP|PEN_DOWN|COLOR|CLEAR)\b/;
   const OP = /^(AND|OR|NOT|MOD)\b/;
   const AT = /^(TRUE|FALSE)\b/;
 
@@ -760,6 +802,13 @@ class Parser {
   fromLocalImport() {
     const ln=this.adv().line;
     this.expect(TT.LOCAL,'LOCAL');
+    // FROM LOCAL.PKG IMPORT name  (dot is silently skipped by tokenizer)
+    if(this.check(TT.IDENT) && this.peek().value==='PKG'){
+      this.adv(); // consume PKG
+      this.expect(TT.IMPORT,'IMPORT');
+      const name=this.expect(TT.IDENT,'package name').value.toLowerCase();
+      return {type:'FromPkgImport',name,line:ln};
+    }
     this.expect(TT.IMPORT,'IMPORT');
     const name=this.expect(TT.IDENT,'variable name').value;
     return {type:'FromLocalImport',name,line:ln};
@@ -972,10 +1021,11 @@ function deepCopy(v) {
 
 class Interpreter {
   constructor(out) {
-    this.scopes = [{}];
-    this.procs  = {};
-    this.out    = out;
-    this.steps  = 0;
+    this.scopes  = [{}];
+    this.procs   = {};
+    this.pkgFns  = {};
+    this.out     = out;
+    this.steps   = 0;
   }
 
   tick() { if(++this.steps>50000) throw new Error('Step limit reached — possible infinite loop'); }
@@ -1060,6 +1110,10 @@ class Interpreter {
         const stored=localStorage.getItem('apcsp_local_'+s.name);
         if(!stored) throw new Error(`FROM LOCAL IMPORT: nothing saved as '${s.name}'. Use TO LOCAL SAVE or the Map Editor.`);
         this.set(s.name, JSON.parse(stored)); break;
+      }
+
+      case 'FromPkgImport': {
+        await this.loadPackage(s.name); break;
       }
 
       case 'ToLocalSave': {
@@ -1218,6 +1272,13 @@ class Interpreter {
                     'RENDER','SPAWN','MOVE_FORWARD','ROTATE_LEFT','ROTATE_RIGHT','CAN_MOVE'];
     if(builtins.includes(name)) return await this.evalBuiltin(name,args);
 
+    // Package functions loaded via FROM LOCAL.PKG IMPORT
+    if(name in this.pkgFns){
+      const vals=[];
+      for(const a of args) vals.push(deepCopy(await this.eval(a)));
+      return this.pkgFns[name].apply(null, vals);
+    }
+
     const proc=this.procs[name];
     if(!proc) throw new Error(`Undefined procedure '${name}'`);
     if(args.length!==proc.params.length)
@@ -1234,6 +1295,36 @@ class Interpreter {
     return result;
   }
 
+  async loadPackage(name) {
+    const valid = ['math','stats','turtle','string'];
+    if(!valid.includes(name))
+      throw new Error(`Unknown package '${name}'. Available: ${valid.join(', ')}`);
+
+    // Load script if not yet registered
+    if(!(window.APCSP_PACKAGES && window.APCSP_PACKAGES[name])){
+      await new Promise((resolve, reject) => {
+        const s=document.createElement('script');
+        s.src = PKG_BASE + 'pkg_' + name + '.js';
+        s.onload  = resolve;
+        s.onerror = () => reject(new Error(`Failed to load package '${name}' from ${s.src}`));
+        document.head.appendChild(s);
+      });
+    }
+
+    const pkg = window.APCSP_PACKAGES && window.APCSP_PACKAGES[name];
+    if(!pkg) throw new Error(`Package '${name}' did not register itself correctly`);
+
+    // Register all public functions into pkgFns
+    for(const [fn, impl] of Object.entries(pkg)){
+      if(!fn.startsWith('_')) this.pkgFns[fn] = impl;
+    }
+
+    // Turtle-specific: show canvas panel and init state
+    if(name==='turtle') initTurtlePanel(pkg);
+
+    this.out(`// Package '${name}' ready`,'out-info');
+  }
+
   fmt(v) {
     if(Array.isArray(v)) return '['+v.map(i=>this.fmt(i)).join(', ')+']';
     if(typeof v==='boolean') return v?'TRUE':'FALSE';
@@ -1244,8 +1335,32 @@ class Interpreter {
 // ════════════════════════════════════════════════
 //  5. UI wiring
 // ════════════════════════════════════════════════
+const PKG_BASE = '{{ site.baseurl }}/hacks/pseudocode-runner/modules/';
+
 const outputEl    = document.getElementById('output');
 const runnerLayout = document.querySelector('.runner-layout');
+
+// ── Turtle panel ──
+const turtlePanel  = document.getElementById('turtle-panel');
+const turtleCanvas = document.getElementById('turtle-canvas');
+const turtleCtx    = turtleCanvas.getContext('2d');
+
+function initTurtlePanel(pkg) {
+  turtlePanel.style.display = 'flex';
+  const hasRobot = robotPanel.style.display !== 'none';
+  runnerLayout.style.gridTemplateColumns = hasRobot ? '3fr 2fr 2fr 2fr' : '3fr 2fr 2fr';
+  turtleCtx.clearRect(0, 0, turtleCanvas.width, turtleCanvas.height);
+  if (pkg && pkg._init) {
+    pkg._init({ ctx: turtleCtx, width: turtleCanvas.width, height: turtleCanvas.height });
+  }
+}
+
+document.getElementById('turtle-clear-btn').addEventListener('click', () => {
+  turtleCtx.clearRect(0, 0, turtleCanvas.width, turtleCanvas.height);
+  if (window.APCSP_PACKAGES && window.APCSP_PACKAGES.turtle && window.APCSP_PACKAGES.turtle._init) {
+    window.APCSP_PACKAGES.turtle._init({ ctx: turtleCtx, width: turtleCanvas.width, height: turtleCanvas.height });
+  }
+});
 
 function clearOutput() { outputEl.innerHTML=''; }
 
@@ -1283,8 +1398,11 @@ document.getElementById('run-btn').addEventListener('click', async () => {
   robotMap=null; robotRow=0; robotCol=0; robotDir=0; robotFrames=[];
   if(robotAnimTimer) clearTimeout(robotAnimTimer);
   robotPanel.style.display='none';
+  turtlePanel.style.display='none';
   runnerLayout.style.gridTemplateColumns='';
   robotStatus.textContent='';
+  // Clear turtle canvas for fresh run
+  turtleCtx.clearRect(0, 0, turtleCanvas.width, turtleCanvas.height);
 
   const src = editor.getValue();
   if(!src.trim()){ appendOutput('// Nothing to run','out-info'); return; }
@@ -1292,7 +1410,7 @@ document.getElementById('run-btn').addEventListener('click', async () => {
   try {
     const tokens = tokenize(src);
     const ast    = new Parser(tokens).parse();
-    const interp = new Interpreter(text => appendOutput(text));
+    const interp = new Interpreter(appendOutput);
     await interp.run(ast);
     appendOutput('// Done ✓','out-info');
   } catch(e) {
@@ -1305,7 +1423,8 @@ document.getElementById('run-btn').addEventListener('click', async () => {
 
   if(robotFrames.length){
     robotPanel.style.display='flex';
-    runnerLayout.style.gridTemplateColumns='3fr 2fr 2fr';
+    const hasTurtle = turtlePanel.style.display !== 'none';
+    runnerLayout.style.gridTemplateColumns = hasTurtle ? '3fr 2fr 2fr 2fr' : '3fr 2fr 2fr';
     requestAnimationFrame(()=>animateRobot(robotFrames));
   }
 });
@@ -1339,6 +1458,39 @@ SPAWN(map, 2, 2)`,
 `IF (CAN_MOVE("forward")) {\n    MOVE_FORWARD()\n}`,
   'robot-nav':
 `REPEAT UNTIL (NOT CAN_MOVE("forward")) {\n    MOVE_FORWARD()\n}`,
+  // ── Package import one-liners ──
+  'pkg-math':   `FROM LOCAL.PKG IMPORT math`,
+  'pkg-stats':  `FROM LOCAL.PKG IMPORT stats`,
+  'pkg-turtle': `FROM LOCAL.PKG IMPORT turtle`,
+  'pkg-string': `FROM LOCAL.PKG IMPORT string`,
+  // ── Package examples ──
+  'pkg-math-ex':
+`FROM LOCAL.PKG IMPORT math
+x ← SQRT(16)
+y ← POW(2, 8)
+DISPLAY("sqrt(16) =", x)
+DISPLAY("2^8 =", y)
+DISPLAY("abs(-7) =", ABS(-7))`,
+  'pkg-stats-ex':
+`FROM LOCAL.PKG IMPORT stats
+nums ← [4, 7, 2, 9, 1, 5]
+DISPLAY("Min:", MIN(nums))
+DISPLAY("Max:", MAX(nums))
+DISPLAY("Sum:", SUM(nums))
+DISPLAY("Mean:", MEAN(nums))`,
+  'pkg-turtle-ex':
+`FROM LOCAL.PKG IMPORT turtle
+REPEAT 4 TIMES {
+    FORWARD(80)
+    RIGHT(90)
+}`,
+  'pkg-string-ex':
+`FROM LOCAL.PKG IMPORT string
+word ← "Hello World"
+DISPLAY(UPPER(word))
+DISPLAY(LOWER(word))
+DISPLAY(CONTAINS(word, "World"))
+DISPLAY(SUBSTRING(word, 1, 5))`,
 };
 
 let openMenu = null;
@@ -1564,12 +1716,17 @@ function fpcSerialize(code) {
   const lineCount = code.split('\n').length;
   const checksum  = fpcChecksum(code);
 
+  // Detect package imports in code (informational, stored in layconf2)
+  const pkgMatches = [...code.matchAll(/FROM\s+LOCAL\.?PKG\s+IMPORT\s+(\w+)/gi)];
+  const pkgList = [...new Set(pkgMatches.map(m => m[1].toLowerCase()))].join(',');
+
   let out = 'FPC:1.2\n'
     + '[layconf1]\n'
     + `engine:${FPC_ENGINE.engine}\n`
     + '[layconf2]\n'
     + `canonical:${FPC_ENGINE.canonical}\n`
     + `types:${FPC_ENGINE.types}\n`
+    + (pkgList ? `packages:${pkgList}\n` : '')
     + '[layconf3]\n'
     + `created:${created}\n`
     + `updated:${now}\n`
@@ -1647,6 +1804,10 @@ function fpcParse(raw) {
     warns.push('[layconf2] canonical drift — engine rules apply');
   if (lc2.types && lc2.types !== FPC_ENGINE.types)
     warns.push('[layconf2] types drift — engine rules apply');
+
+  // Package dependency hint
+  if (lc2.packages)
+    setTimeout(() => appendOutput(`[FPC] Packages used: ${lc2.packages} (loaded on run)`, 'out-info'), 0);
 
   if (warns.length) {
     setTimeout(() => warns.forEach(w => appendOutput(`[FPC] ${w}`, 'out-error')), 0);
