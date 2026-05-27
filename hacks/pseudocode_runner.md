@@ -5,6 +5,7 @@ permalink: /pseudocode-runner/
 
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closebrackets.min.js"></script>
 
 <style>
   body { background:#000 !important; }
@@ -575,6 +576,7 @@ const editor = CodeMirror.fromTextArea(document.getElementById('editor'), {
   indentWithTabs: false,
   indentUnit: 4,
   tabSize: 4,
+  autoCloseBrackets: true,
   extraKeys: { Tab: cm => cm.replaceSelection('    ') },
 });
 
@@ -1373,7 +1375,9 @@ document.querySelectorAll('.menu-action[data-snip]').forEach(btn => {
     const cursor = editor.getCursor();
     const indent = editor.getLine(cursor.line).match(/^(\s*)/)[1];
     const indented = snip.split('\n').map((l, i) => i === 0 ? l : indent + l).join('\n');
+    editor.setOption('autoCloseBrackets', false);
     editor.replaceRange('\n' + indent + indented + '\n', {line: cursor.line, ch: editor.getLine(cursor.line).length});
+    editor.setOption('autoCloseBrackets', true);
     editor.focus();
   });
 });
