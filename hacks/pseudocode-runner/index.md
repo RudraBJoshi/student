@@ -385,6 +385,47 @@ meta-description: "An interactive AP CSP pseudocode interpreter with robot simul
     margin:0; font-family:'Courier New',monospace; font-size:.75rem;
     color:#c8ffc8; white-space:pre;
   }
+
+  /* ── Virtual Arduino Overlay ── */
+  .va-overlay {
+    display:none; position:fixed; inset:0; z-index:9994;
+    background:rgba(0,0,0,.82); backdrop-filter:blur(6px);
+    align-items:center; justify-content:center;
+  }
+  .va-overlay.open { display:flex; }
+  .va-box {
+    background:#010d01; border:1px solid rgba(0,255,65,.4);
+    border-radius:14px; padding:1.2rem 1.4rem;
+    width:min(860px,96vw); max-height:90vh; overflow:hidden;
+    box-shadow:0 0 48px rgba(0,255,65,.14);
+    display:flex; flex-direction:column; gap:.7rem;
+  }
+  .va-header { display:flex; justify-content:space-between; align-items:flex-start; gap:.5rem; }
+  .va-header svg { max-width:100%; height:auto; }
+  .va-status { font-size:.78rem; color:#3a6a3a; font-family:'Courier New',monospace; }
+  .va-toolbar { display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; }
+  .va-step-info { font-size:.72rem; opacity:.5; margin-left:auto; }
+  .va-layout {
+    display:grid; grid-template-columns:1fr 1fr; gap:.8rem;
+    flex:1; min-height:0; height:400px;
+  }
+  @media(max-width:600px){ .va-layout { grid-template-columns:1fr; height:auto; } }
+  .va-canvas-panel, .va-serial-panel {
+    border:1px solid rgba(0,255,65,.2); border-radius:8px;
+    overflow:hidden; display:flex; flex-direction:column;
+  }
+  #va-canvas {
+    display:block; background:#010801; flex:1; min-height:0;
+    width:100%; image-rendering:pixelated;
+  }
+  .va-serial-output {
+    background:#020c02; color:#c8ffc8;
+    font-family:'Courier New',monospace; font-size:.82rem;
+    padding:.6rem; overflow-y:auto; flex:1; min-height:0;
+    white-space:pre-wrap; line-height:1.7;
+  }
+  .va-serial-line { display:block; }
+  .va-serial-err  { color:#ff5555; }
 </style>
 
 <script>document.body.classList.add('no-wrapper-padding');</script>
@@ -469,6 +510,13 @@ meta-description: "An interactive AP CSP pseudocode interpreter with robot simul
         <button class="menu-action" data-snip="pkg-stats-ex">Stats example</button>
         <button class="menu-action" data-snip="pkg-turtle-ex">Turtle square</button>
         <button class="menu-action" data-snip="pkg-string-ex">String example</button>
+      </div>
+    </div>
+
+    <div class="menu-wrap">
+      <button class="menu-trigger">Debug</button>
+      <div class="menu-dropdown">
+        <button class="menu-action" id="va-open-btn">VAX-126 ⚙</button>
       </div>
     </div>
 
@@ -615,6 +663,110 @@ meta-description: "An interactive AP CSP pseudocode interpreter with robot simul
       </div>
       <div class="me-section-label">Saved Maps</div>
       <div id="me-saved-list"></div>
+    </div>
+  </div>
+
+  <!-- Virtual Arduino Overlay -->
+  <div class="va-overlay" id="va-modal">
+    <div class="va-box">
+      <div class="va-header">
+        <!-- VAX-126 chip badge -->
+        <svg width="420" height="56" viewBox="0 0 420 56" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0" aria-label="VAX-126 · Virtual Arduino eXtended">
+          <defs>
+            <linearGradient id="vaxShine" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#00ff41" stop-opacity="0.1"/>
+              <stop offset="100%" stop-color="#00ff41" stop-opacity="0"/>
+            </linearGradient>
+            <filter id="vaxGlow">
+              <feGaussianBlur stdDeviation="1.5" result="blur"/>
+              <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+          </defs>
+          <!-- Left pins (6) -->
+          <rect x="0"  y="5"    width="32" height="6" rx="2" fill="#1a4a1a"/>
+          <rect x="0"  y="15"   width="32" height="6" rx="2" fill="#1a4a1a"/>
+          <rect x="0"  y="25"   width="32" height="6" rx="2" fill="#1a4a1a"/>
+          <rect x="0"  y="35"   width="32" height="6" rx="2" fill="#1a4a1a"/>
+          <rect x="0"  y="45"   width="32" height="6" rx="2" fill="#1a4a1a"/>
+          <!-- Pin highlight lines -->
+          <line x1="0" y1="8"  x2="32" y2="8"  stroke="rgba(0,255,65,0.15)" stroke-width="1"/>
+          <line x1="0" y1="18" x2="32" y2="18" stroke="rgba(0,255,65,0.15)" stroke-width="1"/>
+          <line x1="0" y1="28" x2="32" y2="28" stroke="rgba(0,255,65,0.15)" stroke-width="1"/>
+          <line x1="0" y1="38" x2="32" y2="38" stroke="rgba(0,255,65,0.15)" stroke-width="1"/>
+          <line x1="0" y1="48" x2="32" y2="48" stroke="rgba(0,255,65,0.15)" stroke-width="1"/>
+          <!-- Chip body -->
+          <rect x="32" y="0" width="356" height="56" rx="6" fill="#010d01" stroke="rgba(0,255,65,0.5)" stroke-width="1.2"/>
+          <rect x="32" y="0" width="356" height="56" rx="6" fill="url(#vaxShine)"/>
+          <!-- Inner border detail -->
+          <rect x="35" y="3" width="350" height="50" rx="4" fill="none" stroke="rgba(0,255,65,0.08)" stroke-width="0.7"/>
+          <!-- Pin-1 notch -->
+          <path d="M46 0 A8 8 0 0 1 62 0" fill="#000904" stroke="rgba(0,255,65,0.25)" stroke-width="1"/>
+          <!-- Pin-1 dot -->
+          <circle cx="40" cy="46" r="2.5" fill="none" stroke="rgba(0,255,65,0.3)" stroke-width="1"/>
+
+          <!-- Arduino logo — overlapping rings (larger) -->
+          <circle cx="72"  cy="28" r="16" fill="none" stroke="#00979D" stroke-width="3.5" opacity="0.95" filter="url(#vaxGlow)"/>
+          <circle cx="98"  cy="28" r="16" fill="none" stroke="#00979D" stroke-width="3.5" opacity="0.95" filter="url(#vaxGlow)"/>
+          <!-- A inside left ring -->
+          <text x="64" y="33" font-family="Arial,sans-serif" font-size="16" font-weight="900" fill="#00979D" opacity="0.85">A</text>
+
+          <!-- VAX-126 -->
+          <text x="126" y="26"
+                font-family="'Courier New',monospace" font-size="22" font-weight="bold"
+                fill="#00ff41" letter-spacing="3" filter="url(#vaxGlow)">VAX-126</text>
+          <!-- Virtual Arduino eXtended - 126 -->
+          <text x="127" y="44"
+                font-family="'Courier New',monospace" font-size="12"
+                fill="#00ff41" opacity="0.5" letter-spacing="0.8">Virtual Arduino eXtended - 126</text>
+
+          <!-- Decorative circuit traces (right side) -->
+          <line x1="318" y1="12" x2="372" y2="12" stroke="rgba(0,255,65,0.14)" stroke-width="1.2"/>
+          <line x1="318" y1="28" x2="380" y2="28" stroke="rgba(0,255,65,0.14)" stroke-width="1.2"/>
+          <line x1="318" y1="44" x2="372" y2="44" stroke="rgba(0,255,65,0.14)" stroke-width="1.2"/>
+          <!-- Trace corner bends -->
+          <polyline points="372,12 378,12 378,18" fill="none" stroke="rgba(0,255,65,0.12)" stroke-width="1.2"/>
+          <polyline points="372,44 378,44 378,38" fill="none" stroke="rgba(0,255,65,0.12)" stroke-width="1.2"/>
+          <!-- Solder dots -->
+          <circle cx="372" cy="12" r="2.5" fill="rgba(0,255,65,0.32)"/>
+          <circle cx="380" cy="28" r="2.5" fill="rgba(0,255,65,0.32)"/>
+          <circle cx="372" cy="44" r="2.5" fill="rgba(0,255,65,0.32)"/>
+          <circle cx="378" cy="18" r="1.8" fill="rgba(0,255,65,0.2)"/>
+          <circle cx="378" cy="38" r="1.8" fill="rgba(0,255,65,0.2)"/>
+
+          <!-- Right pins (6) -->
+          <rect x="388" y="5"  width="32" height="6" rx="2" fill="#1a4a1a"/>
+          <rect x="388" y="15" width="32" height="6" rx="2" fill="#1a4a1a"/>
+          <rect x="388" y="25" width="32" height="6" rx="2" fill="#1a4a1a"/>
+          <rect x="388" y="35" width="32" height="6" rx="2" fill="#1a4a1a"/>
+          <rect x="388" y="45" width="32" height="6" rx="2" fill="#1a4a1a"/>
+          <line x1="388" y1="8"  x2="420" y2="8"  stroke="rgba(0,255,65,0.15)" stroke-width="1"/>
+          <line x1="388" y1="18" x2="420" y2="18" stroke="rgba(0,255,65,0.15)" stroke-width="1"/>
+          <line x1="388" y1="28" x2="420" y2="28" stroke="rgba(0,255,65,0.15)" stroke-width="1"/>
+          <line x1="388" y1="38" x2="420" y2="38" stroke="rgba(0,255,65,0.15)" stroke-width="1"/>
+          <line x1="388" y1="48" x2="420" y2="48" stroke="rgba(0,255,65,0.15)" stroke-width="1"/>
+        </svg>
+        <button class="tb-btn me-sm" id="va-close-btn" style="align-self:flex-start">✕</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:.8rem;flex-wrap:wrap">
+        <span class="va-status" id="va-status">Ready — press Run to test</span>
+      </div>
+      <div class="va-toolbar">
+        <button class="tb-btn run" id="va-run-btn">▶ Run Test</button>
+        <span style="font-size:.72rem;opacity:.5">Speed:</span>
+        <input type="range" class="robot-speed" id="va-speed" min="50" max="800" value="300">
+        <button class="tb-btn" id="va-replay-btn" style="padding:.2rem .55rem;font-size:.73rem">↺ Replay</button>
+        <span class="va-step-info" id="va-step-info"></span>
+      </div>
+      <div class="va-layout">
+        <div class="va-canvas-panel">
+          <div class="pane-label">Tilemap</div>
+          <canvas id="va-canvas"></canvas>
+        </div>
+        <div class="va-serial-panel">
+          <div class="pane-label">Serial Monitor</div>
+          <div class="va-serial-output" id="va-serial"><span style="opacity:.35">// Serial output appears here</span></div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -2276,6 +2428,163 @@ document.querySelectorAll('.ar-mode-btn').forEach(btn => {
     btn.classList.add('ar-mode-active');
     window.APCSP_RUNTIME = btn.dataset.mode;
   });
+});
+
+// ════════════════════════════════════════════════
+//  12. Virtual Arduino
+// ════════════════════════════════════════════════
+const VA_BASE = '{{ site.baseurl }}/hacks/pseudocode-runner/Virtual-Arduino/';
+let vaFrames = [], vaAnimTimer = null;
+
+const vaCanvas  = document.getElementById('va-canvas');
+const vaCtx     = vaCanvas.getContext('2d');
+const vaSerial  = document.getElementById('va-serial');
+const vaStepEl  = document.getElementById('va-step-info');
+const vaStatEl  = document.getElementById('va-status');
+
+function vaSetStatus(msg, isErr = false) {
+  vaStatEl.textContent = msg;
+  vaStatEl.style.color = isErr ? '#ff5555' : '#3a6a3a';
+}
+
+function vaDrawFrame(frame) {
+  if (!frame || !frame.map) return;
+  const { map, row, col, dir } = frame;
+  const rows = map.length, cols = map[0].length;
+  const cw = vaCanvas.clientWidth  || 300;
+  const ch = vaCanvas.clientHeight || 300;
+  const CELL = Math.min(Math.floor(ch / rows), Math.floor(cw / cols), 36);
+  vaCanvas.width  = cols * CELL;
+  vaCanvas.height = rows * CELL;
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      if (map[r][c] === 1) {
+        vaCtx.fillStyle = '#0a1a0a';
+        vaCtx.fillRect(c*CELL, r*CELL, CELL, CELL);
+        vaCtx.strokeStyle = 'rgba(0,255,65,0.15)';
+        vaCtx.strokeRect(c*CELL+.5, r*CELL+.5, CELL-1, CELL-1);
+      } else {
+        vaCtx.fillStyle = '#010d01';
+        vaCtx.fillRect(c*CELL, r*CELL, CELL, CELL);
+        vaCtx.strokeStyle = 'rgba(0,255,65,0.05)';
+        vaCtx.strokeRect(c*CELL+.5, r*CELL+.5, CELL-1, CELL-1);
+      }
+    }
+  }
+  if (row !== null && col !== null) {
+    const cx = col*CELL + CELL/2, cy = row*CELL + CELL/2, sz = CELL*0.38;
+    const angle = [0, Math.PI*0.5, Math.PI, Math.PI*1.5][dir];
+    vaCtx.save();
+    vaCtx.translate(cx, cy); vaCtx.rotate(angle);
+    vaCtx.fillStyle = 'rgba(0,255,65,0.9)';
+    vaCtx.shadowColor = '#00ff41'; vaCtx.shadowBlur = 10;
+    vaCtx.beginPath();
+    vaCtx.moveTo(0, -sz); vaCtx.lineTo(sz*0.7, sz*0.7);
+    vaCtx.lineTo(0, sz*0.3); vaCtx.lineTo(-sz*0.7, sz*0.7);
+    vaCtx.closePath(); vaCtx.fill();
+    vaCtx.restore();
+  }
+}
+
+function vaAnimate(frames, idx = 0) {
+  if (!frames.length) return;
+  const speed = 850 - parseInt(document.getElementById('va-speed').value);
+  vaDrawFrame(frames[idx]);
+  vaStepEl.textContent = `Step ${idx + 1} / ${frames.length}`;
+  if (idx < frames.length - 1)
+    vaAnimTimer = setTimeout(() => vaAnimate(frames, idx + 1), speed);
+  else
+    vaStepEl.textContent = `Done — ${frames.length} frames`;
+}
+
+async function vaLoadScript() {
+  if (window.APCSP_VA && window.APCSP_VA.run) return;
+  await new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = VA_BASE + 'va.js';
+    s.onload  = resolve;
+    s.onerror = () => reject(new Error('Failed to load va.js'));
+    document.head.appendChild(s);
+  });
+}
+
+document.getElementById('va-open-btn').addEventListener('click', () => {
+  closeMenus();
+  document.getElementById('va-modal').classList.add('open');
+});
+
+document.getElementById('va-close-btn').addEventListener('click', () => {
+  document.getElementById('va-modal').classList.remove('open');
+  if (vaAnimTimer) clearTimeout(vaAnimTimer);
+});
+
+document.getElementById('va-modal').addEventListener('click', e => {
+  if (e.target === e.currentTarget) {
+    e.currentTarget.classList.remove('open');
+    if (vaAnimTimer) clearTimeout(vaAnimTimer);
+  }
+});
+
+document.getElementById('va-replay-btn').addEventListener('click', () => {
+  if (vaAnimTimer) clearTimeout(vaAnimTimer);
+  if (vaFrames.length) vaAnimate(vaFrames);
+});
+
+document.getElementById('va-run-btn').addEventListener('click', async () => {
+  const ast = window.APCSP_LAST_AST;
+  if (!ast || !ast.length) {
+    vaSetStatus('Run the program first (▶ Run in the editor)', true);
+    return;
+  }
+
+  try { await vaLoadScript(); }
+  catch (e) { vaSetStatus('Could not load Virtual Arduino engine', true); return; }
+
+  if (vaAnimTimer) clearTimeout(vaAnimTimer);
+  vaSerial.innerHTML = '';
+  vaStepEl.textContent = '';
+  vaSetStatus('Running…');
+
+  const result = window.APCSP_VA.run(ast);
+
+  // ── Serial Monitor ──
+  if (result.serial.length) {
+    vaSerial.innerHTML = '';
+    result.serial.forEach(line => {
+      const sp = document.createElement('span');
+      sp.className = 'va-serial-line';
+      sp.textContent = '> ' + line;
+      vaSerial.appendChild(sp);
+      vaSerial.appendChild(document.createTextNode('\n'));
+    });
+  } else {
+    vaSerial.innerHTML = '<span style="opacity:.35">// No Serial output</span>';
+  }
+  if (result.error) {
+    const sp = document.createElement('span');
+    sp.className = 'va-serial-line va-serial-err';
+    sp.textContent = '\n// ERROR: ' + result.error;
+    vaSerial.appendChild(sp);
+  }
+  vaSerial.scrollTop = vaSerial.scrollHeight;
+
+  // ── Tilemap animation ──
+  vaFrames = result.frames;
+  if (vaFrames.length) {
+    vaAnimate(vaFrames);
+  } else {
+    vaCanvas.width  = vaCanvas.clientWidth  || 280;
+    vaCanvas.height = vaCanvas.clientHeight || 280;
+    vaCtx.clearRect(0, 0, vaCanvas.width, vaCanvas.height);
+    vaCtx.fillStyle = '#3a6a3a';
+    vaCtx.font = '13px "Courier New"';
+    vaCtx.fillText('No tilemap — add RENDER + SPAWN to your code', 10, 30);
+  }
+
+  vaSetStatus(result.error
+    ? 'Error after ' + result.steps + ' steps'
+    : 'Done — ' + result.steps + ' steps executed',
+    !!result.error);
 });
 
 document.getElementById('ar-view-cpp-btn').addEventListener('click', () => {
