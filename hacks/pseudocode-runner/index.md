@@ -386,6 +386,46 @@ meta-description: "An interactive AP CSP pseudocode interpreter with robot simul
     color:#c8ffc8; white-space:pre;
   }
 
+  /* ── Micro:bit Connection Modal ── */
+  .mb-overlay {
+    display:none; position:fixed; inset:0; z-index:9995;
+    background:rgba(0,0,0,.78); backdrop-filter:blur(5px);
+    align-items:center; justify-content:center;
+  }
+  .mb-overlay.open { display:flex; }
+  .mb-box {
+    background:#07020e; border:1px solid rgba(120,80,255,.45);
+    border-radius:14px; padding:1.2rem 1.4rem;
+    width:min(480px,94vw); max-height:88vh; overflow-y:auto;
+    box-shadow:0 0 48px rgba(120,80,255,.16);
+    display:flex; flex-direction:column; gap:.85rem;
+  }
+  .mb-header { display:flex; justify-content:space-between; align-items:center; }
+  .mb-header h3 { color:#a060ff; margin:0; font-size:1rem; letter-spacing:.06em; text-shadow:0 0 8px rgba(120,80,255,.45); }
+  .mb-status-row { display:flex; align-items:center; gap:.5rem; }
+  .mb-status-dot {
+    width:10px; height:10px; border-radius:50%; flex-shrink:0;
+    background:#ff5555; box-shadow:0 0 6px #ff5555;
+  }
+  .mb-status-dot.connected { background:#a060ff; box-shadow:0 0 6px #a060ff; }
+  .mb-status-dot.flashing  { background:#ffcc00; box-shadow:0 0 6px #ffcc00; }
+  .mb-status-text { font-size:.82rem; }
+  .mb-section-label {
+    font-size:.68rem; letter-spacing:.1em; text-transform:uppercase; color:#4a3070;
+  }
+  .mb-mode-row { display:flex; gap:.5rem; }
+  .mb-mode-btn { opacity:.55; transition:opacity .15s; }
+  .mb-mode-btn.mb-mode-active { opacity:1; background:rgba(120,80,255,.18) !important; }
+  .mb-mpy-panel {
+    border:1px solid rgba(120,80,255,.2); border-radius:6px;
+    background:#04010a; padding:.6rem;
+    max-height:240px; overflow-y:auto; overflow-x:auto;
+  }
+  .mb-mpy-pre {
+    margin:0; font-family:'Courier New',monospace; font-size:.75rem;
+    color:#d4b8ff; white-space:pre;
+  }
+
   /* ── Virtual Arduino Overlay ── */
   .va-overlay {
     display:none; position:fixed; inset:0; z-index:9994;
@@ -426,6 +466,47 @@ meta-description: "An interactive AP CSP pseudocode interpreter with robot simul
   }
   .va-serial-line { display:block; }
   .va-serial-err  { color:#ff5555; }
+
+  /* ── VirtualBit 126 Overlay ── */
+  .vmb-overlay {
+    display:none; position:fixed; inset:0; z-index:9993;
+    background:rgba(0,0,0,.82); backdrop-filter:blur(6px);
+    align-items:center; justify-content:center;
+  }
+  .vmb-overlay.open { display:flex; }
+  .vmb-box {
+    background:#07020e; border:1px solid rgba(160,96,255,.4);
+    border-radius:14px; padding:1.2rem 1.4rem;
+    width:min(860px,96vw); max-height:90vh; overflow:hidden;
+    box-shadow:0 0 48px rgba(160,96,255,.14);
+    display:flex; flex-direction:column; gap:.7rem;
+  }
+  .vmb-header { display:flex; justify-content:space-between; align-items:flex-start; gap:.5rem; }
+  .vmb-header svg { max-width:100%; height:auto; }
+  .vmb-status { font-size:.78rem; color:#4a2880; font-family:'Courier New',monospace; }
+  .vmb-toolbar { display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; }
+  .vmb-step-info { font-size:.72rem; opacity:.5; margin-left:auto; }
+  .vmb-layout {
+    display:grid; grid-template-columns:1fr 1fr; gap:.8rem;
+    flex:1; min-height:0; height:400px;
+  }
+  @media(max-width:600px){ .vmb-layout { grid-template-columns:1fr; height:auto; } }
+  .vmb-canvas-panel, .vmb-serial-panel {
+    border:1px solid rgba(160,96,255,.2); border-radius:8px;
+    overflow:hidden; display:flex; flex-direction:column;
+  }
+  #vmb-canvas {
+    display:block; background:#04010a; flex:1; min-height:0;
+    width:100%; image-rendering:pixelated;
+  }
+  .vmb-serial-output {
+    background:#06010e; color:#d4b8ff;
+    font-family:'Courier New',monospace; font-size:.82rem;
+    padding:.6rem; overflow-y:auto; flex:1; min-height:0;
+    white-space:pre-wrap; line-height:1.7;
+  }
+  .vmb-serial-line { display:block; }
+  .vmb-serial-err  { color:#ff5555; }
 </style>
 
 <script>document.body.classList.add('no-wrapper-padding');</script>
@@ -488,6 +569,7 @@ meta-description: "An interactive AP CSP pseudocode interpreter with robot simul
         <button class="menu-action" id="me-open-btn">Map Editor ⊞</button>
         <button class="menu-action" id="lsm-open-btn">Storage ⛁</button>
         <button class="menu-action" id="ar-open-btn">Arduino ⚡</button>
+        <button class="menu-action" id="mb-open-btn">Micro:bit 🔵</button>
         <div class="menu-sep"></div>
         <button class="menu-action" id="autocb-toggle">
           <span>Auto-Brackets</span>
@@ -504,6 +586,8 @@ meta-description: "An interactive AP CSP pseudocode interpreter with robot simul
         <button class="menu-action" data-snip="pkg-stats">stats — MIN MAX SUM MEAN</button>
         <button class="menu-action" data-snip="pkg-turtle">turtle — FORWARD LEFT RIGHT…</button>
         <button class="menu-action" data-snip="pkg-string">string — UPPER LOWER SPLIT…</button>
+        <button class="menu-action" data-snip="pkg-arduino">arduino — MOVE ROTATE CAN_MOVE (C++)</button>
+        <button class="menu-action" data-snip="pkg-microbit">microbit — MOVE ROTATE CAN_MOVE (MicroPython)</button>
         <div class="menu-sep"></div>
         <div class="menu-group">Examples</div>
         <button class="menu-action" data-snip="pkg-math-ex">Math example</button>
@@ -517,6 +601,7 @@ meta-description: "An interactive AP CSP pseudocode interpreter with robot simul
       <button class="menu-trigger">Debug</button>
       <div class="menu-dropdown">
         <button class="menu-action" id="va-open-btn">VAX-126 ⚙</button>
+        <button class="menu-action" id="vmb-open-btn">VirtualBit 126 🔵</button>
       </div>
     </div>
 
@@ -770,6 +855,126 @@ meta-description: "An interactive AP CSP pseudocode interpreter with robot simul
     </div>
   </div>
 
+  <!-- VirtualBit 126 Overlay -->
+  <div class="vmb-overlay" id="vmb-modal">
+    <div class="vmb-box">
+      <div class="vmb-header">
+        <!-- VirtualBit 126 badge -->
+        <svg width="420" height="56" viewBox="0 0 420 56" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0" aria-label="VirtualBit 126 · Virtual Micro:bit">
+          <defs>
+            <linearGradient id="vmbShine" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#a060ff" stop-opacity="0.12"/>
+              <stop offset="100%" stop-color="#a060ff" stop-opacity="0"/>
+            </linearGradient>
+            <filter id="vmbGlow">
+              <feGaussianBlur stdDeviation="1.5" result="blur"/>
+              <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+          </defs>
+          <!-- Left edge connector pads -->
+          <rect x="0"  y="5"  width="32" height="6" rx="2" fill="#1a0a30"/>
+          <rect x="0"  y="15" width="32" height="6" rx="2" fill="#1a0a30"/>
+          <rect x="0"  y="25" width="32" height="6" rx="2" fill="#1a0a30"/>
+          <rect x="0"  y="35" width="32" height="6" rx="2" fill="#1a0a30"/>
+          <rect x="0"  y="45" width="32" height="6" rx="2" fill="#1a0a30"/>
+          <line x1="0" y1="8"  x2="32" y2="8"  stroke="rgba(160,96,255,0.2)" stroke-width="1"/>
+          <line x1="0" y1="18" x2="32" y2="18" stroke="rgba(160,96,255,0.2)" stroke-width="1"/>
+          <line x1="0" y1="28" x2="32" y2="28" stroke="rgba(160,96,255,0.2)" stroke-width="1"/>
+          <line x1="0" y1="38" x2="32" y2="38" stroke="rgba(160,96,255,0.2)" stroke-width="1"/>
+          <line x1="0" y1="48" x2="32" y2="48" stroke="rgba(160,96,255,0.2)" stroke-width="1"/>
+          <!-- Chip body -->
+          <rect x="32" y="0" width="356" height="56" rx="6" fill="#07020e" stroke="rgba(160,96,255,0.5)" stroke-width="1.2"/>
+          <rect x="32" y="0" width="356" height="56" rx="6" fill="url(#vmbShine)"/>
+          <rect x="35" y="3" width="350" height="50" rx="4" fill="none" stroke="rgba(160,96,255,0.08)" stroke-width="0.7"/>
+          <!-- Pin-1 dot -->
+          <circle cx="40" cy="46" r="2.5" fill="none" stroke="rgba(160,96,255,0.3)" stroke-width="1"/>
+          <!-- 5×5 LED matrix  (step=6px, start x=54 y=13, each LED 4×4) -->
+          <!-- Row 0 — all dim -->
+          <rect x="54" y="13" width="4" height="4" rx="1" fill="rgba(160,96,255,0.15)"/>
+          <rect x="60" y="13" width="4" height="4" rx="1" fill="rgba(160,96,255,0.15)"/>
+          <rect x="66" y="13" width="4" height="4" rx="1" fill="rgba(160,96,255,0.15)"/>
+          <rect x="72" y="13" width="4" height="4" rx="1" fill="rgba(160,96,255,0.15)"/>
+          <rect x="78" y="13" width="4" height="4" rx="1" fill="rgba(160,96,255,0.15)"/>
+          <!-- Row 1 — eyes lit -->
+          <rect x="54" y="19" width="4" height="4" rx="1" fill="rgba(160,96,255,0.15)"/>
+          <rect x="60" y="19" width="4" height="4" rx="1" fill="rgba(160,96,255,0.9)" filter="url(#vmbGlow)"/>
+          <rect x="66" y="19" width="4" height="4" rx="1" fill="rgba(160,96,255,0.15)"/>
+          <rect x="72" y="19" width="4" height="4" rx="1" fill="rgba(160,96,255,0.9)" filter="url(#vmbGlow)"/>
+          <rect x="78" y="19" width="4" height="4" rx="1" fill="rgba(160,96,255,0.15)"/>
+          <!-- Row 2 — all dim -->
+          <rect x="54" y="25" width="4" height="4" rx="1" fill="rgba(160,96,255,0.15)"/>
+          <rect x="60" y="25" width="4" height="4" rx="1" fill="rgba(160,96,255,0.15)"/>
+          <rect x="66" y="25" width="4" height="4" rx="1" fill="rgba(160,96,255,0.15)"/>
+          <rect x="72" y="25" width="4" height="4" rx="1" fill="rgba(160,96,255,0.15)"/>
+          <rect x="78" y="25" width="4" height="4" rx="1" fill="rgba(160,96,255,0.15)"/>
+          <!-- Row 3 — mouth corners lit -->
+          <rect x="54" y="31" width="4" height="4" rx="1" fill="rgba(160,96,255,0.9)" filter="url(#vmbGlow)"/>
+          <rect x="60" y="31" width="4" height="4" rx="1" fill="rgba(160,96,255,0.15)"/>
+          <rect x="66" y="31" width="4" height="4" rx="1" fill="rgba(160,96,255,0.15)"/>
+          <rect x="72" y="31" width="4" height="4" rx="1" fill="rgba(160,96,255,0.15)"/>
+          <rect x="78" y="31" width="4" height="4" rx="1" fill="rgba(160,96,255,0.9)" filter="url(#vmbGlow)"/>
+          <!-- Row 4 — smile lit -->
+          <rect x="54" y="37" width="4" height="4" rx="1" fill="rgba(160,96,255,0.15)"/>
+          <rect x="60" y="37" width="4" height="4" rx="1" fill="rgba(160,96,255,0.9)" filter="url(#vmbGlow)"/>
+          <rect x="66" y="37" width="4" height="4" rx="1" fill="rgba(160,96,255,0.9)" filter="url(#vmbGlow)"/>
+          <rect x="72" y="37" width="4" height="4" rx="1" fill="rgba(160,96,255,0.9)" filter="url(#vmbGlow)"/>
+          <rect x="78" y="37" width="4" height="4" rx="1" fill="rgba(160,96,255,0.15)"/>
+          <!-- VirtualBit 126 -->
+          <text x="110" y="27"
+                font-family="'Courier New',monospace" font-size="20" font-weight="bold"
+                fill="#a060ff" letter-spacing="2.5" filter="url(#vmbGlow)">VirtualBit 126</text>
+          <!-- Virtual Micro:bit - 126 -->
+          <text x="111" y="44"
+                font-family="'Courier New',monospace" font-size="11"
+                fill="#a060ff" opacity="0.5" letter-spacing="0.8">Virtual Micro:bit - 126</text>
+          <!-- Decorative circuit traces (right side) -->
+          <line x1="318" y1="12" x2="372" y2="12" stroke="rgba(160,96,255,0.14)" stroke-width="1.2"/>
+          <line x1="318" y1="28" x2="380" y2="28" stroke="rgba(160,96,255,0.14)" stroke-width="1.2"/>
+          <line x1="318" y1="44" x2="372" y2="44" stroke="rgba(160,96,255,0.14)" stroke-width="1.2"/>
+          <polyline points="372,12 378,12 378,18" fill="none" stroke="rgba(160,96,255,0.12)" stroke-width="1.2"/>
+          <polyline points="372,44 378,44 378,38" fill="none" stroke="rgba(160,96,255,0.12)" stroke-width="1.2"/>
+          <circle cx="372" cy="12" r="2.5" fill="rgba(160,96,255,0.32)"/>
+          <circle cx="380" cy="28" r="2.5" fill="rgba(160,96,255,0.32)"/>
+          <circle cx="372" cy="44" r="2.5" fill="rgba(160,96,255,0.32)"/>
+          <circle cx="378" cy="18" r="1.8" fill="rgba(160,96,255,0.2)"/>
+          <circle cx="378" cy="38" r="1.8" fill="rgba(160,96,255,0.2)"/>
+          <!-- Right edge connector pads -->
+          <rect x="388" y="5"  width="32" height="6" rx="2" fill="#1a0a30"/>
+          <rect x="388" y="15" width="32" height="6" rx="2" fill="#1a0a30"/>
+          <rect x="388" y="25" width="32" height="6" rx="2" fill="#1a0a30"/>
+          <rect x="388" y="35" width="32" height="6" rx="2" fill="#1a0a30"/>
+          <rect x="388" y="45" width="32" height="6" rx="2" fill="#1a0a30"/>
+          <line x1="388" y1="8"  x2="420" y2="8"  stroke="rgba(160,96,255,0.2)" stroke-width="1"/>
+          <line x1="388" y1="18" x2="420" y2="18" stroke="rgba(160,96,255,0.2)" stroke-width="1"/>
+          <line x1="388" y1="28" x2="420" y2="28" stroke="rgba(160,96,255,0.2)" stroke-width="1"/>
+          <line x1="388" y1="38" x2="420" y2="38" stroke="rgba(160,96,255,0.2)" stroke-width="1"/>
+          <line x1="388" y1="48" x2="420" y2="48" stroke="rgba(160,96,255,0.2)" stroke-width="1"/>
+        </svg>
+        <button class="tb-btn me-sm" id="vmb-close-btn" style="align-self:flex-start">✕</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:.8rem;flex-wrap:wrap">
+        <span class="vmb-status" id="vmb-status">Ready — press Run to test</span>
+      </div>
+      <div class="vmb-toolbar">
+        <button class="tb-btn run" id="vmb-run-btn">▶ Run Test</button>
+        <span style="font-size:.72rem;opacity:.5">Speed:</span>
+        <input type="range" class="robot-speed" id="vmb-speed" min="50" max="800" value="300">
+        <button class="tb-btn" id="vmb-replay-btn" style="padding:.2rem .55rem;font-size:.73rem">↺ Replay</button>
+        <span class="vmb-step-info" id="vmb-step-info"></span>
+      </div>
+      <div class="vmb-layout">
+        <div class="vmb-canvas-panel">
+          <div class="pane-label">Tilemap</div>
+          <canvas id="vmb-canvas"></canvas>
+        </div>
+        <div class="vmb-serial-panel">
+          <div class="pane-label">Serial Monitor</div>
+          <div class="vmb-serial-output" id="vmb-serial"><span style="opacity:.35">// Serial output appears here</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Arduino Connection Modal -->
   <div class="ar-overlay" id="ar-modal">
     <div class="ar-box">
@@ -790,6 +995,30 @@ meta-description: "An interactive AP CSP pseudocode interpreter with robot simul
       <button class="tb-btn" id="ar-view-cpp-btn">View Generated C++</button>
       <div class="ar-cpp-panel" id="ar-cpp-panel" style="display:none">
         <pre class="ar-cpp-pre" id="ar-cpp-pre"></pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- Micro:bit Connection Modal -->
+  <div class="mb-overlay" id="mb-modal">
+    <div class="mb-box">
+      <div class="mb-header">
+        <h3>🔵 Micro:bit Connection</h3>
+        <button class="tb-btn me-sm" id="mb-close-btn">✕</button>
+      </div>
+      <div class="mb-status-row">
+        <span class="mb-status-dot" id="mb-status-dot"></span>
+        <span class="mb-status-text" id="mb-status-text">Disconnected</span>
+      </div>
+      <button class="tb-btn" id="mb-connect-btn">Connect via USB</button>
+      <div class="mb-section-label">Mode</div>
+      <div class="mb-mode-row">
+        <button class="tb-btn mb-mode-btn mb-mode-active" id="mb-mode-sim"   data-mode="browser">Simulate</button>
+        <button class="tb-btn mb-mode-btn"                id="mb-mode-flash" data-mode="mpy">Export MicroPython</button>
+      </div>
+      <button class="tb-btn" id="mb-view-mpy-btn">View Generated MicroPython</button>
+      <div class="mb-mpy-panel" id="mb-mpy-panel" style="display:none">
+        <pre class="mb-mpy-pre" id="mb-mpy-pre"></pre>
       </div>
     </div>
   </div>
@@ -1250,7 +1479,8 @@ class Interpreter {
     this.pkgFns          = {};
     this.out             = out;
     this.steps           = 0;
-    this.arduinoImported = false;
+    this.arduinoImported  = false;
+    this.microbitImported = false;
   }
 
   tick() { if(++this.steps>50000) throw new Error('Step limit reached — possible infinite loop'); }
@@ -1485,23 +1715,31 @@ class Interpreter {
         robotRecordFrame(map, row-1, col-1, robotDir); return;
       }
       case 'MOVE_FORWARD': {
-        if (this.arduinoImported && window.APCSP_RUNTIME === 'cpp' && !arPort)
+        if (this.arduinoImported  && window.APCSP_RUNTIME === 'cpp' && !arPort)
           throw new Error('Please connect to an arduino');
+        if (this.microbitImported && window.APCSP_RUNTIME === 'mpy' && !mbPort)
+          throw new Error('Please connect to a micro:bit');
         robotMove(); return;
       }
       case 'ROTATE_LEFT': {
-        if (this.arduinoImported && window.APCSP_RUNTIME === 'cpp' && !arPort)
+        if (this.arduinoImported  && window.APCSP_RUNTIME === 'cpp' && !arPort)
           throw new Error('Please connect to an arduino');
+        if (this.microbitImported && window.APCSP_RUNTIME === 'mpy' && !mbPort)
+          throw new Error('Please connect to a micro:bit');
         robotDir=(robotDir+3)%4; robotRecordFrame(robotMap,robotRow,robotCol,robotDir); return;
       }
       case 'ROTATE_RIGHT': {
-        if (this.arduinoImported && window.APCSP_RUNTIME === 'cpp' && !arPort)
+        if (this.arduinoImported  && window.APCSP_RUNTIME === 'cpp' && !arPort)
           throw new Error('Please connect to an arduino');
+        if (this.microbitImported && window.APCSP_RUNTIME === 'mpy' && !mbPort)
+          throw new Error('Please connect to a micro:bit');
         robotDir=(robotDir+1)%4; robotRecordFrame(robotMap,robotRow,robotCol,robotDir); return;
       }
       case 'CAN_MOVE': {
-        if (this.arduinoImported && window.APCSP_RUNTIME === 'cpp' && !arPort)
+        if (this.arduinoImported  && window.APCSP_RUNTIME === 'cpp' && !arPort)
           throw new Error('Please connect to an arduino');
+        if (this.microbitImported && window.APCSP_RUNTIME === 'mpy' && !mbPort)
+          throw new Error('Please connect to a micro:bit');
         return robotCanMove(v[0]);
       }
     }
@@ -1536,7 +1774,7 @@ class Interpreter {
   }
 
   async loadPackage(name) {
-    const valid = ['math','stats','turtle','string','arduino'];
+    const valid = ['math','stats','turtle','string','arduino','microbit'];
     if(!valid.includes(name))
       throw new Error(`Unknown package '${name}'. Available: ${valid.join(', ')}`);
 
@@ -1544,7 +1782,9 @@ class Interpreter {
     if(!(window.APCSP_PACKAGES && window.APCSP_PACKAGES[name])){
       await new Promise((resolve, reject) => {
         const s=document.createElement('script');
-        s.src = name === 'arduino' ? EXTENDED_PKG_BASE + 'em.js' : PKG_BASE + 'pkg_' + name + '.js';
+        if      (name === 'arduino')  s.src = EXTENDED_PKG_BASE + 'em_arduino.js';
+        else if (name === 'microbit') s.src = EXTENDED_PKG_BASE + 'em_microbit.js';
+        else                          s.src = PKG_BASE + 'pkg_' + name + '.js';
         s.onload  = resolve;
         s.onerror = () => reject(new Error(`Failed to load package '${name}' from ${s.src}`));
         document.head.appendChild(s);
@@ -1562,8 +1802,9 @@ class Interpreter {
     // Turtle-specific: show canvas panel and init state
     if(name==='turtle') initTurtlePanel(pkg);
 
-    // Arduino-specific: remember it was imported this run
-    if(name==='arduino') this.arduinoImported = true;
+    // Hardware-specific: remember which board was imported this run
+    if(name==='arduino')  this.arduinoImported  = true;
+    if(name==='microbit') this.microbitImported = true;
 
     this.out(`// Package '${name}' ready`,'out-info');
   }
@@ -1640,8 +1881,9 @@ function appendOutput(text, cls='') {
 document.getElementById('run-btn').addEventListener('click', async () => {
   clearOutput();
   robotMap=null; robotRow=0; robotCol=0; robotDir=0; robotFrames=[];
-  if(window.APCSP_PACKAGES&&window.APCSP_PACKAGES.arduino) window.APCSP_PACKAGES.arduino._reset();
-  else window.APCSP_CPP_OUTPUT=[];
+  if(window.APCSP_PACKAGES&&window.APCSP_PACKAGES.arduino)  window.APCSP_PACKAGES.arduino._reset();
+  if(window.APCSP_PACKAGES&&window.APCSP_PACKAGES.microbit) window.APCSP_PACKAGES.microbit._reset();
+  if(!window.APCSP_PACKAGES?.arduino && !window.APCSP_PACKAGES?.microbit) window.APCSP_CPP_OUTPUT=[];
   if(robotAnimTimer) clearTimeout(robotAnimTimer);
   robotPanel.style.display='none';
   turtlePanel.style.display='none';
@@ -1684,6 +1926,15 @@ document.getElementById('run-btn').addEventListener('click', async () => {
     document.getElementById('ar-cpp-panel').style.display = 'block';
     document.getElementById('ar-modal').classList.add('open');
   }
+  // In mpy mode, auto-generate and show the MicroPython output after every run
+  if (window.APCSP_RUNTIME === 'mpy' && window.APCSP_LAST_AST &&
+      window.APCSP_PACKAGES && window.APCSP_PACKAGES.microbit) {
+    const pre = document.getElementById('mb-mpy-pre');
+    try { pre.textContent = window.APCSP_PACKAGES.microbit._getMpy(); }
+    catch (e) { pre.textContent = '# Error generating MicroPython:\n# ' + e.message; }
+    document.getElementById('mb-mpy-panel').style.display = 'block';
+    document.getElementById('mb-modal').classList.add('open');
+  }
 });
 
 // ── Snippet blocks ──
@@ -1716,10 +1967,12 @@ SPAWN(map, 2, 2)`,
   'robot-nav':
 `REPEAT UNTIL (NOT CAN_MOVE("forward")) {\n    MOVE_FORWARD()\n}`,
   // ── Package import one-liners ──
-  'pkg-math':   `FROM LOCAL.PKG IMPORT math`,
-  'pkg-stats':  `FROM LOCAL.PKG IMPORT stats`,
-  'pkg-turtle': `FROM LOCAL.PKG IMPORT turtle`,
-  'pkg-string': `FROM LOCAL.PKG IMPORT string`,
+  'pkg-math':    `FROM LOCAL.PKG IMPORT math`,
+  'pkg-stats':   `FROM LOCAL.PKG IMPORT stats`,
+  'pkg-turtle':  `FROM LOCAL.PKG IMPORT turtle`,
+  'pkg-string':  `FROM LOCAL.PKG IMPORT string`,
+  'pkg-arduino': `FROM LOCAL.PKG IMPORT arduino`,
+  'pkg-microbit':`FROM LOCAL.PKG IMPORT microbit`,
   // ── Package examples ──
   'pkg-math-ex':
 `FROM LOCAL.PKG IMPORT math
@@ -2386,6 +2639,7 @@ document.getElementById('help-modal').addEventListener('click', e => {
 //  11. Arduino Connection Modal
 // ════════════════════════════════════════════════
 let arPort = null;
+let mbPort = null;
 
 function arSetStatus(state, text) {
   const dot = document.getElementById('ar-status-dot');
@@ -2433,7 +2687,8 @@ document.querySelectorAll('.ar-mode-btn').forEach(btn => {
 // ════════════════════════════════════════════════
 //  12. Virtual Arduino
 // ════════════════════════════════════════════════
-const VA_BASE = '{{ site.baseurl }}/hacks/pseudocode-runner/Virtual-Arduino/';
+const VA_BASE  = '{{ site.baseurl }}/hacks/pseudocode-runner/Virtual-Microcontrollers/';
+const VMB_BASE = '{{ site.baseurl }}/hacks/pseudocode-runner/Virtual-Microcontrollers/';
 let vaFrames = [], vaAnimTimer = null;
 
 const vaCanvas  = document.getElementById('va-canvas');
@@ -2602,5 +2857,223 @@ document.getElementById('ar-view-cpp-btn').addEventListener('click', () => {
   } else {
     panel.style.display = 'none';
   }
+});
+
+// ════════════════════════════════════════════════
+//  13. Micro:bit Modal
+// ════════════════════════════════════════════════
+function mbSetStatus(state, text) {
+  const dot = document.getElementById('mb-status-dot');
+  const lbl = document.getElementById('mb-status-text');
+  dot.className = 'mb-status-dot' + (state !== 'disconnected' ? ' ' + state : '');
+  lbl.textContent = text;
+}
+
+document.getElementById('mb-open-btn').addEventListener('click', () => {
+  closeMenus();
+  document.getElementById('mb-modal').classList.add('open');
+});
+
+document.getElementById('mb-close-btn').addEventListener('click', () => {
+  document.getElementById('mb-modal').classList.remove('open');
+});
+
+document.getElementById('mb-modal').addEventListener('click', e => {
+  if (e.target === e.currentTarget) e.currentTarget.classList.remove('open');
+});
+
+document.getElementById('mb-connect-btn').addEventListener('click', async () => {
+  if (!('serial' in navigator)) {
+    mbSetStatus('disconnected', 'WebSerial not available in this browser');
+    return;
+  }
+  try {
+    mbPort = await navigator.serial.requestPort();
+    await mbPort.open({ baudRate: 115200 });
+    mbSetStatus('connected', 'Connected');
+  } catch (e) {
+    if (e.name !== 'NotFoundError') mbSetStatus('disconnected', 'Connection failed');
+  }
+});
+
+document.querySelectorAll('.mb-mode-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.mb-mode-btn').forEach(b => b.classList.remove('mb-mode-active'));
+    btn.classList.add('mb-mode-active');
+    window.APCSP_RUNTIME = btn.dataset.mode;
+  });
+});
+
+document.getElementById('mb-view-mpy-btn').addEventListener('click', () => {
+  const panel = document.getElementById('mb-mpy-panel');
+  const pre   = document.getElementById('mb-mpy-pre');
+  if (panel.style.display === 'none') {
+    const pkg = window.APCSP_PACKAGES && window.APCSP_PACKAGES.microbit;
+    if (pkg) {
+      try { pre.textContent = pkg._getMpy(); }
+      catch (e) { pre.textContent = '# Error generating MicroPython:\n# ' + e.message; }
+    } else {
+      pre.textContent = '# Import the microbit package first:\n# FROM LOCAL.PKG IMPORT microbit';
+    }
+    panel.style.display = 'block';
+  } else {
+    panel.style.display = 'none';
+  }
+});
+
+// ════════════════════════════════════════════════
+//  14. VirtualBit 126
+// ════════════════════════════════════════════════
+let vmbFrames = [], vmbAnimTimer = null;
+
+const vmbCanvas  = document.getElementById('vmb-canvas');
+const vmbCtx     = vmbCanvas.getContext('2d');
+const vmbSerial  = document.getElementById('vmb-serial');
+const vmbStepEl  = document.getElementById('vmb-step-info');
+const vmbStatEl  = document.getElementById('vmb-status');
+
+function vmbSetStatus(msg, isErr = false) {
+  vmbStatEl.textContent = msg;
+  vmbStatEl.style.color = isErr ? '#ff5555' : '#4a2880';
+}
+
+function vmbDrawFrame(frame) {
+  if (!frame || !frame.map) return;
+  const { map, row, col, dir } = frame;
+  const rows = map.length, cols = map[0].length;
+  const cw = vmbCanvas.clientWidth  || 300;
+  const ch = vmbCanvas.clientHeight || 300;
+  const CELL = Math.min(Math.floor(ch / rows), Math.floor(cw / cols), 36);
+  vmbCanvas.width  = cols * CELL;
+  vmbCanvas.height = rows * CELL;
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      if (map[r][c] === 1) {
+        vmbCtx.fillStyle = '#100520';
+        vmbCtx.fillRect(c*CELL, r*CELL, CELL, CELL);
+        vmbCtx.strokeStyle = 'rgba(160,96,255,0.15)';
+        vmbCtx.strokeRect(c*CELL+.5, r*CELL+.5, CELL-1, CELL-1);
+      } else {
+        vmbCtx.fillStyle = '#07020e';
+        vmbCtx.fillRect(c*CELL, r*CELL, CELL, CELL);
+        vmbCtx.strokeStyle = 'rgba(160,96,255,0.05)';
+        vmbCtx.strokeRect(c*CELL+.5, r*CELL+.5, CELL-1, CELL-1);
+      }
+    }
+  }
+  if (row !== null && col !== null) {
+    const cx = col*CELL + CELL/2, cy = row*CELL + CELL/2, sz = CELL*0.38;
+    const angle = [0, Math.PI*0.5, Math.PI, Math.PI*1.5][dir];
+    vmbCtx.save();
+    vmbCtx.translate(cx, cy); vmbCtx.rotate(angle);
+    vmbCtx.fillStyle = 'rgba(160,96,255,0.9)';
+    vmbCtx.shadowColor = '#a060ff'; vmbCtx.shadowBlur = 10;
+    vmbCtx.beginPath();
+    vmbCtx.moveTo(0, -sz); vmbCtx.lineTo(sz*0.7, sz*0.7);
+    vmbCtx.lineTo(0, sz*0.3); vmbCtx.lineTo(-sz*0.7, sz*0.7);
+    vmbCtx.closePath(); vmbCtx.fill();
+    vmbCtx.restore();
+  }
+}
+
+function vmbAnimate(frames, idx = 0) {
+  if (!frames.length) return;
+  const speed = 850 - parseInt(document.getElementById('vmb-speed').value);
+  vmbDrawFrame(frames[idx]);
+  vmbStepEl.textContent = `Step ${idx + 1} / ${frames.length}`;
+  if (idx < frames.length - 1)
+    vmbAnimTimer = setTimeout(() => vmbAnimate(frames, idx + 1), speed);
+  else
+    vmbStepEl.textContent = `Done — ${frames.length} frames`;
+}
+
+async function vmbLoadScript() {
+  if (window.APCSP_VMB && window.APCSP_VMB.run) return;
+  await new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = VMB_BASE + 'vmb.js';
+    s.onload  = resolve;
+    s.onerror = () => reject(new Error('Failed to load vmb.js'));
+    document.head.appendChild(s);
+  });
+}
+
+document.getElementById('vmb-open-btn').addEventListener('click', () => {
+  closeMenus();
+  document.getElementById('vmb-modal').classList.add('open');
+});
+
+document.getElementById('vmb-close-btn').addEventListener('click', () => {
+  document.getElementById('vmb-modal').classList.remove('open');
+  if (vmbAnimTimer) clearTimeout(vmbAnimTimer);
+});
+
+document.getElementById('vmb-modal').addEventListener('click', e => {
+  if (e.target === e.currentTarget) {
+    e.currentTarget.classList.remove('open');
+    if (vmbAnimTimer) clearTimeout(vmbAnimTimer);
+  }
+});
+
+document.getElementById('vmb-replay-btn').addEventListener('click', () => {
+  if (vmbAnimTimer) clearTimeout(vmbAnimTimer);
+  if (vmbFrames.length) vmbAnimate(vmbFrames);
+});
+
+document.getElementById('vmb-run-btn').addEventListener('click', async () => {
+  const ast = window.APCSP_LAST_AST;
+  if (!ast || !ast.length) {
+    vmbSetStatus('Run the program first (▶ Run in the editor)', true);
+    return;
+  }
+
+  try { await vmbLoadScript(); }
+  catch (e) { vmbSetStatus('Could not load VirtualBit engine', true); return; }
+
+  if (vmbAnimTimer) clearTimeout(vmbAnimTimer);
+  vmbSerial.innerHTML = '';
+  vmbStepEl.textContent = '';
+  vmbSetStatus('Running…');
+
+  const result = window.APCSP_VMB.run(ast);
+
+  // ── Serial Monitor ──
+  if (result.serial.length) {
+    vmbSerial.innerHTML = '';
+    result.serial.forEach(line => {
+      const sp = document.createElement('span');
+      sp.className = 'vmb-serial-line';
+      sp.textContent = '> ' + line;
+      vmbSerial.appendChild(sp);
+      vmbSerial.appendChild(document.createTextNode('\n'));
+    });
+  } else {
+    vmbSerial.innerHTML = '<span style="opacity:.35">// No output</span>';
+  }
+  if (result.error) {
+    const sp = document.createElement('span');
+    sp.className = 'vmb-serial-line vmb-serial-err';
+    sp.textContent = '\n// ERROR: ' + result.error;
+    vmbSerial.appendChild(sp);
+  }
+  vmbSerial.scrollTop = vmbSerial.scrollHeight;
+
+  // ── Tilemap animation ──
+  vmbFrames = result.frames;
+  if (vmbFrames.length) {
+    vmbAnimate(vmbFrames);
+  } else {
+    vmbCanvas.width  = vmbCanvas.clientWidth  || 280;
+    vmbCanvas.height = vmbCanvas.clientHeight || 280;
+    vmbCtx.clearRect(0, 0, vmbCanvas.width, vmbCanvas.height);
+    vmbCtx.fillStyle = '#4a2880';
+    vmbCtx.font = '13px "Courier New"';
+    vmbCtx.fillText('No tilemap — add RENDER + SPAWN to your code', 10, 30);
+  }
+
+  vmbSetStatus(result.error
+    ? 'Error after ' + result.steps + ' steps'
+    : 'Done — ' + result.steps + ' steps executed',
+    !!result.error);
 });
 </script>
