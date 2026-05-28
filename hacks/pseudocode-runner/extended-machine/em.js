@@ -58,7 +58,11 @@
       switch (s.type) {
 
         // x ← expr
+        // Skip 2D-list assignments — they are browser-only map data (no grid on Arduino)
         case 'Assign': {
+          if (s.value.type === 'List' &&
+              s.value.items.length > 0 &&
+              s.value.items[0].type === 'List') return null;
           var rhs = this.expr(s.value);
           if (this.declared[s.name]) return p + s.name + ' = ' + rhs + ';';
           this.declared[s.name] = true;
@@ -304,7 +308,8 @@
         : '';
 
       // Main body at depth 1 (inside loop)
-      var loopBody = new Transpiler(1).generate(stmts).trim();
+      // trimEnd only — trim() would strip the leading indent from the first line
+      var loopBody = new Transpiler(1).generate(stmts).trimEnd();
       if (!loopBody) loopBody = '    // (empty program)';
 
       return BOILERPLATE_TOP +

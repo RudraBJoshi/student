@@ -1093,11 +1093,12 @@ function deepCopy(v) {
 
 class Interpreter {
   constructor(out) {
-    this.scopes  = [{}];
-    this.procs   = {};
-    this.pkgFns  = {};
-    this.out     = out;
-    this.steps   = 0;
+    this.scopes          = [{}];
+    this.procs           = {};
+    this.pkgFns          = {};
+    this.out             = out;
+    this.steps           = 0;
+    this.arduinoImported = false;
   }
 
   tick() { if(++this.steps>50000) throw new Error('Step limit reached — possible infinite loop'); }
@@ -1331,10 +1332,26 @@ class Interpreter {
         robotInit(map, row-1, col-1);
         robotRecordFrame(map, row-1, col-1, robotDir); return;
       }
-      case 'MOVE_FORWARD': { robotMove(); return; }
-      case 'ROTATE_LEFT':  { robotDir=(robotDir+3)%4; robotRecordFrame(robotMap,robotRow,robotCol,robotDir); return; }
-      case 'ROTATE_RIGHT': { robotDir=(robotDir+1)%4; robotRecordFrame(robotMap,robotRow,robotCol,robotDir); return; }
-      case 'CAN_MOVE':     { return robotCanMove(v[0]); }
+      case 'MOVE_FORWARD': {
+        if (this.arduinoImported && window.APCSP_RUNTIME === 'cpp' && !arPort)
+          throw new Error('Please connect to an arduino');
+        robotMove(); return;
+      }
+      case 'ROTATE_LEFT': {
+        if (this.arduinoImported && window.APCSP_RUNTIME === 'cpp' && !arPort)
+          throw new Error('Please connect to an arduino');
+        robotDir=(robotDir+3)%4; robotRecordFrame(robotMap,robotRow,robotCol,robotDir); return;
+      }
+      case 'ROTATE_RIGHT': {
+        if (this.arduinoImported && window.APCSP_RUNTIME === 'cpp' && !arPort)
+          throw new Error('Please connect to an arduino');
+        robotDir=(robotDir+1)%4; robotRecordFrame(robotMap,robotRow,robotCol,robotDir); return;
+      }
+      case 'CAN_MOVE': {
+        if (this.arduinoImported && window.APCSP_RUNTIME === 'cpp' && !arPort)
+          throw new Error('Please connect to an arduino');
+        return robotCanMove(v[0]);
+      }
     }
   }
 
@@ -1392,6 +1409,9 @@ class Interpreter {
 
     // Turtle-specific: show canvas panel and init state
     if(name==='turtle') initTurtlePanel(pkg);
+
+    // Arduino-specific: remember it was imported this run
+    if(name==='arduino') this.arduinoImported = true;
 
     this.out(`// Package '${name}' ready`,'out-info');
   }
@@ -1501,6 +1521,16 @@ document.getElementById('run-btn').addEventListener('click', async () => {
     const hasTurtle = turtlePanel.style.display !== 'none';
     runnerLayout.style.gridTemplateColumns = hasTurtle ? '3fr 2fr 2fr 2fr' : '3fr 2fr 2fr';
     requestAnimationFrame(()=>animateRobot(robotFrames));
+  }
+
+  // In cpp mode, auto-generate and show the C++ output after every run
+  if (window.APCSP_RUNTIME === 'cpp' && window.APCSP_LAST_AST &&
+      window.APCSP_PACKAGES && window.APCSP_PACKAGES.arduino) {
+    const pre = document.getElementById('ar-cpp-pre');
+    try { pre.textContent = window.APCSP_PACKAGES.arduino._getCpp(); }
+    catch (e) { pre.textContent = '// Error generating C++:\n// ' + e.message; }
+    document.getElementById('ar-cpp-panel').style.display = 'block';
+    document.getElementById('ar-modal').classList.add('open');
   }
 });
 
@@ -2253,9 +2283,12 @@ document.getElementById('ar-view-cpp-btn').addEventListener('click', () => {
   const pre   = document.getElementById('ar-cpp-pre');
   if (panel.style.display === 'none') {
     const pkg = window.APCSP_PACKAGES && window.APCSP_PACKAGES.arduino;
-    pre.textContent = pkg
-      ? pkg._getCpp()
-      : '// Import the arduino package first:\n// FROM LOCAL.PKG IMPORT arduino';
+    if (pkg) {
+      try { pre.textContent = pkg._getCpp(); }
+      catch (e) { pre.textContent = '// Error generating C++:\n// ' + e.message; }
+    } else {
+      pre.textContent = '// Import the arduino package first:\n// FROM LOCAL.PKG IMPORT arduino';
+    }
     panel.style.display = 'block';
   } else {
     panel.style.display = 'none';
