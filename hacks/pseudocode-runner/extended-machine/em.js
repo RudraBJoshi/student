@@ -2,106 +2,269 @@
 // Loaded via:  FROM LOCAL.PKG IMPORT arduino
 //
 // Browser mode  (window.APCSP_RUNTIME === 'browser' or unset):
-//   Every robot command delegates to the existing robot globals so the
-//   tilemap simulation works exactly as before.
+//   No monkey-patching needed — the existing robot globals handle everything.
 //
 // C++ mode  (window.APCSP_RUNTIME === 'cpp'):
-//   Every robot command ALSO pushes an equivalent C++ line into
-//   window.APCSP_CPP_OUTPUT[].  After running, call
-//   window.APCSP_PACKAGES.arduino._getCpp() to get a complete .ino file
-//   ready to flash to an Arduino with a motor driver + ultrasonic sensors.
+//   After running, call window.APCSP_PACKAGES.arduino._getCpp() to get a
+//   complete .ino file with correctly-structured control flow.
 //
-// The package works by monkey-patching the four global robot helper
-// functions that the interpreter's built-in keywords already call:
-//   robotInit         ← SPAWN
-//   robotMove         ← MOVE_FORWARD
-//   robotCanMove      ← CAN_MOVE
-//   robotRecordFrame  ← ROTATE_LEFT / ROTATE_RIGHT / RENDER / frame recording
-// This means no changes to the interpreter pipeline are needed.
+//   Generation uses an AST-walking Transpiler, NOT the monkey-patch approach.
+//   The browser simulation still runs so the tilemap animates normally.
+//
+// Requires ONE addition to index.md's run-button handler (already done):
+//   window.APCSP_LAST_AST = ast;   ← set immediately after new Parser().parse()
 
 (function () {
   'use strict';
 
-  window.APCSP_PACKAGES   = window.APCSP_PACKAGES   || {};
-  window.APCSP_CPP_OUTPUT = window.APCSP_CPP_OUTPUT || [];
+  window.APCSP_PACKAGES = window.APCSP_PACKAGES || {};
 
-  // ── helpers ────────────────────────────────────────────────────────────────
+  // ═══════════════════════════════════════════════════════════════════════════
+  //  AST → C++ Transpiler
+  //
+  //  Usage:  new Transpiler(indentDepth).generate(astStmtArray)
+  //          Returns a single C++ string with correct indentation.
+  //
+  //  Correctly handles:
+  //    IF / ELSE IF / ELSE      → if / else if / else
+  //    REPEAT n TIMES           → for loop
+  //    REPEAT UNTIL (cond)      → while (!(cond))  [NOT-cond optimised to while(cond)]
+  //    FOR EACH x IN list       → range-for
+  //    PROCEDURE name(p) { }    → hoisted before loop(), void / auto return
+  //    MOVE_FORWARD / ROTATE_*  → motors.*()
+  //    CAN_MOVE("dir")          → ultrasonic*.read() < THRESHOLD  (context-aware)
+  //    DISPLAY(...)             → Serial.print / Serial.println chain
+  //    Variable assignment      → auto x = val;  (re-assignment skips 'auto')
+  // ═══════════════════════════════════════════════════════════════════════════
 
-  function isCpp() { return window.APCSP_RUNTIME === 'cpp'; }
-
-  function emit(line) {
-    (window.APCSP_CPP_OUTPUT = window.APCSP_CPP_OUTPUT || []).push(line);
+  function Transpiler(depth, declared) {
+    this.depth    = depth    || 0;
+    this.declared = declared || Object.create(null);
   }
 
-  // ── private state for rotation detection ───────────────────────────────────
-  // We compare the robot's facing direction across consecutive frames to decide
-  // whether a ROTATE_LEFT or ROTATE_RIGHT just happened.
+  Transpiler.prototype = {
 
-  var _prevDir    = null;   // direction seen in previous robotRecordFrame call
-  var _spawnFrame = false;  // true for exactly the one frame right after SPAWN
+    // ── entry point ──────────────────────────────────────────────────────────
+    generate: function (stmts) {
+      return stmts
+        .map(s  => this.stmt(s))
+        .filter(l => l != null)
+        .join('\n');
+    },
 
-  // ── patch robotInit  (SPAWN) ───────────────────────────────────────────────
-  var _origRobotInit = window.robotInit;
-  window.robotInit = function (map, row, col) {
-    _origRobotInit(map, row, col);              // run the simulation side
-    if (isCpp())
-      emit('// Robot spawned at row ' + (row + 1) + ' col ' + (col + 1));
-    _spawnFrame = true;   // suppress rotation check for the frame that follows
-  };
+    // ── statement dispatcher ──────────────────────────────────────────────────
+    stmt: function (s) {
+      var p = this.ind();
+      switch (s.type) {
 
-  // ── patch robotMove  (MOVE_FORWARD) ────────────────────────────────────────
-  var _origRobotMove = window.robotMove;
-  window.robotMove = function () {
-    if (isCpp()) emit('motors.forward();');
-    _origRobotMove();   // moves robot, updates robotRow/Col, calls robotRecordFrame
-  };
+        // x ← expr
+        case 'Assign': {
+          var rhs = this.expr(s.value);
+          if (this.declared[s.name]) return p + s.name + ' = ' + rhs + ';';
+          this.declared[s.name] = true;
+          return p + 'auto ' + s.name + ' = ' + rhs + ';';
+        }
 
-  // ── patch robotCanMove  (CAN_MOVE) ─────────────────────────────────────────
-  // Always returns the real simulation boolean so IF / REPEAT UNTIL logic
-  // continues to work correctly in both modes.
-  var _origRobotCanMove = window.robotCanMove;
-  window.robotCanMove = function (dirStr) {
-    var result = _origRobotCanMove(dirStr);
-    if (isCpp()) {
-      var d = (typeof dirStr === 'string') ? dirStr.toLowerCase() : 'forward';
-      if      (d === 'left')  emit('ultrasonicLeft.read() < THRESHOLD');
-      else if (d === 'right') emit('ultrasonicRight.read() < THRESHOLD');
-      else                    emit('ultrasonic.read() < THRESHOLD');   // forward / backward
-    }
-    return result;
-  };
+        // a[i] ← expr
+        case 'ListAssign':
+          return p + s.name + '[' + this.expr(s.index) + ' - 1] = ' +
+                 this.expr(s.value) + ';';
 
-  // ── patch robotRecordFrame  (ROTATE_LEFT / ROTATE_RIGHT / RENDER) ──────────
-  // Called after every state change:
-  //   • MOVE_FORWARD  — position changed, direction same   → no emit here (robotMove did it)
-  //   • ROTATE_LEFT   — position same,  direction changed  → emit turnLeft
-  //   • ROTATE_RIGHT  — position same,  direction changed  → emit turnRight
-  //   • SPAWN (frame) — suppressed by _spawnFrame flag
-  //   • RENDER        — row/col/dir are null               → emit map comment
-  var _origRobotRecordFrame = window.robotRecordFrame;
-  window.robotRecordFrame = function (map, row, col, dir) {
-    if (isCpp()) {
-      if (row === null) {
-        // RENDER — just a map draw, no position
-        emit('// Map loaded');
-      } else if (!_spawnFrame && _prevDir !== null && dir !== _prevDir) {
-        // Direction changed mid-run → ROTATE
-        var delta = ((dir - _prevDir) + 4) % 4;
-        emit(delta === 1 ? 'motors.turnRight();' : 'motors.turnLeft();');
+        // IF (cond) { } ELSE IF { } ELSE { }
+        case 'If': {
+          var out = p + 'if (' + this.expr(s.cond) + ') {\n' +
+                    this.block(s.then) + p + '}';
+          for (var i = 0; i < s.elseifs.length; i++)
+            out += ' else if (' + this.expr(s.elseifs[i].cond) + ') {\n' +
+                   this.block(s.elseifs[i].body) + p + '}';
+          if (s.else) out += ' else {\n' + this.block(s.else) + p + '}';
+          return out;
+        }
+
+        // REPEAT n TIMES { }
+        case 'RepeatTimes':
+          return p + 'for (int _i = 0; _i < ' + this.expr(s.count) + '; _i++) {\n' +
+                 this.block(s.body) + p + '}';
+
+        // REPEAT UNTIL (cond) { }
+        // Optimisation: REPEAT UNTIL (NOT expr) → while (expr) instead of while (!(!(expr)))
+        case 'RepeatUntil': {
+          var cond = (s.cond.type === 'UnOp' && s.cond.op === 'NOT')
+            ? this.expr(s.cond.expr)          // strip double negation
+            : '!(' + this.expr(s.cond) + ')';
+          return p + 'while (' + cond + ') {\n' +
+                 this.block(s.body) + p + '}';
+        }
+
+        // FOR EACH x IN list { }
+        case 'ForEach':
+          return p + 'for (auto& ' + s.var + ' : ' + this.expr(s.list) + ') {\n' +
+                 this.block(s.body) + p + '}';
+
+        // PROCEDURE name(params) { body }
+        // Handled separately by _getCpp (hoisted before loop()).
+        // If encountered inline, emit as a C++ lambda.
+        case 'ProcDef': {
+          var hasRet = JSON.stringify(s.body).indexOf('"Return"') !== -1;
+          var rt     = hasRet ? 'auto' : 'void';
+          var params = s.params.map(function (pr) { return 'auto ' + pr; }).join(', ');
+          var inner  = new Transpiler(this.depth + 1, Object.create(null));
+          s.params.forEach(function (pr) { inner.declared[pr] = true; });
+          var body   = inner.generate(s.body);
+          return p + rt + ' ' + s.name + '(' + params + ') {\n' +
+                 (body ? body + '\n' : '') + p + '}';
+        }
+
+        // RETURN(expr)
+        case 'Return':
+          return p + 'return ' + this.expr(s.value) + ';';
+
+        // DISPLAY(a, b, ...)
+        case 'Display': {
+          if (s.args.length === 1)
+            return p + 'Serial.println(' + this.expr(s.args[0]) + ');';
+          var lines = [];
+          for (var j = 0; j < s.args.length; j++) {
+            var fn = (j === s.args.length - 1) ? 'Serial.println' : 'Serial.print';
+            lines.push(p + fn + '(' + this.expr(s.args[j]) + ');');
+            if (j < s.args.length - 1) lines.push(p + 'Serial.print(\' \');');
+          }
+          return lines.join('\n');
+        }
+
+        // Robot + list builtins as statements
+        case 'BuiltinStmt':
+          return this.builtinStmt(s, p);
+
+        // User procedure call
+        case 'Call':
+          return p + s.name + '(' + s.args.map(a => this.expr(a)).join(', ') + ');';
+
+        // Local storage / package import — skip silently in C++ output
+        case 'FromPkgImport':
+        case 'FromLocalImport':
+        case 'ToLocalSave':
+        case 'ListLocal':
+        case 'DeleteLocal':
+          return null;
+
+        default: return null;
       }
-      // MOVE frames: direction is unchanged → nothing extra to emit
-    }
-    _spawnFrame = false;
-    _prevDir    = (dir !== null) ? dir : _prevDir;  // keep _prevDir on pure RENDER calls
-    _origRobotRecordFrame(map, row, col, dir);
+    },
+
+    // ── robot and list builtin statements ─────────────────────────────────────
+    builtinStmt: function (s, p) {
+      switch (s.name) {
+        case 'MOVE_FORWARD':  return p + 'motors.forward();';
+        case 'ROTATE_LEFT':   return p + 'motors.turnLeft();';
+        case 'ROTATE_RIGHT':  return p + 'motors.turnRight();';
+        case 'SPAWN': {
+          var a = s.args.map(x => this.expr(x));
+          return p + '// Robot spawned at row ' + a[1] + ' col ' + a[2];
+        }
+        case 'RENDER':  return p + '// Map loaded';
+        case 'APPEND':
+          return p + this.expr(s.args[0]) + '.push_back(' +
+                 this.expr(s.args[1]) + ');';
+        case 'INSERT':
+          return p + this.expr(s.args[0]) + '.insert(' +
+                 this.expr(s.args[0]) + '.begin() + ' + this.expr(s.args[1]) + ' - 1, ' +
+                 this.expr(s.args[2]) + ');';
+        case 'REMOVE':
+          return p + this.expr(s.args[0]) + '.erase(' +
+                 this.expr(s.args[0]) + '.begin() + ' + this.expr(s.args[1]) + ' - 1);';
+        default:
+          return p + '// ' + s.name + '(' + s.args.map(a => this.expr(a)).join(', ') + ')';
+      }
+    },
+
+    // ── expression dispatcher ─────────────────────────────────────────────────
+    expr: function (node) {
+      switch (node.type) {
+        case 'Num':  return String(node.value);
+        case 'Str':  return '"' + node.value.replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"';
+        case 'Bool': return node.value ? 'true' : 'false';
+        case 'Var':  return node.name;
+
+        case 'Index':
+          return this.expr(node.list) + '[' + this.expr(node.index) + ' - 1]';
+
+        case 'List':
+          return '{' + node.items.map(i => this.expr(i)).join(', ') + '}';
+
+        case 'BinOp': {
+          var ops = {
+            '+':'+', '-':'-', '*':'*', '/':'/',
+            'MOD':'%', 'AND':'&&', 'OR':'||',
+            '=':'==', '≠':'!=', '<':'<', '>':'>', '<=':'<=', '>=':'>='
+          };
+          return '(' + this.expr(node.left) + ' ' +
+                 (ops[node.op] || node.op) + ' ' +
+                 this.expr(node.right) + ')';
+        }
+
+        case 'UnOp':
+          return node.op === 'NOT'
+            ? '!(' + this.expr(node.expr) + ')'
+            : node.op + this.expr(node.expr);
+
+        case 'Builtin': return this.builtinExpr(node);
+
+        case 'Call':
+          return node.name + '(' + node.args.map(a => this.expr(a)).join(', ') + ')';
+
+        default: return '/* ? */';
+      }
+    },
+
+    // ── builtin expressions (inside conditions, assignments, etc.) ────────────
+    builtinExpr: function (node) {
+      switch (node.name) {
+        // CAN_MOVE returns the appropriate sensor expression for the direction.
+        // Direction must be a string literal; variable directions default to front.
+        case 'CAN_MOVE': {
+          var arg = node.args[0];
+          var dir = (arg && arg.type === 'Str') ? arg.value.toLowerCase() : 'forward';
+          if (dir === 'left')  return 'ultrasonicLeft.read() < THRESHOLD';
+          if (dir === 'right') return 'ultrasonicRight.read() < THRESHOLD';
+          return 'ultrasonic.read() < THRESHOLD';
+        }
+        case 'MOVE_FORWARD': return 'motors.forward()';
+        case 'ROTATE_LEFT':  return 'motors.turnLeft()';
+        case 'ROTATE_RIGHT': return 'motors.turnRight()';
+        case 'LENGTH':
+          return this.expr(node.args[0]) + '.size()';
+        case 'RANDOM':
+          return 'random(' + this.expr(node.args[0]) + ', ' +
+                 this.expr(node.args[1]) + ' + 1)';
+        case 'INPUT':
+          return 'Serial.readStringUntil(\'\\n\')';
+        default:
+          return node.name + '(' + node.args.map(a => this.expr(a)).join(', ') + ')';
+      }
+    },
+
+    // ── helpers ───────────────────────────────────────────────────────────────
+    block: function (stmts) {
+      this.depth++;
+      var out = stmts.map(s => this.stmt(s)).filter(l => l != null).join('\n');
+      this.depth--;
+      return out ? out + '\n' : '';
+    },
+
+    ind: function () {
+      var s = '';
+      for (var i = 0; i < this.depth; i++) s += '    ';
+      return s;
+    },
   };
 
-  // ── .ino boilerplate ───────────────────────────────────────────────────────
-  // ── .ino boilerplate uses the firmware/ header files ─────────────────────────
-  // Place motors.h and ultrasonic.h (from extended-machine/firmware/) in the
-  // same folder as this generated sketch before compiling in the Arduino IDE.
+  // ═══════════════════════════════════════════════════════════════════════════
+  //  .ino boilerplate
+  // ═══════════════════════════════════════════════════════════════════════════
+
   var BOILERPLATE_TOP = [
-    '// Generated by PseudoSystem — paste motors.h + ultrasonic.h alongside this file.',
+    '// Generated by PseudoSystem — place motors.h + ultrasonic.h in the same folder.',
     '#include "motors.h"',
     '#include "ultrasonic.h"',
     '',
@@ -113,39 +276,50 @@
     '',
     '#define THRESHOLD 15  // cm — obstacle detection distance',
     '',
-    'void setup() {',
-    '    Serial.begin(9600);',
-    '    motors.begin();',
-    '    ultrasonic.begin();',
-    '    ultrasonicLeft.begin();',
-    '    ultrasonicRight.begin();',
-    '}',
-    '',
-    'void loop() {',
   ].join('\n');
 
-  var BOILERPLATE_BOT = '}';
+  // ═══════════════════════════════════════════════════════════════════════════
+  //  Package registration
+  // ═══════════════════════════════════════════════════════════════════════════
 
-  // ── public API ─────────────────────────────────────────────────────────────
   window.APCSP_PACKAGES.arduino = {
 
-    // Called by index.md's run-button handler before every run so that
-    // each execution starts with a clean C++ output buffer.
-    _reset: function () {
-      window.APCSP_CPP_OUTPUT = [];
-      _prevDir    = null;
-      _spawnFrame = false;
-    },
+    // Kept for API compatibility — run button calls this before every run.
+    // Nothing to clear: the Transpiler reads window.APCSP_LAST_AST fresh each time.
+    _reset: function () {},
 
-    // Returns a complete, compilable .ino file built from the collected
-    // C++ lines.  Call this after running in Flash mode to see / flash
-    // the generated code.
+    // Returns a complete, compilable .ino file.
+    // PROCEDUREs are hoisted before loop(); everything else goes inside loop().
     _getCpp: function () {
-      var lines = window.APCSP_CPP_OUTPUT || [];
-      var body  = lines.length
-        ? lines.map(function (l) { return '    ' + l; }).join('\n')
-        : '    // (nothing collected — run a program with Flash mode enabled)';
-      return BOILERPLATE_TOP + '\n' + body + '\n' + BOILERPLATE_BOT;
+      var ast = window.APCSP_LAST_AST;
+      if (!ast || !ast.length)
+        return '// Run a program first to generate C++ output.';
+
+      var procs = ast.filter(function (s) { return s.type === 'ProcDef'; });
+      var stmts = ast.filter(function (s) { return s.type !== 'ProcDef'; });
+
+      // Procedures at depth 0 (before loop)
+      var procBlock = procs.length
+        ? new Transpiler(0).generate(procs) + '\n\n'
+        : '';
+
+      // Main body at depth 1 (inside loop)
+      var loopBody = new Transpiler(1).generate(stmts).trim();
+      if (!loopBody) loopBody = '    // (empty program)';
+
+      return BOILERPLATE_TOP +
+             procBlock +
+             'void setup() {\n' +
+             '    Serial.begin(9600);\n' +
+             '    motors.begin();\n' +
+             '    ultrasonic.begin();\n' +
+             '    ultrasonicLeft.begin();\n' +
+             '    ultrasonicRight.begin();\n' +
+             '}\n\n' +
+             'void loop() {\n' +
+             loopBody + '\n' +
+             '    while (true);  // halt — prevent loop() restarting the program\n' +
+             '}';
     },
   };
 

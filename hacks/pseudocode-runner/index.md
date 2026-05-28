@@ -1484,6 +1484,7 @@ document.getElementById('run-btn').addEventListener('click', async () => {
   try {
     const tokens = tokenize(src);
     const ast    = new Parser(tokens).parse();
+    window.APCSP_LAST_AST = ast;
     const interp = new Interpreter(appendOutput);
     await interp.run(ast);
     appendOutput('// Done ✓','out-info');

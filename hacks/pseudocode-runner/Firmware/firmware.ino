@@ -44,28 +44,27 @@ void setup() {
   Serial.println("PseudoSystem EM ready.");
 }
 
-// ── Demo loop — replace with your transpiled pseudocode ──────────────────────
+// ── Paste your transpiled pseudocode here ────────────────────────────────────
 //
-//  Example: the code below is what you'd get from the pseudocode:
+//  Replace the body below with the output from "View Generated C++" in the
+//  Arduino ⚡ modal.  The while(true) at the end halts after one run so the
+//  program doesn't restart on the next loop() iteration.
 //
+//  Example output for:
 //    SPAWN(map, 2, 2)
 //    REPEAT UNTIL (NOT CAN_MOVE("forward")) {
 //        MOVE_FORWARD()
 //    }
 //    ROTATE_LEFT()
-//    REPEAT UNTIL (NOT CAN_MOVE("forward")) {
-//        MOVE_FORWARD()
-//    }
 
 void loop() {
-  // Navigate forward until wall, then turn left and repeat
+  // ── your transpiled code goes here ──────────────────────────────────────────
+  // Robot spawned at row 2 col 2
   while (ultrasonic.read() < THRESHOLD) {
-    // obstacle already in front — rotate to find clear path
-    motors.turnLeft();
+    motors.forward();
   }
+  motors.turnLeft();
+  // ── end of transpiled code ───────────────────────────────────────────────────
 
-  motors.forward();   // one step forward if clear
-
-  // Small delay between iterations so we don't spin the sensor too fast
-  delay(50);
+  while (true);  // halt — prevents loop() from restarting the program
 }
