@@ -345,6 +345,46 @@ meta-description: "An interactive AP CSP pseudocode interpreter with robot simul
   .me-del { border-color:rgba(255,60,60,.35) !important; color:#ff5555 !important; }
   .me-del:hover { background:rgba(255,60,60,.12) !important; }
   .me-empty { font-size:.75rem; opacity:.35; }
+
+  /* ── Arduino Connection Modal ── */
+  .ar-overlay {
+    display:none; position:fixed; inset:0; z-index:9995;
+    background:rgba(0,0,0,.78); backdrop-filter:blur(5px);
+    align-items:center; justify-content:center;
+  }
+  .ar-overlay.open { display:flex; }
+  .ar-box {
+    background:#010d01; border:1px solid rgba(0,255,65,.4);
+    border-radius:14px; padding:1.2rem 1.4rem;
+    width:min(480px,94vw); max-height:88vh; overflow-y:auto;
+    box-shadow:0 0 48px rgba(0,255,65,.14);
+    display:flex; flex-direction:column; gap:.85rem;
+  }
+  .ar-header { display:flex; justify-content:space-between; align-items:center; }
+  .ar-header h3 { color:#00ff41; margin:0; font-size:1rem; letter-spacing:.06em; text-shadow:0 0 8px rgba(0,255,65,.4); }
+  .ar-status-row { display:flex; align-items:center; gap:.5rem; }
+  .ar-status-dot {
+    width:10px; height:10px; border-radius:50%; flex-shrink:0;
+    background:#ff5555; box-shadow:0 0 6px #ff5555;
+  }
+  .ar-status-dot.connected { background:#00ff41; box-shadow:0 0 6px #00ff41; }
+  .ar-status-dot.flashing  { background:#ffcc00; box-shadow:0 0 6px #ffcc00; }
+  .ar-status-text { font-size:.82rem; }
+  .ar-section-label {
+    font-size:.68rem; letter-spacing:.1em; text-transform:uppercase; color:#3a6a3a;
+  }
+  .ar-mode-row { display:flex; gap:.5rem; }
+  .ar-mode-btn { opacity:.55; transition:opacity .15s; }
+  .ar-mode-btn.ar-mode-active { opacity:1; background:rgba(0,255,65,.18) !important; }
+  .ar-cpp-panel {
+    border:1px solid rgba(0,255,65,.2); border-radius:6px;
+    background:#010801; padding:.6rem;
+    max-height:240px; overflow-y:auto; overflow-x:auto;
+  }
+  .ar-cpp-pre {
+    margin:0; font-family:'Courier New',monospace; font-size:.75rem;
+    color:#c8ffc8; white-space:pre;
+  }
 </style>
 
 <script>document.body.classList.add('no-wrapper-padding');</script>
@@ -406,6 +446,7 @@ meta-description: "An interactive AP CSP pseudocode interpreter with robot simul
       <div class="menu-dropdown">
         <button class="menu-action" id="me-open-btn">Map Editor ⊞</button>
         <button class="menu-action" id="lsm-open-btn">Storage ⛁</button>
+        <button class="menu-action" id="ar-open-btn">Arduino ⚡</button>
         <div class="menu-sep"></div>
         <button class="menu-action" id="autocb-toggle">
           <span>Auto-Brackets</span>
@@ -574,6 +615,30 @@ meta-description: "An interactive AP CSP pseudocode interpreter with robot simul
       </div>
       <div class="me-section-label">Saved Maps</div>
       <div id="me-saved-list"></div>
+    </div>
+  </div>
+
+  <!-- Arduino Connection Modal -->
+  <div class="ar-overlay" id="ar-modal">
+    <div class="ar-box">
+      <div class="ar-header">
+        <h3>⚡ Arduino Connection</h3>
+        <button class="tb-btn me-sm" id="ar-close-btn">✕</button>
+      </div>
+      <div class="ar-status-row">
+        <span class="ar-status-dot" id="ar-status-dot"></span>
+        <span class="ar-status-text" id="ar-status-text">Disconnected</span>
+      </div>
+      <button class="tb-btn" id="ar-connect-btn">Connect via USB</button>
+      <div class="ar-section-label">Mode</div>
+      <div class="ar-mode-row">
+        <button class="tb-btn ar-mode-btn ar-mode-active" id="ar-mode-sim"   data-mode="browser">Simulate</button>
+        <button class="tb-btn ar-mode-btn"                id="ar-mode-flash" data-mode="cpp">Flash to Arduino</button>
+      </div>
+      <button class="tb-btn" id="ar-view-cpp-btn">View Generated C++</button>
+      <div class="ar-cpp-panel" id="ar-cpp-panel" style="display:none">
+        <pre class="ar-cpp-pre" id="ar-cpp-pre"></pre>
+      </div>
     </div>
   </div>
 
@@ -1302,7 +1367,7 @@ class Interpreter {
   }
 
   async loadPackage(name) {
-    const valid = ['math','stats','turtle','string'];
+    const valid = ['math','stats','turtle','string','arduino'];
     if(!valid.includes(name))
       throw new Error(`Unknown package '${name}'. Available: ${valid.join(', ')}`);
 
@@ -1310,7 +1375,7 @@ class Interpreter {
     if(!(window.APCSP_PACKAGES && window.APCSP_PACKAGES[name])){
       await new Promise((resolve, reject) => {
         const s=document.createElement('script');
-        s.src = PKG_BASE + 'pkg_' + name + '.js';
+        s.src = name === 'arduino' ? EXTENDED_PKG_BASE + 'em.js' : PKG_BASE + 'pkg_' + name + '.js';
         s.onload  = resolve;
         s.onerror = () => reject(new Error(`Failed to load package '${name}' from ${s.src}`));
         document.head.appendChild(s);
@@ -1341,7 +1406,8 @@ class Interpreter {
 // ════════════════════════════════════════════════
 //  5. UI wiring
 // ════════════════════════════════════════════════
-const PKG_BASE = '{{ site.baseurl }}/hacks/pseudocode-runner/modules/';
+const PKG_BASE          = '{{ site.baseurl }}/hacks/pseudocode-runner/modules/';
+const EXTENDED_PKG_BASE = '{{ site.baseurl }}/hacks/pseudocode-runner/extended-machine/';
 
 const outputEl    = document.getElementById('output');
 const runnerLayout = document.querySelector('.runner-layout');
@@ -1402,6 +1468,8 @@ function appendOutput(text, cls='') {
 document.getElementById('run-btn').addEventListener('click', async () => {
   clearOutput();
   robotMap=null; robotRow=0; robotCol=0; robotDir=0; robotFrames=[];
+  if(window.APCSP_PACKAGES&&window.APCSP_PACKAGES.arduino) window.APCSP_PACKAGES.arduino._reset();
+  else window.APCSP_CPP_OUTPUT=[];
   if(robotAnimTimer) clearTimeout(robotAnimTimer);
   robotPanel.style.display='none';
   turtlePanel.style.display='none';
@@ -2129,5 +2197,67 @@ document.getElementById('help-close-btn').addEventListener('click', () => {
 });
 document.getElementById('help-modal').addEventListener('click', e => {
   if (e.target === e.currentTarget) e.currentTarget.classList.remove('open');
+});
+
+// ════════════════════════════════════════════════
+//  11. Arduino Connection Modal
+// ════════════════════════════════════════════════
+let arPort = null;
+
+function arSetStatus(state, text) {
+  const dot = document.getElementById('ar-status-dot');
+  const lbl = document.getElementById('ar-status-text');
+  dot.className = 'ar-status-dot' + (state !== 'disconnected' ? ' ' + state : '');
+  lbl.textContent = text;
+}
+
+document.getElementById('ar-open-btn').addEventListener('click', () => {
+  closeMenus();
+  document.getElementById('ar-modal').classList.add('open');
+});
+
+document.getElementById('ar-close-btn').addEventListener('click', () => {
+  document.getElementById('ar-modal').classList.remove('open');
+});
+
+document.getElementById('ar-modal').addEventListener('click', e => {
+  if (e.target === e.currentTarget) e.currentTarget.classList.remove('open');
+});
+
+document.getElementById('ar-connect-btn').addEventListener('click', async () => {
+  if (!('serial' in navigator)) {
+    arSetStatus('disconnected', 'WebSerial not available in this browser');
+    return;
+  }
+  try {
+    arPort = await navigator.serial.requestPort();
+    await arPort.open({ baudRate: 9600 });
+    arSetStatus('connected', 'Connected');
+  } catch (e) {
+    if (e.name !== 'NotFoundError') arSetStatus('disconnected', 'Connection failed');
+    // NotFoundError = user dismissed picker; leave status unchanged
+  }
+});
+
+document.querySelectorAll('.ar-mode-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.ar-mode-btn').forEach(b => b.classList.remove('ar-mode-active'));
+    btn.classList.add('ar-mode-active');
+    window.APCSP_RUNTIME = btn.dataset.mode;
+  });
+});
+
+document.getElementById('ar-view-cpp-btn').addEventListener('click', () => {
+  const panel = document.getElementById('ar-cpp-panel');
+  const pre   = document.getElementById('ar-cpp-pre');
+  if (panel.style.display === 'none') {
+    const pkg = window.APCSP_PACKAGES && window.APCSP_PACKAGES.arduino;
+    pre.textContent = pkg
+      ? pkg._getCpp()
+      : '// Import the arduino package first:\n// FROM LOCAL.PKG IMPORT arduino';
+    panel.style.display = 'block';
+  } else {
+    panel.style.display = 'none';
+  }
 });
 </script>
