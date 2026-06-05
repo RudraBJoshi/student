@@ -1,227 +1,413 @@
 ---
 layout: base
-title: APItube — Client-Side YouTube Stream Engine
+title: APItube — YouTube Stream Engine
 permalink: /apitube/
 ---
 
 <style>
-/* ─── APItube – all rules scoped to #at-root ─────────────────────────────── */
 #at-root {
-  --c-bg:       #08080f;
-  --c-surf:     #0d0d1c;
-  --c-border:   #181828;
-  --c-cyan:     #00d4ff;
-  --c-purple:   #7b2fff;
-  --c-text:     #e2e2f0;
-  --c-muted:    #52526e;
-  --c-error:    #ff4466;
-  --c-ok:       #00e5a0;
-  --r:          12px;
-  --font-mono:  'SF Mono','Fira Code','Cascadia Code',ui-monospace,monospace;
+  --c-bg:     #08080f;
+  --c-surf:   #0d0d1c;
+  --c-surf2:  #111125;
+  --c-border: #1c1c32;
+  --c-cyan:   #00d4ff;
+  --c-purple: #7b2fff;
+  --c-text:   #e2e2f0;
+  --c-sub:    #8888a8;
+  --c-muted:  #44445a;
+  --c-error:  #ff4466;
+  --c-ok:     #00e5a0;
+  --r:        14px;
+  --mono: 'SF Mono','Fira Code','Cascadia Code',ui-monospace,monospace;
 
   background: var(--c-bg);
   color: var(--c-text);
   font-family: system-ui,-apple-system,sans-serif;
-  max-width: 900px;
+  max-width: 860px;
   margin: 0 auto;
-  padding: 2.5rem 1.25rem 4rem;
+  padding: 3rem 1.5rem 5rem;
   min-height: 80vh;
 }
 
-/* ── header ─────────────────────────────────────────────────────────────── */
-.at-header {
+/* ── Hero ──────────────────────────────────────────────────────────────────── */
+.at-hero {
   display: flex;
   align-items: center;
-  gap: 1.1rem;
-  margin-bottom: 2.5rem;
-  padding-bottom: 1.5rem;
-  border-bottom: 1px solid var(--c-border);
+  gap: 1.25rem;
+  margin-bottom: 3rem;
 }
-.at-logo { flex-shrink: 0; filter: drop-shadow(0 0 14px rgba(0,212,255,.28)); }
-.at-wordmark { margin: 0; font-size: clamp(1.8rem,4.5vw,2.7rem); font-weight: 800;
-  letter-spacing: -.03em; background: linear-gradient(130deg,#00d4ff 0%,#7b2fff 100%);
-  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
-  line-height: 1.05; }
-.at-tagline { margin: .3rem 0 0; color: var(--c-muted); font-size: .78rem;
-  font-family: var(--font-mono); letter-spacing: .05em; }
+.at-logo { flex-shrink: 0; filter: drop-shadow(0 0 18px rgba(0,212,255,.22)); }
+.at-hero-text { }
+.at-wordmark {
+  margin: 0 0 .35rem;
+  font-size: clamp(2rem,5vw,3rem);
+  font-weight: 800;
+  letter-spacing: -.04em;
+  line-height: 1;
+  background: linear-gradient(130deg,#00d4ff 0%,#7b2fff 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.at-sub {
+  margin: 0;
+  font-size: .92rem;
+  color: var(--c-sub);
+  line-height: 1.5;
+}
 
-/* ── input card ─────────────────────────────────────────────────────────── */
+/* ── Input card ─────────────────────────────────────────────────────────────── */
 .at-card {
   background: var(--c-surf);
   border: 1px solid var(--c-border);
   border-radius: var(--r);
-  padding: 1.6rem 1.75rem;
-  margin-bottom: 1.25rem;
+  padding: 1.5rem 1.75rem 1.25rem;
+  margin-bottom: 1rem;
 }
 .at-field-label {
-  display: block; font-family: var(--font-mono); font-size: .7rem;
-  color: var(--c-cyan); letter-spacing: .12em; text-transform: uppercase;
-  margin-bottom: .65rem;
+  display: block;
+  font-size: .75rem;
+  font-weight: 600;
+  color: var(--c-sub);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  margin-bottom: .6rem;
 }
-.at-input-row { display: flex; gap: .7rem; align-items: stretch; }
+.at-input-row { display: flex; gap: .65rem; align-items: stretch; }
 .at-url-input {
   flex: 1; min-width: 0;
-  background: var(--c-bg); border: 1.5px solid var(--c-border);
-  border-radius: 8px; padding: .75rem 1rem;
-  color: var(--c-text); font-size: .92rem; font-family: var(--font-mono);
-  outline: none; transition: border-color .18s, box-shadow .18s;
+  background: var(--c-bg);
+  border: 1.5px solid var(--c-border);
+  border-radius: 10px;
+  padding: .8rem 1.1rem;
+  color: var(--c-text);
+  font-size: .95rem;
+  outline: none;
+  transition: border-color .18s, box-shadow .18s;
 }
-.at-url-input:focus { border-color: var(--c-cyan); box-shadow: 0 0 0 3px rgba(0,212,255,.1); }
+.at-url-input:focus {
+  border-color: var(--c-cyan);
+  box-shadow: 0 0 0 3px rgba(0,212,255,.08);
+}
 .at-url-input::placeholder { color: var(--c-muted); }
 .at-btn {
-  background: linear-gradient(135deg,#00d4ff 0%,#7b2fff 100%);
-  border: none; border-radius: 8px; padding: .75rem 1.4rem;
-  color: #fff; font-weight: 700; font-size: .88rem; letter-spacing: .04em;
-  cursor: pointer; white-space: nowrap; display: flex; align-items: center; gap: .45rem;
-  transition: opacity .18s, transform .1s;
+  background: linear-gradient(135deg,#00d4ff,#7b2fff);
+  border: none;
+  border-radius: 10px;
+  padding: .8rem 1.5rem;
+  color: #fff;
+  font-weight: 700;
+  font-size: .9rem;
+  letter-spacing: .02em;
+  cursor: pointer;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  transition: opacity .15s, transform .1s, box-shadow .15s;
+  box-shadow: 0 2px 16px rgba(123,47,255,.25);
 }
-.at-btn:hover { opacity: .88; }
+.at-btn:hover  { opacity: .9; box-shadow: 0 4px 24px rgba(123,47,255,.4); }
 .at-btn:active { transform: scale(.97); }
-.at-btn:disabled { opacity: .35; cursor: not-allowed; transform: none; }
-.at-badge {
-  display: flex; align-items: center; gap: .45rem;
-  margin-top: .6rem; font-size: .68rem; font-family: var(--font-mono); color: var(--c-muted);
-}
-.at-dot { width:7px; height:7px; border-radius:50%; background: var(--c-muted); transition: background .3s; }
-.at-dot.ok    { background: var(--c-ok);     box-shadow: 0 0 7px var(--c-ok); }
-.at-dot.spin  { background: var(--c-cyan);   animation: at-blink .9s infinite; }
-.at-dot.err   { background: var(--c-error);  box-shadow: 0 0 7px var(--c-error); }
-@keyframes at-blink { 0%,100%{opacity:1} 50%{opacity:.25} }
+.at-btn:disabled { opacity: .3; cursor: not-allowed; transform: none; box-shadow: none; }
 
-/* ── loading ─────────────────────────────────────────────────────────────── */
-.at-loading { display:none; flex-direction:column; align-items:center;
-  justify-content:center; padding:3rem; gap:1rem; }
+.at-badge {
+  display: flex;
+  align-items: center;
+  gap: .45rem;
+  margin-top: .75rem;
+  font-size: .72rem;
+  color: var(--c-muted);
+}
+.at-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--c-muted);
+  flex-shrink: 0;
+  transition: background .3s, box-shadow .3s;
+}
+.at-dot.ok   { background: var(--c-ok);    box-shadow: 0 0 6px var(--c-ok); }
+.at-dot.spin { background: var(--c-cyan);  animation: at-pulse .9s infinite; }
+.at-dot.err  { background: var(--c-error); box-shadow: 0 0 6px var(--c-error); }
+@keyframes at-pulse { 0%,100%{opacity:1} 50%{opacity:.2} }
+
+/* ── Loading ────────────────────────────────────────────────────────────────── */
+.at-loading { display:none; flex-direction:column; align-items:center; padding:3.5rem 1rem; gap:1.1rem; }
 .at-loading.on { display:flex; }
 .at-ring {
-  width:46px; height:46px; border-radius:50%;
-  border:3px solid var(--c-border);
-  border-top-color:var(--c-cyan);
-  border-right-color:var(--c-purple);
-  animation: at-spin .75s linear infinite;
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  border: 3px solid var(--c-border);
+  border-top-color: var(--c-cyan);
+  border-right-color: var(--c-purple);
+  animation: at-spin .7s linear infinite;
 }
 @keyframes at-spin { to { transform:rotate(360deg); } }
-.at-loading-txt { font-size:.8rem; font-family:var(--font-mono); color:var(--c-muted); }
+.at-loading-txt { font-size: .82rem; color: var(--c-sub); }
 
-/* ── error ───────────────────────────────────────────────────────────────── */
+/* ── Error ──────────────────────────────────────────────────────────────────── */
 .at-error { display:none; }
 .at-error.on {
-  display:block; background:rgba(255,68,102,.07);
-  border:1px solid rgba(255,68,102,.28); border-radius:var(--r);
-  padding:1.1rem 1.4rem; margin-bottom:1.1rem;
+  display: block;
+  background: rgba(255,68,102,.06);
+  border: 1px solid rgba(255,68,102,.22);
+  border-radius: var(--r);
+  padding: 1.1rem 1.5rem;
+  margin-bottom: 1rem;
 }
-.at-error-title { color:var(--c-error); font-weight:600; font-size:.88rem; margin:0 0 .4rem; }
-.at-error-body  { color:var(--c-muted); font-size:.78rem; font-family:var(--font-mono);
-  margin:0; white-space:pre-wrap; line-height:1.7; }
+.at-error-title { color: var(--c-error); font-weight: 600; font-size: .9rem; margin: 0 0 .4rem; }
+.at-error-body  { color: var(--c-sub); font-size: .78rem; font-family: var(--mono);
+  margin: 0; white-space: pre-wrap; line-height: 1.7; }
 
-/* ── player section ─────────────────────────────────────────────────────── */
+/* ── Player ─────────────────────────────────────────────────────────────────── */
 .at-player { display:none; }
 .at-player.on { display:block; }
 
 .at-video-wrap {
-  position:relative; width:100%; aspect-ratio:16/9;
-  background:#000; border-radius:var(--r); overflow:hidden;
-  box-shadow: 0 0 0 1px var(--c-border), 0 10px 48px rgba(0,0,0,.7);
-  margin-bottom:.9rem;
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16/9;
+  background: #000;
+  border-radius: var(--r);
+  overflow: hidden;
+  box-shadow: 0 0 0 1px var(--c-border), 0 20px 60px rgba(0,0,0,.8);
+  margin-bottom: 1rem;
 }
 .at-video-wrap video {
-  width:100%; height:100%; display:block; object-fit:contain;
+  width: 100%; height: 100%;
+  display: block;
+  object-fit: contain;
   will-change: transform;
   transform: translateZ(0);
 }
 
-/* ── Fetch / mux progress bar ────────────────────────────────────────────── */
 .at-fetch-bar {
-  position:absolute; bottom:0; left:0; right:0;
-  height:3px; background:rgba(255,255,255,.06);
-  display:none; z-index:10;
+  position: absolute; bottom: 0; left: 0; right: 0;
+  height: 3px;
+  background: rgba(255,255,255,.05);
+  display: none;
+  z-index: 10;
 }
-.at-fetch-bar.on { display:block; }
+.at-fetch-bar.on { display: block; }
 .at-fetch-inner {
-  height:100%;
-  background:linear-gradient(90deg,var(--c-cyan),var(--c-purple));
-  border-radius:0 2px 2px 0;
-  width:0%;
-  transition:width .35s ease;
+  height: 100%;
+  background: linear-gradient(90deg, var(--c-cyan), var(--c-purple));
+  border-radius: 0 2px 2px 0;
+  width: 0%;
+  transition: width .35s ease;
 }
 
+/* ── Video meta ─────────────────────────────────────────────────────────────── */
 .at-meta {
-  background:var(--c-surf); border:1px solid var(--c-border);
-  border-radius:var(--r); padding:1.2rem 1.4rem; margin-bottom:.75rem;
+  background: var(--c-surf);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r);
+  padding: 1.25rem 1.5rem;
+  margin-bottom: .75rem;
 }
 .at-meta-title {
-  font-size:1.08rem; font-weight:600; color:var(--c-text);
-  margin:0 0 .65rem; line-height:1.45;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--c-text);
+  margin: 0 0 .75rem;
+  line-height: 1.4;
 }
 .at-meta-stats {
-  display:flex; flex-wrap:wrap; gap:.85rem 1.4rem;
-  font-size:.76rem; font-family:var(--font-mono); color:var(--c-muted);
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem 1.25rem;
+  font-size: .78rem;
+  color: var(--c-sub);
+  margin-bottom: .85rem;
 }
-.at-meta-stat { display:flex; align-items:center; gap:.3rem; }
-.at-stat-icon { color:var(--c-cyan); }
-.at-stream-row {
-  display:flex; flex-wrap:wrap; gap:.5rem 1.4rem;
-  font-size:.68rem; font-family:var(--font-mono); color:var(--c-muted);
-  border-top:1px solid var(--c-border); margin-top:.8rem; padding-top:.8rem;
+.at-meta-stat { display: flex; align-items: center; gap: .35rem; }
+.at-stat-icon { opacity: .6; font-size: .8rem; }
+
+.at-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .4rem;
+  border-top: 1px solid var(--c-border);
+  padding-top: .75rem;
+}
+.at-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: .3rem;
+  background: var(--c-bg);
+  border: 1px solid var(--c-border);
+  border-radius: 20px;
+  padding: .2rem .7rem;
+  font-size: .7rem;
+  font-family: var(--mono);
+  color: var(--c-sub);
+}
+.at-chip-dot {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--c-cyan);
+  opacity: .7;
 }
 
-
-/* ── how it works ────────────────────────────────────────────────────────── */
+/* ── How it works ───────────────────────────────────────────────────────────── */
 .at-howit {
-  margin-top:3rem;
-  border-top:1px solid var(--c-border);
-  padding-top:2.2rem;
+  margin-top: 3.5rem;
+  border-top: 1px solid var(--c-border);
+  padding-top: 2.5rem;
 }
 .at-section-head {
-  font-size:.72rem; font-family:var(--font-mono); color:var(--c-cyan);
-  letter-spacing:.12em; text-transform:uppercase; margin:0 0 1.6rem;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--c-text);
+  margin: 0 0 .4rem;
 }
+.at-section-sub {
+  font-size: .84rem;
+  color: var(--c-sub);
+  margin: 0 0 2rem;
+}
+
+/* Pipeline */
 .at-pipeline {
-  display:flex; align-items:center; flex-wrap:wrap;
-  gap:.25rem; margin-bottom:2rem; overflow-x:auto;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: .3rem;
+  margin-bottom: 2.5rem;
+  padding: 1.25rem 1.5rem;
+  background: var(--c-surf);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r);
+  overflow-x: auto;
 }
 .at-pipe-step {
-  background:var(--c-surf); border:1px solid var(--c-border);
-  border-radius:7px; padding:.55rem .9rem; white-space:nowrap;
+  display: flex;
+  flex-direction: column;
+  gap: .2rem;
 }
-.at-pipe-num  { display:block; font-size:.6rem; font-family:var(--font-mono);
-  color:var(--c-cyan); opacity:.65; letter-spacing:.07em; margin-bottom:.12rem; }
-.at-pipe-name { font-size:.74rem; font-family:var(--font-mono); color:var(--c-text); }
-.at-pipe-arrow { color:var(--c-purple); font-size:.85rem; padding:0 .15rem; flex-shrink:0; }
+.at-pipe-num {
+  font-size: .58rem;
+  font-family: var(--mono);
+  color: var(--c-cyan);
+  opacity: .6;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+.at-pipe-name {
+  font-size: .78rem;
+  font-weight: 600;
+  color: var(--c-text);
+}
+.at-pipe-detail {
+  font-size: .65rem;
+  font-family: var(--mono);
+  color: var(--c-muted);
+}
+.at-pipe-arrow {
+  color: var(--c-purple);
+  font-size: .9rem;
+  padding: 0 .2rem;
+  flex-shrink: 0;
+  opacity: .6;
+  margin-bottom: .2rem;
+}
 
-.at-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:1rem; }
+/* Tech grid */
+.at-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px,1fr));
+  gap: .75rem;
+  margin-bottom: 2rem;
+}
 .at-tcard {
-  background:var(--c-surf); border:1px solid var(--c-border);
-  border-radius:8px; padding:.9rem 1.1rem;
+  background: var(--c-surf);
+  border: 1px solid var(--c-border);
+  border-radius: 10px;
+  padding: 1rem 1.15rem;
+  transition: border-color .2s, background .2s;
+}
+.at-tcard:hover {
+  border-color: rgba(0,212,255,.2);
+  background: var(--c-surf2);
+}
+.at-tcard-icon {
+  font-size: 1.1rem;
+  margin-bottom: .5rem;
+  display: block;
 }
 .at-tcard h3 {
-  font-size:.72rem; font-family:var(--font-mono); color:var(--c-purple);
-  margin:0 0 .45rem; letter-spacing:.07em;
+  font-size: .8rem;
+  font-weight: 700;
+  color: var(--c-text);
+  margin: 0 0 .4rem;
 }
-.at-tcard p { font-size:.76rem; color:var(--c-muted); margin:0; line-height:1.65; }
-.at-tcard code { color:var(--c-cyan); background:var(--c-bg); padding:.05rem .3rem;
-  border-radius:3px; font-family:var(--font-mono); font-size:.7rem; }
+.at-tcard p {
+  font-size: .75rem;
+  color: var(--c-sub);
+  margin: 0;
+  line-height: 1.65;
+}
+.at-tcard code {
+  color: var(--c-cyan);
+  background: var(--c-bg);
+  padding: .05rem .3rem;
+  border-radius: 4px;
+  font-family: var(--mono);
+  font-size: .68rem;
+}
 
+/* Code block */
 .at-codeblock {
-  background:var(--c-bg); border:1px solid var(--c-border); border-radius:8px;
-  padding:1rem 1.2rem; margin-top:1.25rem; overflow-x:auto;
-  font-size:.73rem; font-family:var(--font-mono); color:var(--c-cyan);
-  white-space:pre; line-height:1.75;
+  background: var(--c-surf);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r);
+  overflow: hidden;
 }
-.at-kw { color:#7b2fff; }
-.at-str { color:#00e5a0; }
-.at-cmt { color:#3a3a52; }
+.at-codeblock-header {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .65rem 1.1rem;
+  border-bottom: 1px solid var(--c-border);
+  background: var(--c-bg);
+}
+.at-cb-dot { width:10px;height:10px;border-radius:50%; }
+.at-cb-dot:nth-child(1){background:#ff5f57;}
+.at-cb-dot:nth-child(2){background:#febc2e;}
+.at-cb-dot:nth-child(3){background:#28c840;}
+.at-cb-filename {
+  margin-left:.35rem;
+  font-size: .7rem;
+  font-family: var(--mono);
+  color: var(--c-sub);
+}
+.at-codeblock pre {
+  margin: 0;
+  padding: 1.1rem 1.25rem;
+  overflow-x: auto;
+  font-size: .72rem;
+  font-family: var(--mono);
+  line-height: 1.8;
+  white-space: pre;
+}
+.at-kw  { color: #7b2fff; }
+.at-fn  { color: #00d4ff; }
+.at-str { color: #00e5a0; }
+.at-cmt { color: #33334a; }
+.at-num { color: #ff9d5c; }
 
 @media (max-width:580px) {
   .at-input-row { flex-direction:column; }
   .at-btn { justify-content:center; }
+  .at-hero { gap: .9rem; }
 }
 </style>
 
 <div id="at-root">
 
-  <!-- ── Header ───────────────────────────────────────────────────────────── -->
-  <header class="at-header">
-    <svg class="at-logo" viewBox="0 0 120 120" width="62" height="62" xmlns="http://www.w3.org/2000/svg">
+  <!-- Hero -->
+  <header class="at-hero">
+    <svg class="at-logo" viewBox="0 0 120 120" width="64" height="64" xmlns="http://www.w3.org/2000/svg">
       <defs>
         <linearGradient id="p-g1" x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stop-color="#00d4ff"/>
@@ -242,63 +428,58 @@ permalink: /apitube/
       </defs>
       <rect x="3" y="3" width="114" height="114" rx="22" fill="#08080f"/>
       <rect x="3" y="3" width="114" height="114" rx="22" fill="none" stroke="url(#p-g1)" stroke-width="1.5"/>
-      <!-- input nodes -->
       <circle cx="18" cy="40" r="4" fill="#00d4ff" filter="url(#p-gd)" opacity=".9"/>
       <circle cx="18" cy="60" r="4" fill="#5e88f7" filter="url(#p-gd)" opacity=".75"/>
       <circle cx="18" cy="80" r="4" fill="#7b2fff" filter="url(#p-gd)" opacity=".65"/>
       <circle cx="18" cy="40" r="1.8" fill="#fff" opacity=".55"/>
       <circle cx="18" cy="60" r="1.8" fill="#fff" opacity=".45"/>
       <circle cx="18" cy="80" r="1.8" fill="#fff" opacity=".35"/>
-      <!-- dashed connectors -->
       <line x1="23" y1="40" x2="44" y2="40" stroke="#00d4ff" stroke-width="1.2" stroke-dasharray="3.5,3" opacity=".4"/>
       <line x1="23" y1="60" x2="44" y2="60" stroke="url(#p-g2)" stroke-width="1.2" stroke-dasharray="3.5,3" opacity=".4"/>
       <line x1="23" y1="80" x2="44" y2="80" stroke="#7b2fff" stroke-width="1.2" stroke-dasharray="3.5,3" opacity=".4"/>
-      <!-- play triangle -->
       <polygon points="44,32 44,88 95,60" fill="url(#p-g1)" filter="url(#p-gp)"/>
-      <!-- output -->
       <line x1="95" y1="60" x2="105" y2="60" stroke="#7b2fff" stroke-width="1.5" opacity=".6"/>
       <circle cx="108" cy="60" r="4.5" fill="#7b2fff" filter="url(#p-gd)" opacity=".9"/>
       <circle cx="108" cy="60" r="2"   fill="#fff" opacity=".55"/>
     </svg>
-
-    <div>
+    <div class="at-hero-text">
       <h1 class="at-wordmark">APItube</h1>
-      <p class="at-tagline">client-side youtube stream engine // piped api // zero backend</p>
+      <p class="at-sub">Stream any YouTube video up to 1080p — no sign-in, no ads, full seeking.</p>
     </div>
   </header>
 
-  <!-- ── Input ─────────────────────────────────────────────────────────────── -->
+  <!-- Input -->
   <div class="at-card">
-    <label class="at-field-label" for="at-url">// paste youtube url</label>
+    <label class="at-field-label" for="at-url">YouTube URL</label>
     <div class="at-input-row">
       <input id="at-url" class="at-url-input" type="url" autocomplete="off" spellcheck="false"
-             placeholder="https://youtube.com/watch?v=...  or  youtu.be/..."/>
+             placeholder="Paste a YouTube or youtu.be link…"/>
       <button id="at-btn" class="at-btn" onclick="atStream()">
-        <svg width="13" height="13" viewBox="0 0 12 12" fill="currentColor">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
           <polygon points="2,1 11,6 2,11"/>
         </svg>
-        Stream It
+        Stream
       </button>
     </div>
     <div class="at-badge">
       <div class="at-dot" id="at-dot"></div>
-      <span id="at-badge-txt">ready · will try piped instances in sequence</span>
+      <span id="at-badge-txt">Ready</span>
     </div>
   </div>
 
-  <!-- ── Error ─────────────────────────────────────────────────────────────── -->
+  <!-- Error -->
   <div class="at-error" id="at-error">
-    <p class="at-error-title">Stream Error</p>
+    <p class="at-error-title">Could not load stream</p>
     <pre class="at-error-body" id="at-error-msg"></pre>
   </div>
 
-  <!-- ── Loading ───────────────────────────────────────────────────────────── -->
+  <!-- Loading -->
   <div class="at-loading" id="at-loading">
     <div class="at-ring"></div>
-    <p class="at-loading-txt" id="at-loading-msg">Initializing...</p>
+    <p class="at-loading-txt" id="at-loading-msg">Connecting…</p>
   </div>
 
-  <!-- ── Player ────────────────────────────────────────────────────────────── -->
+  <!-- Player -->
   <div class="at-player" id="at-player">
     <div class="at-video-wrap">
       <video id="at-video" controls playsinline preload="auto"></video>
@@ -316,148 +497,148 @@ permalink: /apitube/
           <span class="at-stat-icon">⏱</span><span id="at-duration"></span>
         </span>
         <span class="at-meta-stat">
-          <span class="at-stat-icon">📡</span><span id="at-uploader"></span>
+          <span class="at-stat-icon">👤</span><span id="at-uploader"></span>
         </span>
       </div>
-      <div class="at-stream-row">
-        <span id="at-quality"></span>
-        <span id="at-mime"></span>
-        <span id="at-instance-used"></span>
+      <div class="at-chips">
+        <span class="at-chip" id="at-quality-chip">
+          <span class="at-chip-dot"></span><span id="at-quality"></span>
+        </span>
+        <span class="at-chip" id="at-mime-chip">
+          <span id="at-mime"></span>
+        </span>
+        <span class="at-chip" id="at-src-chip">
+          <span id="at-instance-used"></span>
+        </span>
       </div>
     </div>
   </div>
 
-  <!-- ── How It Works ──────────────────────────────────────────────────────── -->
+  <!-- How it works -->
   <section class="at-howit">
-    <p class="at-section-head">// how it works — client-side parsing pipeline</p>
+    <p class="at-section-head">How it works</p>
+    <p class="at-section-sub">A self-hosted pipeline that extracts, muxes, and serves YouTube streams directly to your browser.</p>
 
     <div class="at-pipeline">
       <div class="at-pipe-step">
-        <span class="at-pipe-num">01 · INPUT</span>
-        <span class="at-pipe-name">YouTube URL</span>
+        <span class="at-pipe-num">01</span>
+        <span class="at-pipe-name">URL</span>
+        <span class="at-pipe-detail">Video ID</span>
       </div>
       <span class="at-pipe-arrow">→</span>
       <div class="at-pipe-step">
-        <span class="at-pipe-num">02 · PARSE</span>
-        <span class="at-pipe-name">Regex · Video ID</span>
+        <span class="at-pipe-num">02</span>
+        <span class="at-pipe-name">yt-dlp</span>
+        <span class="at-pipe-detail">Format list</span>
       </div>
       <span class="at-pipe-arrow">→</span>
       <div class="at-pipe-step">
-        <span class="at-pipe-num">03 · FETCH</span>
-        <span class="at-pipe-name">Piped API · /streams</span>
+        <span class="at-pipe-num">03</span>
+        <span class="at-pipe-name">1080p DASH</span>
+        <span class="at-pipe-detail">h264 + m4a</span>
       </div>
       <span class="at-pipe-arrow">→</span>
       <div class="at-pipe-step">
-        <span class="at-pipe-num">04 · FILTER</span>
-        <span class="at-pipe-name">videoOnly: false</span>
+        <span class="at-pipe-num">04</span>
+        <span class="at-pipe-name">ffmpeg mux</span>
+        <span class="at-pipe-detail">stream copy</span>
       </div>
       <span class="at-pipe-arrow">→</span>
       <div class="at-pipe-step">
-        <span class="at-pipe-num">05 · SORT</span>
-        <span class="at-pipe-name">Highest Quality</span>
+        <span class="at-pipe-num">05</span>
+        <span class="at-pipe-name">faststart MP4</span>
+        <span class="at-pipe-detail">moov → front</span>
       </div>
       <span class="at-pipe-arrow">→</span>
       <div class="at-pipe-step">
-        <span class="at-pipe-num">06 · RENDER</span>
-        <span class="at-pipe-name">&lt;video&gt; + GPU layer</span>
+        <span class="at-pipe-num">06</span>
+        <span class="at-pipe-name">Browser</span>
+        <span class="at-pipe-detail">Range / seek</span>
       </div>
     </div>
 
     <div class="at-grid">
       <div class="at-tcard">
-        <h3>// PIPED API</h3>
+        <span class="at-tcard-icon">⚙️</span>
+        <h3>yt-dlp Extraction</h3>
         <p>
-          <a href="https://github.com/TeamPiped/Piped" target="_blank" style="color:var(--c-cyan)">Piped</a>
-          is an open-source YouTube frontend that exposes a public REST API.
-          Calling <code>/streams/{videoId}</code> returns full metadata plus a list of
-          direct CDN stream URLs — no API key, no backend required.
+          <code>yt-dlp</code> pulls the full format manifest for any video — including
+          DASH-only tracks that the official embed player hides. The backend selects
+          the best <code>h264/mp4</code> video track paired with <code>m4a/aac</code> audio.
         </p>
       </div>
       <div class="at-tcard">
-        <h3>// STREAM SELECTION</h3>
+        <span class="at-tcard-icon">🎬</span>
+        <h3>Zero-transcode Muxing</h3>
         <p>
-          YouTube serves two stream types: <em>progressive</em> (audio+video combined,
-          tagged <code>videoOnly: false</code>) and <em>DASH</em> (separate tracks for
-          higher resolutions). APItube filters for progressive streams and picks the
-          highest bitrate — typically up to 720p for muxed MP4.
+          ffmpeg combines the two tracks with <code>-c:v copy -c:a copy</code> — no
+          re-encoding, so a 20-minute video muxes in under 3 minutes. The
+          <code>+faststart</code> flag moves the seek index to the front of the file.
         </p>
       </div>
       <div class="at-tcard">
-        <h3>// GPU RENDERING</h3>
+        <span class="at-tcard-icon">⏩</span>
+        <h3>Full Seeking</h3>
         <p>
-          The <code>&lt;video&gt;</code> element is promoted to its own GPU compositor
-          layer via <code>will-change:transform</code> and <code>translateZ(0)</code>.
-          All upscaling is then handled natively by the GPU or NPU with bilinear filtering
-          — no CPU overhead.
+          Flask serves the cached MP4 with <code>conditional=True</code>, which
+          automatically handles HTTP Range requests — so the browser can seek
+          to any timestamp without re-downloading the file.
         </p>
       </div>
       <div class="at-tcard">
-        <h3>// FALLBACK CHAIN</h3>
+        <span class="at-tcard-icon">🔄</span>
+        <h3>Smart Fallback</h3>
         <p>
-          Four public Piped instances are tried in order with an 8-second timeout each.
-          If the primary is down or rate-limiting, the next is tried automatically.
-          The badge below the input shows which instance was used.
+          If the local engine isn't running, the player tries public Invidious
+          and Piped instances in sequence. Each source gets a timeout before
+          the next is attempted. The status badge shows which source responded.
         </p>
       </div>
     </div>
 
-    <div class="at-codeblock"><span class="at-cmt">// Extraction pipeline — runs entirely in the browser</span>
+    <div class="at-codeblock">
+      <div class="at-codeblock-header">
+        <div class="at-cb-dot"></div>
+        <div class="at-cb-dot"></div>
+        <div class="at-cb-dot"></div>
+        <span class="at-cb-filename">api/APItube/engine.py — mux pipeline</span>
+      </div>
+      <pre><span class="at-cmt"># yt-dlp selects: best h264/mp4 video-only + best m4a audio-only</span>
+<span class="at-cmt"># ffmpeg muxes both into one seekable MP4 — no transcode, just stream copy</span>
 
-<span class="at-kw">const</span> INSTANCES = [
-  <span class="at-str">'https://pipedapi.kavin.rocks'</span>,
-  <span class="at-str">'https://pipedapi.tokhmi.xyz'</span>,
-  <span class="at-str">'https://pipedapi.moomoo.me'</span>,
-  <span class="at-str">'https://api.piped.yt'</span>,
-];
-
-<span class="at-kw">function</span> extractVideoId(url) {
-  <span class="at-kw">const</span> m = url.match(<span class="at-str">/(?:[?&]v=|\/embed\/|\/shorts\/|youtu\.be\/)([a-zA-Z0-9_-]{11})/</span>);
-  <span class="at-kw">return</span> m ? m[1] : <span class="at-kw">null</span>;
-}
-
-<span class="at-kw">async function</span> fetchStream(videoId) {
-  <span class="at-kw">for</span> (<span class="at-kw">const</span> host <span class="at-kw">of</span> INSTANCES) {
-    <span class="at-kw">const</span> res = <span class="at-kw">await</span> fetch(`${host}/streams/${videoId}`, {
-      signal: AbortSignal.timeout(8000)
-    });
-    <span class="at-kw">if</span> (res.ok) <span class="at-kw">return</span> { data: <span class="at-kw">await</span> res.json(), host };
-  }
-}
-
-<span class="at-kw">function</span> bestStream(streams) {
-  <span class="at-kw">return</span> streams
-    .filter(s => !s.videoOnly && s.mimeType?.startsWith(<span class="at-str">'video'</span>))
-    .sort((a, b) => (parseInt(b.quality) || 0) - (parseInt(a.quality) || 0))[0];
-}</div>
+cmd = [
+    <span class="at-str">'ffmpeg'</span>, <span class="at-str">'-y'</span>,
+    <span class="at-str">'-i'</span>,   video_url,      <span class="at-cmt"># 1080p h264, video-only DASH track</span>
+    <span class="at-str">'-i'</span>,   audio_url,      <span class="at-cmt"># m4a/aac, audio-only DASH track</span>
+    <span class="at-str">'-map'</span>, <span class="at-str">'0:v:0'</span>,
+    <span class="at-str">'-map'</span>, <span class="at-str">'1:a:0'</span>,
+    <span class="at-str">'-c:v'</span>, <span class="at-str">'copy'</span>,       <span class="at-cmt"># no re-encode — keeps full quality</span>
+    <span class="at-str">'-c:a'</span>, <span class="at-str">'copy'</span>,
+    <span class="at-str">'-movflags'</span>, <span class="at-str">'+faststart'</span>,  <span class="at-cmt"># moov atom at front → instant seek</span>
+    <span class="at-str">'-progress'</span>, <span class="at-str">'pipe:1'</span>,      <span class="at-cmt"># real-time progress → loading bar</span>
+    out_path,
+]</pre>
+    </div>
   </section>
 
-</div><!-- #at-root -->
+</div>
 
 <script>
 (function () {
   'use strict';
 
-  // ── Source chain ─────────────────────────────────────────────────────────
-  // Invidious instances are tried directly (Crystal app ships CORS: * by default).
-  // Piped instances are wrapped in a CORS proxy because their Java backend
-  // often omits Access-Control-Allow-Origin on self-hosted deployments.
   const CORS_PROXY = 'https://api.allorigins.win/raw?url=';
-
   const SOURCES = [
-    // Unified local backend — run `python3 api/main.py` from the repo root
     { kind: 'local', host: 'localhost:5000' },
-    // Invidious — direct fetch (Crystal app serves CORS: * by default)
-    { kind: 'inv', host: 'invidious.nerdvpn.de'       },
-    { kind: 'inv', host: 'inv.tux.pizza'              },
-    { kind: 'inv', host: 'yewtu.be'                   },
-    { kind: 'inv', host: 'invidious.perennialte.ch'   },
-    // Piped — via CORS proxy fallback
-    { kind: 'piped', host: 'pipedapi.kavin.rocks',              proxy: true },
-    { kind: 'piped', host: 'pipedapi.in.projectsegfau.lt',      proxy: true },
-    { kind: 'piped', host: 'pipedapi.moomoo.me',                proxy: true },
+    { kind: 'inv',   host: 'invidious.nerdvpn.de'     },
+    { kind: 'inv',   host: 'inv.tux.pizza'            },
+    { kind: 'inv',   host: 'yewtu.be'                 },
+    { kind: 'inv',   host: 'invidious.perennialte.ch' },
+    { kind: 'piped', host: 'pipedapi.kavin.rocks',           proxy: true },
+    { kind: 'piped', host: 'pipedapi.in.projectsegfau.lt',   proxy: true },
+    { kind: 'piped', host: 'pipedapi.moomoo.me',             proxy: true },
   ];
 
-  // ── DOM refs ─────────────────────────────────────────────────────────────
   const $ = id => document.getElementById(id);
   let urlInput, btn, dot, badgeTxt, loadingEl, loadingMsg,
       errorEl, errorMsg, playerEl, video,
@@ -466,43 +647,37 @@ permalink: /apitube/
       fetchBar, fetchInner;
 
   function init() {
-    urlInput      = $('at-url');
-    btn           = $('at-btn');
-    dot           = $('at-dot');
-    badgeTxt      = $('at-badge-txt');
-    loadingEl     = $('at-loading');
-    loadingMsg    = $('at-loading-msg');
-    errorEl       = $('at-error');
-    errorMsg      = $('at-error-msg');
-    playerEl      = $('at-player');
-    video         = $('at-video');
-    titleEl       = $('at-title');
-    viewsEl       = $('at-views');
-    durationEl    = $('at-duration');
-    uploaderEl    = $('at-uploader');
-    qualityEl     = $('at-quality');
-    mimeEl        = $('at-mime');
+    urlInput       = $('at-url');
+    btn            = $('at-btn');
+    dot            = $('at-dot');
+    badgeTxt       = $('at-badge-txt');
+    loadingEl      = $('at-loading');
+    loadingMsg     = $('at-loading-msg');
+    errorEl        = $('at-error');
+    errorMsg       = $('at-error-msg');
+    playerEl       = $('at-player');
+    video          = $('at-video');
+    titleEl        = $('at-title');
+    viewsEl        = $('at-views');
+    durationEl     = $('at-duration');
+    uploaderEl     = $('at-uploader');
+    qualityEl      = $('at-quality');
+    mimeEl         = $('at-mime');
     instanceUsedEl = $('at-instance-used');
-    fetchBar   = $('at-fetch-bar');
-    fetchInner = $('at-fetch-inner');
+    fetchBar       = $('at-fetch-bar');
+    fetchInner     = $('at-fetch-inner');
 
     video.addEventListener('canplay', () => {
-      // User already clicked "Stream It" — that counts as a user gesture,
-      // so play() is allowed without another tap.
       video.play().catch(() => {});
     });
-
     video.addEventListener('canplaythrough', () => {
       fetchInner.style.width = '100%';
       setTimeout(() => fetchBar.classList.remove('on'), 500);
     });
-
     urlInput.addEventListener('keydown', e => { if (e.key === 'Enter') atStream(); });
   }
 
-  // ── Mux progress polling ──────────────────────────────────────────────────
   let _pollTimer = null;
-
   function _pollMuxProgress(videoId) {
     clearTimeout(_pollTimer);
     fetch('http://localhost:5000/api/apitube/progress/' + videoId)
@@ -510,17 +685,16 @@ permalink: /apitube/
       .then(d => {
         const pct = Math.max(2, d.pct || 0);
         fetchInner.style.width = pct + '%';
-        if (!d.done) {
+        if (d.done) {
+          loadingMsg.textContent = 'Finalizing…';
+        } else {
+          loadingMsg.textContent = 'Muxing ' + pct + '%…';
           _pollTimer = setTimeout(() => _pollMuxProgress(videoId), 300);
         }
-        // canplaythrough handler takes it to 100% and hides the bar
       })
-      .catch(() => {
-        // backend not running or public API — just leave bar as-is
-      });
+      .catch(() => {});
   }
 
-  // ── State machine ─────────────────────────────────────────────────────────
   function setState(s) {
     loadingEl.classList.toggle('on', s === 'loading');
     errorEl.classList.toggle('on',   s === 'error');
@@ -535,28 +709,25 @@ permalink: /apitube/
     }
   }
 
-  // ── Video ID extraction ───────────────────────────────────────────────────
   function extractVideoId(url) {
-    // Handles: watch?v=, /embed/, /shorts/, youtu.be/, /live/
     const m = url.match(
       /(?:[?&]v=|\/embed\/|\/shorts\/|\/live\/|youtu\.be\/)([a-zA-Z0-9_-]{11})/
     );
     return m ? m[1] : null;
   }
 
-  // ── Response normalizers ─────────────────────────────────────────────────
   function normalizeInvidious(raw, host) {
     const streams = (raw.formatStreams || []).map(s => ({
       url:       s.url,
       quality:   s.qualityLabel || s.quality || '?',
-      mimeType:  (s.type  || 'video/mp4').split(';')[0].trim(),
+      mimeType:  (s.type || 'video/mp4').split(';')[0].trim(),
       videoOnly: false,
     }));
     return {
-      title:        raw.title       || 'Untitled',
-      views:        raw.viewCount   || 0,
+      title:        raw.title || 'Untitled',
+      views:        raw.viewCount || 0,
       duration:     raw.lengthSeconds || 0,
-      uploader:     raw.author      || 'Unknown',
+      uploader:     raw.author || 'Unknown',
       thumbnailUrl: (raw.videoThumbnails || [])[0]?.url || '',
       videoStreams:  streams,
       _source:      host,
@@ -564,8 +735,8 @@ permalink: /apitube/
   }
 
   function normalizePiped(raw, host) {
-    if (raw.error) throw new Error('API error: ' + raw.error);
-    if (!Array.isArray(raw.videoStreams)) throw new Error('Unexpected response shape');
+    if (raw.error) throw new Error(raw.error);
+    if (!Array.isArray(raw.videoStreams)) throw new Error('Unexpected response');
     return {
       title:        raw.title    || 'Untitled',
       views:        raw.views    || 0,
@@ -577,15 +748,12 @@ permalink: /apitube/
     };
   }
 
-  // ── Fetch with dual-API fallback chain ───────────────────────────────────
   async function fetchStreamData(videoId) {
     const failures = [];
-
     for (const src of SOURCES) {
-      const label = src.host + (src.proxy ? ' (proxy)' : '');
-      loadingMsg.textContent = 'Trying ' + label + '...';
-      badgeTxt.textContent   = 'trying ' + label;
-
+      const label = src.host;
+      loadingMsg.textContent = 'Connecting to ' + label + '…';
+      badgeTxt.textContent   = 'Trying ' + label;
       try {
         let url;
         if (src.kind === 'local') {
@@ -598,7 +766,6 @@ permalink: /apitube/
         }
         if (src.proxy) url = CORS_PROXY + encodeURIComponent(url);
 
-        // Local backend: short timeout so a non-running server fails fast
         const timeout = src.kind === 'local' ? 2000 : 9000;
         const res = await fetch(url, { signal: AbortSignal.timeout(timeout) });
         if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -606,63 +773,54 @@ permalink: /apitube/
 
         const data = src.kind === 'inv' ? normalizeInvidious(raw, src.host)
                                         : normalizePiped(raw, src.host);
-        data._sourceKind = src.kind;   // 'local' | 'inv' | 'piped'
-        const kindLabel = { local: 'local yt-dlp', inv: 'invidious', piped: 'piped' }[src.kind];
-        badgeTxt.textContent       = 'connected · ' + src.host;
-        instanceUsedEl.textContent = kindLabel + ': ' + src.host;
+        data._sourceKind = src.kind;
+        const kindLabel = { local: 'Local engine', inv: 'Invidious', piped: 'Piped' }[src.kind];
+        badgeTxt.textContent       = 'Connected · ' + src.host;
+        instanceUsedEl.textContent = kindLabel;
         return data;
       } catch (err) {
-        failures.push(label + ' → ' + err.message);
+        failures.push(label + ': ' + err.message);
       }
     }
-
     throw new Error(
-      'All sources failed. Try a different video, or check the browser console.\n\n' +
-      failures.join('\n')
+      'All sources failed.\n\n' + failures.join('\n')
     );
   }
 
-  // ── Select the best stream ───────────────────────────────────────────────
   function selectBestStream(streams) {
     if (!streams || !streams.length) return null;
-    const video = streams.filter(s => s.mimeType?.startsWith('video'));
-    if (!video.length) return null;
-    // Prefer combined (videoOnly:false) for public API paths.
-    // Local backend returns videoOnly:true for DASH but the proxy muxes it —
-    // so we fall through to include those too.
-    const combined = video.filter(s => !s.videoOnly);
-    const pool = combined.length ? combined : video;
+    const vids = streams.filter(s => s.mimeType?.startsWith('video'));
+    if (!vids.length) return null;
+    const combined = vids.filter(s => !s.videoOnly);
+    const pool = combined.length ? combined : vids;
     return pool.sort((a, b) => (parseInt(b.quality) || 0) - (parseInt(a.quality) || 0))[0];
   }
 
-  // ── Formatters ───────────────────────────────────────────────────────────
   function fmtDuration(secs) {
     const h = Math.floor(secs / 3600);
     const m = Math.floor((secs % 3600) / 60);
     const s = secs % 60;
-    if (h > 0) return h + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
-    return m + ':' + String(s).padStart(2, '0');
+    if (h > 0) return h + ':' + String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+    return m + ':' + String(s).padStart(2,'0');
   }
-
   function fmtViews(n) {
-    if (n >= 1e9) return (n / 1e9).toFixed(1) + 'B views';
-    if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M views';
-    if (n >= 1e3) return (n / 1e3).toFixed(1) + 'K views';
+    if (n >= 1e9) return (n/1e9).toFixed(1) + 'B views';
+    if (n >= 1e6) return (n/1e6).toFixed(1) + 'M views';
+    if (n >= 1e3) return (n/1e3).toFixed(1) + 'K views';
     return n + ' views';
   }
 
-  // ── Main action ──────────────────────────────────────────────────────────
   window.atStream = async function () {
     const raw = urlInput.value.trim();
     if (!raw) { urlInput.focus(); return; }
 
     setState('loading');
-    loadingMsg.textContent = 'Parsing URL...';
+    loadingMsg.textContent = 'Parsing URL…';
 
     const videoId = extractVideoId(raw);
     if (!videoId) {
       errorMsg.textContent =
-        'Could not find an 11-character Video ID in this URL.\n\n' +
+        'Could not find a Video ID in this URL.\n\n' +
         'Supported formats:\n' +
         '  youtube.com/watch?v=VIDEO_ID\n' +
         '  youtu.be/VIDEO_ID\n' +
@@ -678,27 +836,16 @@ permalink: /apitube/
 
       if (!stream) {
         errorMsg.textContent =
-          'No combined (audio+video) stream found for this video.\n\n' +
-          'Possible reasons:\n' +
-          '  • Age-restricted or sign-in-required video\n' +
-          '  • Private or deleted video\n' +
-          '  • Active live stream (no progressive formats)\n' +
-          '  • Region-locked content\n\n' +
-          'Higher-resolution streams (1080p+) are DASH-only and require\n' +
-          'a separate media source player to mux audio + video tracks.';
+          'No playable stream found for this video.\n\n' +
+          'This can happen with age-restricted, private, or region-locked videos.';
         setState('error');
         return;
       }
 
-      // Start progress bar — polls /api/apitube/progress/:id for real mux %
       fetchInner.style.width = '2%';
       fetchBar.classList.add('on');
       _pollMuxProgress(videoId);
 
-      // No crossOrigin needed — AI upscaler is gone, so we never need to
-      // read pixels back from the canvas. Remove it unconditionally so the
-      // browser loads the video as a normal media resource without CORS
-      // preflight validation on every Range (seek) request.
       video.removeAttribute('crossorigin');
       if (data._sourceKind === 'local') {
         video.src = 'http://localhost:5000/api/apitube/stream/' + videoId;
@@ -707,13 +854,12 @@ permalink: /apitube/
       }
       video.poster = data.thumbnailUrl || '';
 
-      // Populate metadata
       titleEl.textContent    = data.title    || 'Untitled';
       viewsEl.textContent    = fmtViews(data.views || 0);
       durationEl.textContent = fmtDuration(data.duration || 0);
       uploaderEl.textContent = data.uploader || 'Unknown';
-      qualityEl.textContent  = 'quality: ' + (stream.quality || '?');
-      mimeEl.textContent     = 'mime: '    + (stream.mimeType || 'video/mp4').split(';')[0];
+      qualityEl.textContent  = stream.quality || '?';
+      mimeEl.textContent     = (stream.mimeType || 'video/mp4').split(';')[0].replace('video/','').toUpperCase();
 
       setState('playing');
     } catch (err) {
@@ -722,7 +868,6 @@ permalink: /apitube/
     }
   };
 
-  // ── Boot ─────────────────────────────────────────────────────────────────
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
   } else {
