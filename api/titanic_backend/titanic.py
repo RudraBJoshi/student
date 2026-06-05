@@ -5,6 +5,9 @@ from sklearn.preprocessing import OneHotEncoder
 import pandas as pd
 import numpy as np
 import seaborn as sns
+from flask import Blueprint, jsonify, request
+
+titanic_bp = Blueprint('titanic', __name__)
 
 
 class TitanicModel:
@@ -97,6 +100,28 @@ class TitanicModel:
 def initTitanic():
     """Pre-load the Titanic model into memory."""
     TitanicModel.get_instance()
+
+
+@titanic_bp.post('/predict')
+def predict():
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'JSON body required'}), 400
+    try:
+        model = TitanicModel.get_instance()
+        result = model.predict(data)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@titanic_bp.get('/weights')
+def weights():
+    try:
+        model = TitanicModel.get_instance()
+        return jsonify(model.feature_weights())
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 if __name__ == '__main__':

@@ -1,4 +1,13 @@
-from flask import Flask, request, jsonify
+import os
+import sys
+
+# Ensure this directory is on sys.path so sibling imports resolve
+# whether digit_api is run standalone or imported from main.py
+_HERE = os.path.dirname(os.path.abspath(__file__))
+if _HERE not in sys.path:
+    sys.path.insert(0, _HERE)
+
+from flask import Blueprint, Flask, request, jsonify
 from flask_cors import CORS
 import numpy as np
 from PIL import Image
@@ -11,21 +20,20 @@ from preprocessing import preprocess_digit
 from inference import predict_with_tta
 from visualization import extract_layer_activations
 
-app = Flask(__name__)
-CORS(app)
+digit_bp = Blueprint('digit', __name__)
 
-# Load models at startup
-MODEL_PATH = 'best_model.keras'
-print("Loading model...")
+# Load models at startup — path is relative to this file, not CWD
+MODEL_PATH = os.path.join(_HERE, 'best_model.keras')
+print("Loading digit model...")
 model = load_primary(MODEL_PATH)
-print("Model loaded!")
+print("Digit model loaded!")
 
 ensemble_models = load_ensemble(count=5)
 if ensemble_models:
     print(f"Loaded {len(ensemble_models)} ensemble models")
 
 
-@app.route('/api/health', methods=['GET'])
+@digit_bp.route('/health', methods=['GET'])
 def health():
     return jsonify({
         'status': 'ok',
@@ -35,7 +43,7 @@ def health():
     })
 
 
-@app.route('/api/predict', methods=['POST'])
+@digit_bp.route('/predict', methods=['POST'])
 def predict():
     try:
         data = request.get_json()
@@ -120,7 +128,7 @@ def predict():
         return jsonify({'error': str(e)}), 500
 
 
-@app.route('/api/visualize', methods=['POST'])
+@digit_bp.route('/visualize', methods=['POST'])
 def visualize():
     """Get CNN layer activations for educational visualization."""
     try:
@@ -176,4 +184,7 @@ def visualize():
 
 
 if __name__ == '__main__':
+    app = Flask(__name__)
+    CORS(app)
+    app.register_blueprint(digit_bp, url_prefix='/api/digit')
     app.run(host='0.0.0.0', port=5000, debug=True)
