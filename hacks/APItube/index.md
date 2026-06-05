@@ -1,6 +1,6 @@
 ---
 layout: base
-title: APItube — YouTube Stream Engine
+title: APItube
 permalink: /apitube/
 ---
 
@@ -8,7 +8,6 @@ permalink: /apitube/
 #at-root {
   --c-bg:     #08080f;
   --c-surf:   #0d0d1c;
-  --c-surf2:  #111125;
   --c-border: #1c1c32;
   --c-cyan:   #00d4ff;
   --c-purple: #7b2fff;
@@ -17,8 +16,8 @@ permalink: /apitube/
   --c-muted:  #44445a;
   --c-error:  #ff4466;
   --c-ok:     #00e5a0;
-  --r:        14px;
   --mono: 'SF Mono','Fira Code','Cascadia Code',ui-monospace,monospace;
+  --r:   14px;
 
   background: var(--c-bg);
   color: var(--c-text);
@@ -249,152 +248,6 @@ permalink: /apitube/
   opacity: .7;
 }
 
-/* ── How it works ───────────────────────────────────────────────────────────── */
-.at-howit {
-  margin-top: 3.5rem;
-  border-top: 1px solid var(--c-border);
-  padding-top: 2.5rem;
-}
-.at-section-head {
-  font-size: 1.2rem;
-  font-weight: 700;
-  color: var(--c-text);
-  margin: 0 0 .4rem;
-}
-.at-section-sub {
-  font-size: .84rem;
-  color: var(--c-sub);
-  margin: 0 0 2rem;
-}
-
-/* Pipeline */
-.at-pipeline {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: .3rem;
-  margin-bottom: 2.5rem;
-  padding: 1.25rem 1.5rem;
-  background: var(--c-surf);
-  border: 1px solid var(--c-border);
-  border-radius: var(--r);
-  overflow-x: auto;
-}
-.at-pipe-step {
-  display: flex;
-  flex-direction: column;
-  gap: .2rem;
-}
-.at-pipe-num {
-  font-size: .58rem;
-  font-family: var(--mono);
-  color: var(--c-cyan);
-  opacity: .6;
-  letter-spacing: .1em;
-  text-transform: uppercase;
-}
-.at-pipe-name {
-  font-size: .78rem;
-  font-weight: 600;
-  color: var(--c-text);
-}
-.at-pipe-detail {
-  font-size: .65rem;
-  font-family: var(--mono);
-  color: var(--c-muted);
-}
-.at-pipe-arrow {
-  color: var(--c-purple);
-  font-size: .9rem;
-  padding: 0 .2rem;
-  flex-shrink: 0;
-  opacity: .6;
-  margin-bottom: .2rem;
-}
-
-/* Tech grid */
-.at-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(190px,1fr));
-  gap: .75rem;
-  margin-bottom: 2rem;
-}
-.at-tcard {
-  background: var(--c-surf);
-  border: 1px solid var(--c-border);
-  border-radius: 10px;
-  padding: 1rem 1.15rem;
-  transition: border-color .2s, background .2s;
-}
-.at-tcard:hover {
-  border-color: rgba(0,212,255,.2);
-  background: var(--c-surf2);
-}
-.at-tcard-icon {
-  font-size: 1.1rem;
-  margin-bottom: .5rem;
-  display: block;
-}
-.at-tcard h3 {
-  font-size: .8rem;
-  font-weight: 700;
-  color: var(--c-text);
-  margin: 0 0 .4rem;
-}
-.at-tcard p {
-  font-size: .75rem;
-  color: var(--c-sub);
-  margin: 0;
-  line-height: 1.65;
-}
-.at-tcard code {
-  color: var(--c-cyan);
-  background: var(--c-bg);
-  padding: .05rem .3rem;
-  border-radius: 4px;
-  font-family: var(--mono);
-  font-size: .68rem;
-}
-
-/* Code block */
-.at-codeblock {
-  background: var(--c-surf);
-  border: 1px solid var(--c-border);
-  border-radius: var(--r);
-  overflow: hidden;
-}
-.at-codeblock-header {
-  display: flex;
-  align-items: center;
-  gap: .5rem;
-  padding: .65rem 1.1rem;
-  border-bottom: 1px solid var(--c-border);
-  background: var(--c-bg);
-}
-.at-cb-dot { width:10px;height:10px;border-radius:50%; }
-.at-cb-dot:nth-child(1){background:#ff5f57;}
-.at-cb-dot:nth-child(2){background:#febc2e;}
-.at-cb-dot:nth-child(3){background:#28c840;}
-.at-cb-filename {
-  margin-left:.35rem;
-  font-size: .7rem;
-  font-family: var(--mono);
-  color: var(--c-sub);
-}
-.at-codeblock pre {
-  margin: 0;
-  padding: 1.1rem 1.25rem;
-  overflow-x: auto;
-  font-size: .72rem;
-  font-family: var(--mono);
-  line-height: 1.8;
-  white-space: pre;
-}
-.at-kw  { color: #7b2fff; }
-.at-fn  { color: #00d4ff; }
-.at-str { color: #00e5a0; }
-.at-cmt { color: #33334a; }
-.at-num { color: #ff9d5c; }
 
 @media (max-width:580px) {
   .at-input-row { flex-direction:column; }
@@ -444,7 +297,7 @@ permalink: /apitube/
     </svg>
     <div class="at-hero-text">
       <h1 class="at-wordmark">APItube</h1>
-      <p class="at-sub">Stream any YouTube video up to 1080p — no sign-in, no ads, full seeking.</p>
+      <p class="at-sub">Watch YouTube. No ads, no sign-in.</p>
     </div>
   </header>
 
@@ -514,112 +367,6 @@ permalink: /apitube/
     </div>
   </div>
 
-  <!-- How it works -->
-  <section class="at-howit">
-    <p class="at-section-head">How it works</p>
-    <p class="at-section-sub">A self-hosted pipeline that extracts, muxes, and serves YouTube streams directly to your browser.</p>
-
-    <div class="at-pipeline">
-      <div class="at-pipe-step">
-        <span class="at-pipe-num">01</span>
-        <span class="at-pipe-name">URL</span>
-        <span class="at-pipe-detail">Video ID</span>
-      </div>
-      <span class="at-pipe-arrow">→</span>
-      <div class="at-pipe-step">
-        <span class="at-pipe-num">02</span>
-        <span class="at-pipe-name">yt-dlp</span>
-        <span class="at-pipe-detail">Format list</span>
-      </div>
-      <span class="at-pipe-arrow">→</span>
-      <div class="at-pipe-step">
-        <span class="at-pipe-num">03</span>
-        <span class="at-pipe-name">1080p DASH</span>
-        <span class="at-pipe-detail">h264 + m4a</span>
-      </div>
-      <span class="at-pipe-arrow">→</span>
-      <div class="at-pipe-step">
-        <span class="at-pipe-num">04</span>
-        <span class="at-pipe-name">ffmpeg mux</span>
-        <span class="at-pipe-detail">stream copy</span>
-      </div>
-      <span class="at-pipe-arrow">→</span>
-      <div class="at-pipe-step">
-        <span class="at-pipe-num">05</span>
-        <span class="at-pipe-name">faststart MP4</span>
-        <span class="at-pipe-detail">moov → front</span>
-      </div>
-      <span class="at-pipe-arrow">→</span>
-      <div class="at-pipe-step">
-        <span class="at-pipe-num">06</span>
-        <span class="at-pipe-name">Browser</span>
-        <span class="at-pipe-detail">Range / seek</span>
-      </div>
-    </div>
-
-    <div class="at-grid">
-      <div class="at-tcard">
-        <span class="at-tcard-icon">⚙️</span>
-        <h3>yt-dlp Extraction</h3>
-        <p>
-          <code>yt-dlp</code> pulls the full format manifest for any video — including
-          DASH-only tracks that the official embed player hides. The backend selects
-          the best <code>h264/mp4</code> video track paired with <code>m4a/aac</code> audio.
-        </p>
-      </div>
-      <div class="at-tcard">
-        <span class="at-tcard-icon">🎬</span>
-        <h3>Zero-transcode Muxing</h3>
-        <p>
-          ffmpeg combines the two tracks with <code>-c:v copy -c:a copy</code> — no
-          re-encoding, so a 20-minute video muxes in under 3 minutes. The
-          <code>+faststart</code> flag moves the seek index to the front of the file.
-        </p>
-      </div>
-      <div class="at-tcard">
-        <span class="at-tcard-icon">⏩</span>
-        <h3>Full Seeking</h3>
-        <p>
-          Flask serves the cached MP4 with <code>conditional=True</code>, which
-          automatically handles HTTP Range requests — so the browser can seek
-          to any timestamp without re-downloading the file.
-        </p>
-      </div>
-      <div class="at-tcard">
-        <span class="at-tcard-icon">🔄</span>
-        <h3>Smart Fallback</h3>
-        <p>
-          If the local engine isn't running, the player tries public Invidious
-          and Piped instances in sequence. Each source gets a timeout before
-          the next is attempted. The status badge shows which source responded.
-        </p>
-      </div>
-    </div>
-
-    <div class="at-codeblock">
-      <div class="at-codeblock-header">
-        <div class="at-cb-dot"></div>
-        <div class="at-cb-dot"></div>
-        <div class="at-cb-dot"></div>
-        <span class="at-cb-filename">api/APItube/engine.py — mux pipeline</span>
-      </div>
-      <pre><span class="at-cmt"># yt-dlp selects: best h264/mp4 video-only + best m4a audio-only</span>
-<span class="at-cmt"># ffmpeg muxes both into one seekable MP4 — no transcode, just stream copy</span>
-
-cmd = [
-    <span class="at-str">'ffmpeg'</span>, <span class="at-str">'-y'</span>,
-    <span class="at-str">'-i'</span>,   video_url,      <span class="at-cmt"># 1080p h264, video-only DASH track</span>
-    <span class="at-str">'-i'</span>,   audio_url,      <span class="at-cmt"># m4a/aac, audio-only DASH track</span>
-    <span class="at-str">'-map'</span>, <span class="at-str">'0:v:0'</span>,
-    <span class="at-str">'-map'</span>, <span class="at-str">'1:a:0'</span>,
-    <span class="at-str">'-c:v'</span>, <span class="at-str">'copy'</span>,       <span class="at-cmt"># no re-encode — keeps full quality</span>
-    <span class="at-str">'-c:a'</span>, <span class="at-str">'copy'</span>,
-    <span class="at-str">'-movflags'</span>, <span class="at-str">'+faststart'</span>,  <span class="at-cmt"># moov atom at front → instant seek</span>
-    <span class="at-str">'-progress'</span>, <span class="at-str">'pipe:1'</span>,      <span class="at-cmt"># real-time progress → loading bar</span>
-    out_path,
-]</pre>
-    </div>
-  </section>
 
 </div>
 
