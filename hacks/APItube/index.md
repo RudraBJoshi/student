@@ -125,10 +125,23 @@ permalink: /apitube/
 }
 .at-video-wrap video {
   width:100%; height:100%; display:block; object-fit:contain;
-  /* GPU compositor layer — enables hardware-accelerated bilinear upscaling */
   will-change: transform;
   transform: translateZ(0);
-  backface-visibility: hidden;
+}
+
+/* ── Fetch / mux progress bar ────────────────────────────────────────────── */
+.at-fetch-bar {
+  position:absolute; bottom:0; left:0; right:0;
+  height:3px; background:rgba(255,255,255,.06);
+  display:none; z-index:10;
+}
+.at-fetch-bar.on { display:block; }
+.at-fetch-inner {
+  height:100%;
+  background:linear-gradient(90deg,var(--c-cyan),var(--c-purple));
+  border-radius:0 2px 2px 0;
+  width:0%;
+  transition:width .35s ease;
 }
 
 .at-meta {
@@ -151,36 +164,6 @@ permalink: /apitube/
   border-top:1px solid var(--c-border); margin-top:.8rem; padding-top:.8rem;
 }
 
-/* ── AI upscaler overlay ─────────────────────────────────────────────────── */
-.at-upscale-canvas {
-  position:absolute; inset:0;
-  width:100%; height:100%;
-  display:none; background:#000;
-}
-.at-upscale-canvas.on { display:block; }
-
-.at-ai-bar {
-  display:none; align-items:center; gap:.7rem;
-  padding:.55rem 1rem;
-  background:var(--c-surf); border:1px solid var(--c-border);
-  border-radius:8px; margin-bottom:.75rem;
-}
-.at-ai-bar.on { display:flex; }
-
-.at-ai-btn {
-  background:linear-gradient(135deg,#00d4ff 0%,#7b2fff 100%);
-  border:none; border-radius:6px; padding:.38rem .85rem;
-  color:#fff; font-family:var(--font-mono); font-size:.7rem;
-  font-weight:700; letter-spacing:.05em; cursor:pointer;
-  transition:opacity .18s; white-space:nowrap;
-}
-.at-ai-btn:hover { opacity:.85; }
-.at-ai-btn.active { background:linear-gradient(135deg,#7b2fff 0%,#00d4ff 100%); }
-
-.at-ai-label { font-family:var(--font-mono); font-size:.66rem; color:var(--c-muted); flex:1; }
-.at-ai-fps   { font-family:var(--font-mono); font-size:.68rem; color:var(--c-ok); font-weight:600; }
-.at-ai-warn  { font-family:var(--font-mono); font-size:.64rem; color:var(--c-error); display:none; }
-.at-ai-warn.on { display:inline; }
 
 /* ── how it works ────────────────────────────────────────────────────────── */
 .at-howit {
@@ -318,14 +301,10 @@ permalink: /apitube/
   <!-- ── Player ────────────────────────────────────────────────────────────── -->
   <div class="at-player" id="at-player">
     <div class="at-video-wrap">
-      <video id="at-video" controls playsinline preload="metadata"></video>
-      <canvas id="at-upscale-canvas" class="at-upscale-canvas"></canvas>
-    </div>
-    <div class="at-ai-bar" id="at-ai-bar">
-      <button class="at-ai-btn" id="at-ai-btn" onclick="toggleUpscale()">✦ AI Enhance</button>
-      <span class="at-ai-label">2× upscale + conv sharpening · TF.js WebGL</span>
-      <span class="at-ai-fps" id="at-ai-fps"></span>
-      <span class="at-ai-warn" id="at-ai-warn"></span>
+      <video id="at-video" controls playsinline preload="auto"></video>
+      <div class="at-fetch-bar" id="at-fetch-bar">
+        <div class="at-fetch-inner" id="at-fetch-inner"></div>
+      </div>
     </div>
     <div class="at-meta">
       <h2 class="at-meta-title" id="at-title"></h2>
@@ -454,7 +433,6 @@ permalink: /apitube/
 
 </div><!-- #at-root -->
 
-<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.21.0/dist/tf.min.js"></script>
 <script>
 (function () {
   'use strict';
@@ -485,7 +463,7 @@ permalink: /apitube/
       errorEl, errorMsg, playerEl, video,
       titleEl, viewsEl, durationEl, uploaderEl,
       qualityEl, mimeEl, instanceUsedEl,
-      upscaleCanvas, aiBar, aiBtn, aiFps, aiWarn;
+      fetchBar, fetchInner;
 
   function init() {
     urlInput      = $('at-url');
@@ -505,13 +483,41 @@ permalink: /apitube/
     qualityEl     = $('at-quality');
     mimeEl        = $('at-mime');
     instanceUsedEl = $('at-instance-used');
-    upscaleCanvas  = $('at-upscale-canvas');
-    aiBar          = $('at-ai-bar');
-    aiBtn          = $('at-ai-btn');
-    aiFps          = $('at-ai-fps');
-    aiWarn         = $('at-ai-warn');
+    fetchBar   = $('at-fetch-bar');
+    fetchInner = $('at-fetch-inner');
+
+    video.addEventListener('canplay', () => {
+      // User already clicked "Stream It" — that counts as a user gesture,
+      // so play() is allowed without another tap.
+      video.play().catch(() => {});
+    });
+
+    video.addEventListener('canplaythrough', () => {
+      fetchInner.style.width = '100%';
+      setTimeout(() => fetchBar.classList.remove('on'), 500);
+    });
 
     urlInput.addEventListener('keydown', e => { if (e.key === 'Enter') atStream(); });
+  }
+
+  // ── Mux progress polling ──────────────────────────────────────────────────
+  let _pollTimer = null;
+
+  function _pollMuxProgress(videoId) {
+    clearTimeout(_pollTimer);
+    fetch('http://localhost:5000/api/apitube/progress/' + videoId)
+      .then(r => r.json())
+      .then(d => {
+        const pct = Math.max(2, d.pct || 0);
+        fetchInner.style.width = pct + '%';
+        if (!d.done) {
+          _pollTimer = setTimeout(() => _pollMuxProgress(videoId), 300);
+        }
+        // canplaythrough handler takes it to 100% and hides the bar
+      })
+      .catch(() => {
+        // backend not running or public API — just leave bar as-is
+      });
   }
 
   // ── State machine ─────────────────────────────────────────────────────────
@@ -522,108 +528,11 @@ permalink: /apitube/
     btn.disabled = s === 'loading';
     dot.className = 'at-dot' +
       (s === 'loading' ? ' spin' : s === 'playing' ? ' ok' : s === 'error' ? ' err' : '');
-    if (s === 'playing') {
-      aiBar.classList.add('on');
-    } else {
-      aiBar.classList.remove('on');
-      stopUpscale();
+    if (s !== 'playing') {
+      clearTimeout(_pollTimer);
+      fetchBar.classList.remove('on');
+      fetchInner.style.width = '0%';
     }
-  }
-
-  // ── AI Upscaler ───────────────────────────────────────────────────────────
-  let upscaling = false;
-  let upscaleProcessing = false;
-  let fpsReadings = [];
-  let sharpenKernel = null;
-  let tfReady = false;
-
-  async function warmTF() {
-    if (tfReady) return true;
-    if (typeof tf === 'undefined') return false;
-    await tf.ready();
-    // Unsharp-mask kernel: center=2, cross=-0.25, sum=1
-    // Shape for depthwiseConv2d: [kH, kW, inChannels, channelMultiplier]
-    const k = [0, -0.25, 0, -0.25, 2, -0.25, 0, -0.25, 0];
-    const flat = [];
-    for (let h = 0; h < 3; h++)
-      for (let w = 0; w < 3; w++)
-        for (let c = 0; c < 3; c++)   // same kernel per channel
-          flat.push(k[h * 3 + w]);
-    sharpenKernel = tf.tensor4d(flat, [3, 3, 3, 1]);
-    tfReady = true;
-    return true;
-  }
-
-  window.toggleUpscale = async function () {
-    upscaling ? stopUpscale() : await startUpscale();
-  };
-
-  async function startUpscale() {
-    const ok = await warmTF();
-    if (!ok) {
-      aiWarn.textContent = 'TF.js not loaded — check your connection';
-      aiWarn.classList.add('on');
-      return;
-    }
-    // Size output canvas at 2× native video resolution
-    upscaleCanvas.width  = (video.videoWidth  || 640) * 2;
-    upscaleCanvas.height = (video.videoHeight || 360) * 2;
-    upscaling = true;
-    aiBtn.classList.add('active');
-    aiBtn.textContent = '✦ Stop Upscale';
-    upscaleCanvas.classList.add('on');
-    runUpscaleLoop();
-  }
-
-  function stopUpscale() {
-    upscaling = false;
-    if (aiBtn) { aiBtn.classList.remove('active'); aiBtn.textContent = '✦ AI Enhance'; }
-    if (upscaleCanvas) upscaleCanvas.classList.remove('on');
-    if (aiFps) aiFps.textContent = '';
-    fpsReadings = [];
-  }
-
-  async function runUpscaleLoop() {
-    if (!upscaling) return;
-    if (video.paused || video.ended || video.readyState < 2 || upscaleProcessing) {
-      requestAnimationFrame(runUpscaleLoop);
-      return;
-    }
-    upscaleProcessing = true;
-    const t0 = performance.now();
-    try {
-      const result = tf.tidy(() => {
-        const px   = tf.browser.fromPixels(video);          // [H, W, 3]
-        const norm = px.toFloat().div(255);
-        const bat  = norm.expandDims(0);                    // [1, H, W, 3]
-        const H = video.videoHeight, W = video.videoWidth;
-        const up   = tf.image.resizeBilinear(bat, [H * 2, W * 2]); // [1, 2H, 2W, 3]
-        const sh   = tf.depthwiseConv2d(up, sharpenKernel, 1, 'same');
-        // 70% sharpened + 30% bilinear — avoids over-sharpening artefacts
-        return tf.add(tf.mul(sh, 0.7), tf.mul(up, 0.3)).clipByValue(0, 1).squeeze();
-      });
-      await tf.browser.toPixels(result, upscaleCanvas);
-      result.dispose();
-      fpsReadings.push(1000 / (performance.now() - t0));
-      if (fpsReadings.length > 8) fpsReadings.shift();
-      const fps = fpsReadings.reduce((a, b) => a + b, 0) / fpsReadings.length;
-      aiFps.textContent = fps.toFixed(1) + ' fps';
-    } catch (e) {
-      const msg = e.message || '';
-      if (msg.includes('tainted') || msg.includes('cross-origin') || msg.includes('CORS')) {
-        aiWarn.textContent = 'Canvas read blocked by CDN CORS policy';
-        aiWarn.classList.add('on');
-      } else {
-        aiWarn.textContent = 'TF error: ' + msg.slice(0, 60);
-        aiWarn.classList.add('on');
-        console.error('[APItube upscaler]', e);
-      }
-      stopUpscale();
-      upscaleProcessing = false;
-      return;
-    }
-    upscaleProcessing = false;
-    requestAnimationFrame(runUpscaleLoop);
   }
 
   // ── Video ID extraction ───────────────────────────────────────────────────
@@ -713,16 +622,17 @@ permalink: /apitube/
     );
   }
 
-  // ── Select the best combined (audio+video) stream ─────────────────────────
+  // ── Select the best stream ───────────────────────────────────────────────
   function selectBestStream(streams) {
-    const combined = streams.filter(
-      s => !s.videoOnly && typeof s.mimeType === 'string' && s.mimeType.startsWith('video')
-    );
-    if (!combined.length) return null;
-    // Sort by quality number descending (e.g. "720p" → 720, "1080p60" → 1080)
-    return combined.sort(
-      (a, b) => (parseInt(b.quality) || 0) - (parseInt(a.quality) || 0)
-    )[0];
+    if (!streams || !streams.length) return null;
+    const video = streams.filter(s => s.mimeType?.startsWith('video'));
+    if (!video.length) return null;
+    // Prefer combined (videoOnly:false) for public API paths.
+    // Local backend returns videoOnly:true for DASH but the proxy muxes it —
+    // so we fall through to include those too.
+    const combined = video.filter(s => !s.videoOnly);
+    const pool = combined.length ? combined : video;
+    return pool.sort((a, b) => (parseInt(b.quality) || 0) - (parseInt(a.quality) || 0))[0];
   }
 
   // ── Formatters ───────────────────────────────────────────────────────────
@@ -780,19 +690,22 @@ permalink: /apitube/
         return;
       }
 
-      // Local proxy: set crossOrigin BEFORE src — our server returns
-      // Access-Control-Allow-Origin: * so the browser allows it and the
-      // canvas stays untainted, enabling TF.js pixel reads.
-      // Direct CDN (public fallback): remove crossOrigin so the video loads
-      // without triggering a CORS preflight that Google's CDN will reject.
+      // Start progress bar — polls /api/apitube/progress/:id for real mux %
+      fetchInner.style.width = '2%';
+      fetchBar.classList.add('on');
+      _pollMuxProgress(videoId);
+
+      // No crossOrigin needed — AI upscaler is gone, so we never need to
+      // read pixels back from the canvas. Remove it unconditionally so the
+      // browser loads the video as a normal media resource without CORS
+      // preflight validation on every Range (seek) request.
+      video.removeAttribute('crossorigin');
       if (data._sourceKind === 'local') {
-        video.crossOrigin = 'anonymous';
         video.src = 'http://localhost:5000/api/apitube/stream/' + videoId;
       } else {
-        video.removeAttribute('crossorigin');
         video.src = stream.url;
       }
-      video.poster = (data._sourceKind === 'local') ? '' : (data.thumbnailUrl || '');
+      video.poster = data.thumbnailUrl || '';
 
       // Populate metadata
       titleEl.textContent    = data.title    || 'Untitled';
