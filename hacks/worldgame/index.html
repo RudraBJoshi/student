@@ -531,6 +531,7 @@ async function autoLoad(){
 }
 
 function applyLoadedData(data){
+  Object.keys(sA).forEach(k=>{sA[k]={red:0,blue:0};});
   if(data.asia)Object.keys(data.asia).forEach(k=>{if(sA[k]!==undefined)sA[k]=data.asia[k];});
   if(data.us)Object.keys(data.us).forEach(k=>{if(sU[k]!==undefined)sU[k]=data.us[k];});
   if(data.players){players.red=data.players.red||[];players.blue=data.players.blue||[];}
@@ -992,7 +993,7 @@ async function doReset(){
   closeModal();refresh();renderPlayers();updSB();setSaveStatus('none');
   if(curTab==='timeline')renderTimeline();
   toast('Game reset.');
-  mpBroadcast();
+  if(socket&&mpRoom)socket.emit('state_update',{room:mpRoom,data:null});
 }
 
 // ── MAP ───────────────────────────────────────────────────────────────────────
@@ -1105,11 +1106,11 @@ function mpConnect(){
   });
   socket.on('state_update',data=>{
     _mpApplying=true;
-    Object.keys(sA).forEach(k=>{sA[k]={red:0,blue:0};});
     if(data){
       applyLoadedData(data);
     } else {
-      // Null = room was reset by host — clear everything
+      // Null = room was reset — clear everything
+      Object.keys(sA).forEach(k=>{sA[k]={red:0,blue:0};});
       players.red=[];players.blue=[];nextPid=1;
       timeline.length=0;nextEid=1;
       totalScore={red:0,blue:0};lastScoredDate='';gameStartDate=null;
