@@ -300,7 +300,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);pad
       <button class="mc-btn on" id="mc-mapv" onclick="switchView('map')">Map</button>
       <button class="mc-btn" id="mc-listv" onclick="switchView('list')">List</button>
       <div class="save-row">
-        <button class="cbtn danger" onclick="confirmReset()"><i class="ti ti-trash"></i>Reset</button>
+        <button class="cbtn danger" id="reset-btn" onclick="confirmReset()" style="display:none;"><i class="ti ti-trash"></i>Reset</button>
         <button class="cbtn" onclick="exportSave()"><i class="ti ti-file-export"></i>Export</button>
         <button class="cbtn save" onclick="importSave()"><i class="ti ti-file-import"></i>Import</button>
       </div>
@@ -496,7 +496,7 @@ function setSaveStatus(state){
 
 async function autoSave(){
   setSaveStatus('saving');
-  const data={v:5,asia:sA,us:sU,players,nextPid,timeline,nextEid,totalScore,lastScoredDate,gameStartDate,tickets,nextTicketId,gameState,nextStartDate,endedAt};
+  const data=getFullState();
   const json=JSON.stringify(data);
   try{
     if(window.storage?.set)await window.storage.set(SAVE_KEY,json);
@@ -1024,7 +1024,7 @@ function buildAsia(topo){
   const mapISOs=new Set();
   ASIA.forEach(r=>r.territories.forEach(t=>{if(t.type==='list-only')return;const isos=Array.isArray(t.iso)?t.iso:[t.iso];isos.forEach(i=>{if(i)mapISOs.add(i);});}));
   const inPlay=all.filter(d=>mapISOs.has(+d.id));
-  const proj=d3.geoMercator().center([105,15]).scale(820).translate([W/2,H/2]);
+  const proj=d3.geoMercator().center([100,15]).scale(400).translate([W/2,H/2]);
   const path=d3.geoPath(proj);
   const svg=d3.select(c).append('svg').attr('viewBox',`0 0 ${W} ${H}`).attr('width','100%');
   svg.append('rect').attr('width',W).attr('height',H).attr('fill','#0d1019');
@@ -1068,9 +1068,12 @@ let socket=null,mpRoom=null,mpIsHost=false,_mpApplying=false;
 let isSuperuser=false;
 const suToken=new URLSearchParams(window.location.search).get('su')||'';
 
+function getFullState(){
+  return {v:5,asia:sA,us:sU,players,nextPid,timeline,nextEid,totalScore,lastScoredDate,gameStartDate,tickets,nextTicketId,gameState,nextStartDate,endedAt};
+}
 function mpBroadcast(){
   if(_mpApplying||!socket||!mpRoom)return;
-  socket.emit('state_update',{room:mpRoom,data:{v:5,asia:sA,us:sU,players,nextPid,timeline,nextEid,totalScore,lastScoredDate,gameStartDate,tickets,nextTicketId,gameState,nextStartDate,endedAt}});
+  socket.emit('state_update',{room:mpRoom,data:getFullState()});
 }
 
 function updateMpUI(status,label){
@@ -1093,6 +1096,7 @@ function mpConnect(){
     isSuperuser=true;
     document.getElementById('su-bar').style.display='flex';
     document.getElementById('tab-admin').style.display='';
+    const rb=document.getElementById('reset-btn');if(rb)rb.style.display='';
   });
   socket.on('admin_rooms',data=>renderAdminRooms(data.rooms));
   socket.on('admin_ok',data=>toast(data.message));
@@ -1103,7 +1107,7 @@ function mpConnect(){
   socket.on('reconnect',()=>{
     if(mpRoom){
       const code=mpRoom,wasHost=mpIsHost;
-      if(wasHost)socket.emit('create_room',{code,data:{v:5,asia:sA,us:sU,players,nextPid,timeline,nextEid,totalScore,lastScoredDate,gameStartDate}});
+      if(wasHost)socket.emit('create_room',{code,data:getFullState()});
       else socket.emit('join_room',{code});
     }
     if(suToken){}// superuser_ok re-fires automatically on reconnect via connect handler
@@ -1146,7 +1150,7 @@ function hostGame(){
   updateMpUI('mp-connecting','Connecting...');
   mpConnect();
   const savedCode=localStorage.getItem('wg-mp-room')||'';
-  const doHost=()=>socket.emit('create_room',{code:savedCode,data:{v:5,asia:sA,us:sU,players,nextPid,timeline,nextEid,totalScore,lastScoredDate,gameStartDate}});
+  const doHost=()=>socket.emit('create_room',{code:savedCode,data:getFullState()});
   if(socket.connected)doHost();else socket.once('connect',doHost);
 }
 
