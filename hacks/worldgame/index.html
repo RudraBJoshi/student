@@ -208,6 +208,16 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);pad
 .ao-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:.5rem;}
 .ao-input{width:100%;padding:7px 9px;border-radius:7px;font-family:'Bebas Neue',sans-serif;font-size:18px;outline:none;}
 .ao-btn{width:100%;padding:8px;border-radius:8px;border:1px solid rgba(245,158,11,0.3);background:rgba(245,158,11,0.08);color:var(--accent);font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;}
+.join-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:1.25rem;margin-bottom:.25rem;}
+.join-card-title{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:2px;margin-bottom:.5rem;}
+.join-card-sub{font-size:12px;color:var(--muted);margin-bottom:.75rem;}
+.join-name-row{display:flex;gap:8px;margin-bottom:.75rem;}
+.join-name-row input{flex:1;padding:9px 11px;border-radius:8px;border:1px solid var(--border);background:rgba(255,255,255,0.04);color:var(--text);font-size:14px;font-family:'DM Sans',sans-serif;outline:none;}
+.join-team-row{display:flex;gap:8px;}
+.join-team-row button{flex:1;padding:10px;border-radius:8px;border:none;font-size:13px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;}
+.join-team-row .jred{background:var(--red);color:#fff;}
+.join-team-row .jblue{background:var(--blue);color:#fff;}
+.my-player-card{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:1rem 1.25rem;}
 .su-bar{text-align:center;font-size:11px;color:var(--accent);margin-bottom:.5rem;display:flex;align-items:center;justify-content:center;gap:6px;}
 .su-dot{width:7px;height:7px;border-radius:50%;background:var(--accent);flex-shrink:0;}
 .admin-room-row{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-radius:10px;margin-bottom:6px;}
@@ -292,6 +302,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);pad
 </div>
 
 <div id="tab-players-content" style="display:none;">
+  <div id="join-section" style="margin-bottom:1rem;"></div>
   <div class="teams-grid">
     <div class="team-panel-full">
       <div class="team-panel-hdr red"><span class="team-hdr-name red">Red Team</span><span class="team-pool">Pool: <span id="red-pool">0</span> coins</span></div>
@@ -690,6 +701,21 @@ function renderGuide(){
 }
 
 // ── PLAYERS ───────────────────────────────────────────────────────────────────
+const MY_PLAYER_KEY='wg-my-player';
+function getMyPlayer(){try{return JSON.parse(localStorage.getItem(MY_PLAYER_KEY));}catch{return null;}}
+function myPlayerExists(){const me=getMyPlayer();if(!me)return false;return players[me.team]?.some(p=>p.id===me.id);}
+function joinAsPlayer(team){
+  const name=(document.getElementById('join-name').value||'').trim();
+  if(!name){toast('Enter your name.');return;}
+  if(players.red.some(p=>p.name.toLowerCase()===name.toLowerCase())||players.blue.some(p=>p.name.toLowerCase()===name.toLowerCase())){toast('That name is already taken.');return;}
+  if(!gameStartDate){gameStartDate=new Date().toISOString();lastScoredDate=getPTDateStr();}
+  const id=nextPid++;
+  players[team].push({id,name,balance:0,admin:false});
+  localStorage.setItem(MY_PLAYER_KEY,JSON.stringify({id,name,team}));
+  renderPlayers();updSB();scheduleSave();
+  toast('Joined '+team+' team as '+name+'!');
+}
+
 function addPlayer(team){
   const inp=document.getElementById(team+'-new-name');
   const name=inp.value.trim();if(!name)return;
@@ -703,7 +729,21 @@ function renderPlayers(){
     const row=document.getElementById(t+'-add-row');
     if(row)row.style.display=isSuperuser?'':'none';
   });
-  document.querySelector('.cbtn.danger') && (document.querySelector('.cbtn.danger').style.display=isSuperuser?'':'none');
+  document.querySelector('.cbtn.danger')&&(document.querySelector('.cbtn.danger').style.display=isSuperuser?'':'none');
+  const js=document.getElementById('join-section');
+  if(js){
+    if(!isSuperuser){
+      if(myPlayerExists()){
+        const me=getMyPlayer();
+        js.innerHTML=`<div class="my-player-card"><div class="player-avatar ${me.team}" style="width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:500;flex-shrink:0;background:rgba(${me.team==='red'?'220,38,38':'37,99,235'},0.15);color:${me.team==='red'?'#fca5a5':'#93c5fd'};border:1px solid ${me.team==='red'?'var(--red-border)':'var(--blue-border)'};">${me.name.charAt(0).toUpperCase()}</div><div><div style="font-size:13px;font-weight:500;">${me.name}</div><div style="font-size:11px;color:var(--muted);">Joined ${me.team} team</div></div></div>`;
+      } else {
+        localStorage.removeItem(MY_PLAYER_KEY);
+        js.innerHTML=`<div class="join-card"><div class="join-card-title">Join the game</div><div class="join-card-sub">Pick your team and enter your name. You can only join once.</div><div class="join-name-row"><input id="join-name" type="text" placeholder="Your name..." maxlength="24" onkeydown="if(event.key==='Enter')document.getElementById('join-name').blur()"/></div><div class="join-team-row"><button class="jred" onclick="joinAsPlayer('red')">Join Red</button><button class="jblue" onclick="joinAsPlayer('blue')">Join Blue</button></div></div>`;
+      }
+    } else {
+      js.innerHTML='';
+    }
+  }
   ['red','blue'].forEach(team=>{
     const el=document.getElementById(team+'-players');
     if(!players[team].length){el.innerHTML='<div style="padding:8px 10px;font-size:12px;color:var(--muted);">No players yet.</div>';return;}
@@ -1017,7 +1057,11 @@ function mpConnect(){
     toast('Joined game '+data.code+'!');
     closeModal();
   });
-  socket.on('room_error',data=>{toast(data.message||'Room error');updateMpUI('mp-error','Error');});
+  socket.on('room_error',data=>{
+    localStorage.removeItem('wg-mp-room');
+    mpRoom=null;mpIsHost=false;
+    updateMpUI('','Offline — single player');
+  });
   socket.on('state_update',data=>{
     _mpApplying=true;
     applyLoadedData(data);checkMissedDays();
