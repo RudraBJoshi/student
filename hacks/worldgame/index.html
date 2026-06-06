@@ -239,6 +239,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);pad
   <button class="tab-btn active" id="tab-map" onclick="showTab('map')">Map</button>
   <button class="tab-btn" id="tab-players" onclick="showTab('players')">Players</button>
   <button class="tab-btn" id="tab-timeline" onclick="showTab('timeline')">Timeline</button>
+  <button class="tab-btn" id="tab-guide" onclick="showTab('guide')">Guide</button>
   <button class="tab-btn" id="tab-admin" onclick="showTab('admin')" style="display:none;color:var(--accent);">Admin</button>
 </div>
 
@@ -324,6 +325,19 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);pad
     <button class="cbtn save" onclick="openScoreSnapshot()" style="padding:7px 12px;font-size:12px;"><i class="ti ti-camera"></i> Snapshot</button>
   </div>
   <div id="timeline-container"></div>
+</div>
+
+<div id="tab-guide-content" style="display:none;">
+  <div style="max-width:680px;margin:0 auto;">
+    <div style="text-align:center;margin-bottom:1.5rem;">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:3px;color:var(--text);">Coin Earning Guide</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:4px;">Season 7 — Ask the host to add anything missing</div>
+    </div>
+    <div style="background:rgba(245,158,11,0.06);border:1px solid rgba(245,158,11,0.2);border-radius:12px;padding:12px 16px;margin-bottom:1.25rem;font-size:12px;color:var(--accent);">
+      General quota for any academic work not listed below: <strong>$16 / hour</strong>. Some tasks may not be listed — ask the host.
+    </div>
+    <div id="guide-cards"></div>
+  </div>
 </div>
 
 <div id="tab-admin-content" style="display:none;">
@@ -611,7 +625,7 @@ function updSB(){
 // ── TABS ──────────────────────────────────────────────────────────────────────
 function showTab(t){
   curTab=t;
-  const tabs=['map','players','timeline',...(isSuperuser?['admin']:[])];
+  const tabs=['map','players','timeline','guide',...(isSuperuser?['admin']:[])];
   tabs.forEach(x=>{
     const btn=document.getElementById('tab-'+x);
     const cnt=document.getElementById('tab-'+x+'-content');
@@ -620,6 +634,59 @@ function showTab(t){
   });
   if(t==='players')renderPlayers();
   if(t==='timeline')renderTimeline();
+  if(t==='guide')renderGuide();
+}
+
+const GUIDE=[
+  {icon:'📚',label:'AP History Notes',color:'#93c5fd',items:[
+    {task:'AP World History — 1 green section',reward:'$3','note':'Brief summary required'},
+    {task:'APUSH — 1 green section',reward:'$6',note:'Full summary required'},
+  ]},
+  {icon:'➗',label:'AP Calc / Math & Science',color:'#4ade80',items:[
+    {task:'New math or science concept learned',reward:'$8',note:'State the concept — each concept counts once only'},
+  ]},
+  {icon:'🎵',label:'Instrument Practice',color:'#f472b6',items:[
+    {task:'Any instrument practice',reward:'$12 / hr',note:''},
+  ]},
+  {icon:'📝',label:'SAT Study',color:'#fb923c',items:[
+    {task:'SAT prep',reward:'$18 / hr',note:''},
+  ]},
+  {icon:'✍️',label:'Writing',color:'#a78bfa',items:[
+    {task:'Original writing',reward:'$3 / page',note:''},
+    {task:'Editing / revision',reward:'$12 / hr',note:''},
+  ]},
+  {icon:'💼',label:'Internship / Employment',color:'#34d399',items:[
+    {task:'Internship or job-related tasks',reward:'$17 / hr',note:''},
+  ]},
+  {icon:'🎨',label:'Visual Arts',color:'#f59e0b',items:[
+    {task:'Drawing, painting, or visual art',reward:'$13 / hr',note:''},
+  ]},
+  {icon:'🏃',label:'Exercise',color:'#f87171',items:[
+    {task:'Any physical exercise',reward:'$20 / hr',note:''},
+  ]},
+  {icon:'🎮',label:'Video Games',color:'#60a5fa',items:[
+    {task:'Video games',reward:'$15 / hr',note:'Specific game rewards available — ask the host'},
+  ]},
+];
+
+function renderGuide(){
+  const el=document.getElementById('guide-cards');
+  if(!el)return;
+  el.innerHTML=GUIDE.map(cat=>`
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:10px;">
+      <div style="display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--border);background:var(--surface2);">
+        <span style="font-size:18px;">${cat.icon}</span>
+        <span style="font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:1.5px;color:${cat.color};">${cat.label}</span>
+      </div>
+      ${cat.items.map(it=>`
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 16px;border-bottom:1px solid rgba(255,255,255,0.04);flex-wrap:wrap;">
+          <div>
+            <div style="font-size:13px;color:var(--text);">${it.task}</div>
+            ${it.note?`<div style="font-size:11px;color:var(--muted);margin-top:2px;">${it.note}</div>`:''}
+          </div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:1px;color:${cat.color};white-space:nowrap;">${it.reward}</div>
+        </div>`).join('')}
+    </div>`).join('');
 }
 
 // ── PLAYERS ───────────────────────────────────────────────────────────────────
