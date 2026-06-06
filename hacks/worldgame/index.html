@@ -1024,7 +1024,7 @@ function buildAsia(topo){
   const mapISOs=new Set();
   ASIA.forEach(r=>r.territories.forEach(t=>{if(t.type==='list-only')return;const isos=Array.isArray(t.iso)?t.iso:[t.iso];isos.forEach(i=>{if(i)mapISOs.add(i);});}));
   const inPlay=all.filter(d=>mapISOs.has(+d.id));
-  const proj=d3.geoMercator().center([100,15]).scale(400).translate([W/2,H/2]);
+  const proj=d3.geoMercator().center([100,15]).scale(310).translate([W/2,H/2]);
   const path=d3.geoPath(proj);
   const svg=d3.select(c).append('svg').attr('viewBox',`0 0 ${W} ${H}`).attr('width','100%');
   svg.append('rect').attr('width',W).attr('height',H).attr('fill','#0d1019');
