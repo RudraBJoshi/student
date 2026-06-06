@@ -853,8 +853,7 @@ function buildAsia(topo){
   const mapISOs=new Set();
   ASIA.forEach(r=>r.territories.forEach(t=>{if(t.type==='list-only')return;const isos=Array.isArray(t.iso)?t.iso:[t.iso];isos.forEach(i=>{if(i)mapISOs.add(i);});}));
   const inPlay=all.filter(d=>mapISOs.has(+d.id));
-  const proj=d3.geoMercator().fitExtent([[10,10],[W-10,H-10]],{type:'FeatureCollection',features:inPlay});
-  const z=1.5,t=proj.translate();proj.scale(proj.scale()*z).translate([W/2+(t[0]-W/2)*z,H/2+(t[1]-H/2)*z]);
+  const proj=d3.geoMercator().center([105,15]).scale(820).translate([W/2,H/2]);
   const path=d3.geoPath(proj);
   const svg=d3.select(c).append('svg').attr('viewBox',`0 0 ${W} ${H}`).attr('width','100%');
   svg.append('rect').attr('width',W).attr('height',H).attr('fill','#0d1019');
