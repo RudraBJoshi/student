@@ -168,4 +168,6 @@ def admin_panel():
     return jsonify({'total_rooms': len(rooms), 'rooms': summary})
 
 if __name__ == '__main__':
-    socketio.run(app, debug=True, host='0.0.0.0', port=5000, allow_unsafe_werkzeug=True)
+    port = int(os.environ.get('PORT', 5000))
+    debug = os.environ.get('FLY_APP_NAME') is None
+    socketio.run(app, host='0.0.0.0', port=port, debug=debug, allow_unsafe_werkzeug=True)
