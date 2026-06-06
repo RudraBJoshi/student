@@ -295,7 +295,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);pad
     <div class="team-panel-full">
       <div class="team-panel-hdr red"><span class="team-hdr-name red">Red Team</span><span class="team-pool">Pool: <span id="red-pool">0</span> coins</span></div>
       <div class="player-list" id="red-players"></div>
-      <div class="add-player-row"><div class="add-player-input">
+      <div class="add-player-row" id="red-add-row"><div class="add-player-input">
         <input type="text" id="red-new-name" placeholder="Player name..." onkeydown="if(event.key==='Enter')addPlayer('red')"/>
         <button onclick="addPlayer('red')">+ Add</button>
       </div></div>
@@ -303,7 +303,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);pad
     <div class="team-panel-full">
       <div class="team-panel-hdr blue"><span class="team-hdr-name blue">Blue Team</span><span class="team-pool">Pool: <span id="blue-pool">0</span> coins</span></div>
       <div class="player-list" id="blue-players"></div>
-      <div class="add-player-row"><div class="add-player-input">
+      <div class="add-player-row" id="blue-add-row"><div class="add-player-input">
         <input type="text" id="blue-new-name" placeholder="Player name..." onkeydown="if(event.key==='Enter')addPlayer('blue')"/>
         <button onclick="addPlayer('blue')">+ Add</button>
       </div></div>
@@ -632,17 +632,22 @@ function addPlayer(team){
 }
 function removePlayer(pid,team){players[team]=players[team].filter(p=>p.id!==pid);renderPlayers();updSB();scheduleSave();}
 function renderPlayers(){
+  ['red','blue'].forEach(t=>{
+    const row=document.getElementById(t+'-add-row');
+    if(row)row.style.display=isSuperuser?'':'none';
+  });
+  document.querySelector('.cbtn.danger') && (document.querySelector('.cbtn.danger').style.display=isSuperuser?'':'none');
   ['red','blue'].forEach(team=>{
     const el=document.getElementById(team+'-players');
     if(!players[team].length){el.innerHTML='<div style="padding:8px 10px;font-size:12px;color:var(--muted);">No players yet.</div>';return;}
     el.innerHTML=players[team].map(p=>`
       <div class="player-row">
         <div class="player-avatar ${team}">${p.name.charAt(0).toUpperCase()}</div>
-        <div class="player-info"><div class="player-name">${p.name}${p.admin?'<span class="admin-badge">ADMIN</span>':''}</div><div class="player-balance ${team}">${p.balance.toLocaleString()} coins</div></div>
+        <div class="player-info"><div class="player-name">${p.name}</div><div class="player-balance ${team}">${p.balance.toLocaleString()} coins</div></div>
         <div class="player-actions">
-          <button class="pact-btn" title="Earn coins" onclick="openEarn(${p.id},'${team}')"><i class="ti ti-plus"></i></button>
-          <button class="pact-btn" title="Adjust" onclick="openAdjust(${p.id},'${team}')"><i class="ti ti-coin"></i></button>
-          <button class="pact-btn" onclick="removePlayer(${p.id},'${team}')" style="font-size:16px;">×</button>
+          ${isSuperuser?`<button class="pact-btn" title="Earn coins" onclick="openEarn(${p.id},'${team}')"><i class="ti ti-plus"></i></button>`:''}
+          ${isSuperuser?`<button class="pact-btn" title="Adjust" onclick="openAdjust(${p.id},'${team}')"><i class="ti ti-coin"></i></button>`:''}
+          ${isSuperuser?`<button class="pact-btn" onclick="removePlayer(${p.id},'${team}')" style="font-size:16px;">×</button>`:''}
         </div>
       </div>`).join('');
   });
