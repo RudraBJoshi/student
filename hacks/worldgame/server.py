@@ -2,44 +2,69 @@ import eventlet
 eventlet.monkey_patch()
 from flask import Flask, send_from_directory, request, jsonify, abort
 from flask_socketio import SocketIO, join_room, emit
-import random, json, time, os
+import random, json, time, os, sqlite3
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'worldgame-2025'
 socketio = SocketIO(app, cors_allowed_origins='*', async_mode='eventlet',
                    ping_interval=25, ping_timeout=60)
 
-# Only this token grants superuser access — set it here, never exposed client-side.
-# Pass it at connection time via query string: io('http://...', {query: {su: TOKEN}})
-# Nobody can promote themselves; auth happens server-side on connect only.
 SUPERUSER_TOKEN = os.environ.get('SUPERUSER_TOKEN', '@RS-M@GNUM')
-
-superuser_sids: set[str] = set()  # populated on connect, cleared on disconnect
+superuser_sids: set[str] = set()
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-ROOMS_FILE = os.path.join(BASE_DIR, 'rooms.json')
-ROOM_TTL = 30 * 24 * 3600
+DATA_DIR = os.environ.get('DATA_DIR', '/data' if os.path.isdir('/data') else BASE_DIR)
+DB_PATH  = os.path.join(DATA_DIR, 'worldgame.db')
+ROOM_TTL = 60 * 24 * 3600  # 60 days
+
+# ── SQLite helpers ────────────────────────────────────────────────────────────
+
+def db():
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+def init_db():
+    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+    with db() as c:
+        c.execute('''CREATE TABLE IF NOT EXISTS rooms (
+            code TEXT PRIMARY KEY,
+            state TEXT,
+            ts    REAL
+        )''')
 
 def load_rooms():
     try:
-        with open(ROOMS_FILE) as f:
-            data = json.load(f)
+        init_db()
         now = time.time()
-        return {
-            code: {'state': r['state'], 'ts': r.get('ts', now), 'sids': set()}
-            for code, r in data.items()
-            if now - r.get('ts', 0) < ROOM_TTL
-        }
-    except (FileNotFoundError, json.JSONDecodeError):
+        result = {}
+        with db() as c:
+            rows = c.execute(
+                'SELECT code, state, ts FROM rooms WHERE ts > ?',
+                (now - ROOM_TTL,)
+            ).fetchall()
+        for row in rows:
+            state = json.loads(row['state']) if row['state'] else None
+            result[row['code']] = {'state': state, 'ts': row['ts'], 'sids': set()}
+        return result
+    except Exception as e:
+        print(f'DB load error: {e}')
         return {}
 
-def save_rooms():
-    data = {code: {'state': r['state'], 'ts': r.get('ts', time.time())}
-            for code, r in rooms.items()}
-    with open(ROOMS_FILE, 'w') as f:
-        json.dump(data, f)
+def upsert_room(code, room):
+    with db() as c:
+        c.execute(
+            'INSERT OR REPLACE INTO rooms (code, state, ts) VALUES (?, ?, ?)',
+            (code, json.dumps(room['state']), room.get('ts', time.time()))
+        )
+
+def remove_room(code):
+    with db() as c:
+        c.execute('DELETE FROM rooms WHERE code = ?', (code,))
 
 rooms = load_rooms()
+
+# ── Helpers ───────────────────────────────────────────────────────────────────
 
 def gen_code():
     chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
@@ -49,7 +74,7 @@ def gen_code():
             return code
     raise RuntimeError('Could not generate a unique room code')
 
-# ── Connection: grant superuser at connect time only ─────────────────────────
+# ── Connection ────────────────────────────────────────────────────────────────
 
 @socketio.on('connect')
 def on_connect():
@@ -58,11 +83,13 @@ def on_connect():
         superuser_sids.add(request.sid)
         emit('superuser_ok', {'rooms': len(rooms)})
 
-# ── Regular game events ───────────────────────────────────────────────────────
+# ── Routes ────────────────────────────────────────────────────────────────────
 
 @app.route('/')
 def index():
     return send_from_directory(BASE_DIR, 'index.html')
+
+# ── Game events ───────────────────────────────────────────────────────────────
 
 @socketio.on('create_room')
 def on_create_room(payload):
@@ -79,7 +106,7 @@ def on_create_room(payload):
         rooms[code] = {'state': payload.get('data'), 'ts': time.time(), 'sids': {request.sid}}
         join_room(code)
         emit('room_created', {'code': code})
-        save_rooms()
+        upsert_room(code, rooms[code])
     emit('player_count', {'count': len(rooms[code]['sids'])}, to=code)
 
 @socketio.on('join_room')
@@ -102,7 +129,7 @@ def on_state_update(payload):
     if code and code in rooms:
         rooms[code]['state'] = data
         rooms[code]['ts'] = time.time()
-        save_rooms()
+        upsert_room(code, rooms[code])
         emit('state_update', data, to=code, include_self=False)
 
 @socketio.on('disconnect')
@@ -114,10 +141,9 @@ def on_disconnect():
             emit('player_count', {'count': len(rooms[code]['sids'])}, to=code)
             break
 
-# ── Superuser-only socket events ──────────────────────────────────────────────
+# ── Superuser socket events ───────────────────────────────────────────────────
 
 def _require_su():
-    """Returns True if current SID is superuser, else emits denied and returns False."""
     if request.sid in superuser_sids:
         return True
     emit('superuser_denied', {'message': 'Not authorized'})
@@ -126,11 +152,10 @@ def _require_su():
 @socketio.on('admin_list_rooms')
 def on_admin_list_rooms():
     if not _require_su(): return
-    summary = {
+    emit('admin_rooms', {'rooms': {
         code: {'players': len(r['sids']), 'ts': r.get('ts', 0)}
         for code, r in rooms.items()
-    }
-    emit('admin_rooms', {'rooms': summary})
+    }})
 
 @socketio.on('admin_delete_room')
 def on_admin_delete_room(payload):
@@ -138,7 +163,7 @@ def on_admin_delete_room(payload):
     code = payload.get('code', '').upper().strip()
     if code in rooms:
         del rooms[code]
-        save_rooms()
+        remove_room(code)
         emit('admin_ok', {'message': f'Room {code} deleted'})
     else:
         emit('admin_error', {'message': f'Room {code} not found'})
@@ -150,13 +175,13 @@ def on_admin_reset_room(payload):
     if code in rooms:
         rooms[code]['state'] = None
         rooms[code]['ts'] = time.time()
-        save_rooms()
+        upsert_room(code, rooms[code])
         emit('state_update', None, to=code)
         emit('admin_ok', {'message': f'Room {code} reset'})
     else:
         emit('admin_error', {'message': f'Room {code} not found'})
 
-# ── Admin HTTP endpoint ───────────────────────────────────────────────────────
+# ── Admin HTTP ────────────────────────────────────────────────────────────────
 
 @app.route('/admin')
 def admin_panel():
@@ -169,6 +194,6 @@ def admin_panel():
     return jsonify({'total_rooms': len(rooms), 'rooms': summary})
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 8080))
+    port  = int(os.environ.get('PORT', 8080))
     debug = os.environ.get('FLY_APP_NAME') is None
     socketio.run(app, host='0.0.0.0', port=port, debug=debug, allow_unsafe_werkzeug=True)
