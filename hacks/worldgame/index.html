@@ -208,6 +208,20 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);pad
 .ao-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:.5rem;}
 .ao-input{width:100%;padding:7px 9px;border-radius:7px;font-family:'Bebas Neue',sans-serif;font-size:18px;outline:none;}
 .ao-btn{width:100%;padding:8px;border-radius:8px;border:1px solid rgba(245,158,11,0.3);background:rgba(245,158,11,0.08);color:var(--accent);font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;}
+.ticket-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px;}
+.ticket-card.pending{border-color:rgba(245,158,11,0.3);}
+.ticket-card.approved{border-color:rgba(22,163,74,0.3);opacity:.6;}
+.ticket-card.rejected{border-color:rgba(220,38,38,0.2);opacity:.5;}
+.ticket-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;flex-wrap:wrap;gap:6px;}
+.ticket-player{font-size:13px;font-weight:500;}
+.ticket-amount{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:1px;color:#4ade80;}
+.ticket-desc{font-size:12px;color:var(--muted);margin-bottom:8px;}
+.ticket-meta{font-size:10px;color:var(--muted);}
+.ticket-actions{display:flex;gap:6px;margin-top:8px;}
+.ticket-actions button{padding:5px 14px;border-radius:7px;border:none;font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:500;}
+.tapprove{background:rgba(22,163,74,0.15);color:#4ade80;border:1px solid rgba(22,163,74,0.3)!important;}
+.treject{background:rgba(220,38,38,0.1);color:#fca5a5;border:1px solid rgba(220,38,38,0.2)!important;}
+.ticket-badge{display:inline-block;background:var(--accent);color:#000;border-radius:10px;font-size:10px;font-weight:700;padding:1px 6px;margin-left:5px;vertical-align:middle;}
 .join-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:1.25rem;margin-bottom:.25rem;}
 .join-card-title{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:2px;margin-bottom:.5rem;}
 .join-card-sub{font-size:12px;color:var(--muted);margin-bottom:.75rem;}
@@ -355,10 +369,15 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);pad
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:8px;">
     <div>
       <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px;color:var(--accent);">Admin Panel</div>
-      <div style="font-size:11px;color:var(--muted);">Superuser access — not visible to others</div>
+      <div style="font-size:11px;color:var(--muted);">Superuser access only</div>
     </div>
     <button class="cbtn save" onclick="adminRefresh()" style="padding:7px 14px;">↻ Refresh rooms</button>
   </div>
+  <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;margin-bottom:10px;">Coin Requests</div>
+  <div id="admin-inbox" style="margin-bottom:1.5rem;">
+    <div style="text-align:center;padding:1.5rem;color:var(--muted);font-size:13px;">No tickets yet.</div>
+  </div>
+  <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;margin-bottom:10px;">Rooms</div>
   <div id="admin-rooms-list">
     <div style="text-align:center;padding:2rem;color:var(--muted);font-size:13px;">Click Refresh to load all active rooms.</div>
   </div>
@@ -448,6 +467,8 @@ let nextEid=1;
 let totalScore={red:0,blue:0};
 let lastScoredDate='';
 let gameStartDate=null;
+const tickets=[];
+let nextTicketId=1;
 
 // ── AUTO-SAVE ─────────────────────────────────────────────────────────────────
 const SAVE_KEY='redvblue-game-v1';
@@ -469,7 +490,7 @@ function setSaveStatus(state){
 
 async function autoSave(){
   setSaveStatus('saving');
-  const data={v:5,asia:sA,us:sU,players,nextPid,timeline,nextEid,totalScore,lastScoredDate,gameStartDate};
+  const data={v:5,asia:sA,us:sU,players,nextPid,timeline,nextEid,totalScore,lastScoredDate,gameStartDate,tickets,nextTicketId};
   const json=JSON.stringify(data);
   try{
     if(window.storage?.set)await window.storage.set(SAVE_KEY,json);
@@ -516,6 +537,8 @@ function applyLoadedData(data){
   if(data.totalScore)Object.assign(totalScore,data.totalScore);
   if(data.lastScoredDate)lastScoredDate=data.lastScoredDate;
   if(data.gameStartDate)gameStartDate=data.gameStartDate;
+  if(data.tickets){tickets.length=0;data.tickets.forEach(t=>tickets.push(t));}
+  if(data.nextTicketId)nextTicketId=data.nextTicketId;
 }
 
 // ── HELPERS ───────────────────────────────────────────────────────────────────
@@ -646,6 +669,7 @@ function showTab(t){
   if(t==='players')renderPlayers();
   if(t==='timeline')renderTimeline();
   if(t==='guide')renderGuide();
+  if(t==='admin'){renderAdminInbox();}
 }
 
 const GUIDE=[
@@ -747,16 +771,22 @@ function renderPlayers(){
   ['red','blue'].forEach(team=>{
     const el=document.getElementById(team+'-players');
     if(!players[team].length){el.innerHTML='<div style="padding:8px 10px;font-size:12px;color:var(--muted);">No players yet.</div>';return;}
-    el.innerHTML=players[team].map(p=>`
-      <div class="player-row">
+    const me=getMyPlayer();
+    el.innerHTML=players[team].map(p=>{
+      const isMe=!isSuperuser&&me&&me.id===p.id&&me.team===team;
+      const myPending=tickets.filter(t=>t.playerId===p.id&&t.status==='pending').length;
+      return`<div class="player-row">
         <div class="player-avatar ${team}">${p.name.charAt(0).toUpperCase()}</div>
         <div class="player-info"><div class="player-name">${p.name}</div><div class="player-balance ${team}">${p.balance.toLocaleString()} coins</div></div>
         <div class="player-actions">
+          ${isMe?`<button class="pact-btn" title="Request coins" onclick="openTicketModal(${p.id},'${team}')" style="font-size:12px;padding:0 8px;position:relative;">+🎟${myPending?`<span style="position:absolute;top:-4px;right:-4px;background:var(--accent);color:#000;border-radius:50%;width:14px;height:14px;font-size:9px;display:flex;align-items:center;justify-content:center;">${myPending}</span>`:''}
+          </button>`:''}
           ${isSuperuser?`<button class="pact-btn" title="Earn coins" onclick="openEarn(${p.id},'${team}')"><i class="ti ti-plus"></i></button>`:''}
           ${isSuperuser?`<button class="pact-btn" title="Adjust" onclick="openAdjust(${p.id},'${team}')"><i class="ti ti-coin"></i></button>`:''}
           ${isSuperuser?`<button class="pact-btn" onclick="removePlayer(${p.id},'${team}')" style="font-size:16px;">×</button>`:''}
         </div>
-      </div>`).join('');
+      </div>`;
+    }).join('');
   });
   updSB();
 }
@@ -928,6 +958,7 @@ async function doReset(){
   players.red=[];players.blue=[];nextPid=1;
   timeline.length=0;nextEid=1;
   totalScore={red:0,blue:0};lastScoredDate='';gameStartDate=null;
+  tickets.length=0;nextTicketId=1;
   try{if(window.storage?.delete)await window.storage.delete(SAVE_KEY);else localStorage.removeItem(SAVE_KEY);}catch(e){}
   closeModal();refresh();renderPlayers();updSB();setSaveStatus('none');
   if(curTab==='timeline')renderTimeline();
@@ -1006,7 +1037,7 @@ const suToken=new URLSearchParams(window.location.search).get('su')||'';
 
 function mpBroadcast(){
   if(_mpApplying||!socket||!mpRoom)return;
-  socket.emit('state_update',{room:mpRoom,data:{v:5,asia:sA,us:sU,players,nextPid,timeline,nextEid,totalScore,lastScoredDate,gameStartDate}});
+  socket.emit('state_update',{room:mpRoom,data:{v:5,asia:sA,us:sU,players,nextPid,timeline,nextEid,totalScore,lastScoredDate,gameStartDate,tickets,nextTicketId}});
 }
 
 function updateMpUI(status,label){
@@ -1067,6 +1098,8 @@ function mpConnect(){
     applyLoadedData(data);checkMissedDays();
     refresh();renderPlayers();updSB();scheduleSave();
     if(curTab==='timeline')renderTimeline();
+    if(curTab==='admin')renderAdminInbox();
+    updateTicketBadge();
     _mpApplying=false;
   });
   socket.on('player_count',data=>{
@@ -1145,6 +1178,70 @@ function doJoinFromModal(){
   const code=(document.getElementById('mp-code-input').value||'').trim();
   joinGame(code);
   if(code)closeModal();
+}
+
+// ── TICKET SYSTEM ────────────────────────────────────────────────────────────
+function openTicketModal(pid,team){
+  const p=players[team].find(x=>x.id===pid);if(!p)return;
+  const myOpen=tickets.filter(t=>t.playerId===pid&&t.status==='pending').length;
+  document.getElementById('mroot').innerHTML=`
+  <div class="bdrop" id="bd" onclick="if(event.target.id==='bd')closeModal()"><div class="modal">
+    <div class="mtitle">Request Coins</div>
+    <div class="msub" style="color:${team==='red'?'#fca5a5':'#93c5fd'};">${p.name} · ${p.balance.toLocaleString()} coins${myOpen?` · <span style="color:var(--accent)">${myOpen} pending</span>`:''}</div>
+    <div class="mfield"><label>Coins requested</label><input type="number" id="tkt-amt" min="1" placeholder="e.g. 50"/></div>
+    <div class="mfield"><label>What did you do?</label><textarea id="tkt-desc" placeholder="e.g. 2 hours SAT prep, guitar practice..."></textarea></div>
+    <div class="mbtns"><button class="bcnl" onclick="closeModal()">Cancel</button><button class="bsav green" onclick="submitTicket(${pid},'${team}')">Submit request</button></div>
+  </div></div>`;
+  document.getElementById('tkt-amt').focus();
+}
+function submitTicket(pid,team){
+  const p=players[team].find(x=>x.id===pid);if(!p)return;
+  const amt=parseInt(document.getElementById('tkt-amt').value)||0;
+  const desc=document.getElementById('tkt-desc').value.trim();
+  if(amt<=0){toast('Enter a positive amount.');return;}
+  if(!desc){toast('Describe what you did.');return;}
+  tickets.push({id:nextTicketId++,playerId:pid,playerName:p.name,team,amount:amt,description:desc,status:'pending',ts:now()});
+  closeModal();scheduleSave();renderPlayers();
+  toast('Request submitted! Waiting for host approval.');
+  if(isSuperuser)renderAdminInbox();
+  updateTicketBadge();
+}
+function approveTicket(tid){
+  const t=tickets.find(x=>x.id===tid);if(!t||t.status!=='pending')return;
+  const p=players[t.team].find(x=>x.id===t.playerId);
+  if(p){p.balance+=t.amount;logEvent({type:'earn',team:t.team,playerName:t.playerName,amount:t.amount,description:t.description+' (approved)'});}
+  t.status='approved';
+  scheduleSave();renderPlayers();updSB();renderAdminInbox();updateTicketBadge();
+  if(curTab==='timeline')renderTimeline();
+  toast('Approved +'+t.amount+' for '+t.playerName);
+}
+function rejectTicket(tid){
+  const t=tickets.find(x=>x.id===tid);if(!t||t.status!=='pending')return;
+  t.status='rejected';
+  scheduleSave();renderAdminInbox();updateTicketBadge();
+  toast('Ticket rejected.');
+}
+function updateTicketBadge(){
+  const n=tickets.filter(t=>t.status==='pending').length;
+  const btn=document.getElementById('tab-admin');
+  if(btn)btn.innerHTML=n>0?`Admin<span class="ticket-badge">${n}</span>`:'Admin';
+}
+function renderAdminInbox(){
+  const el=document.getElementById('admin-inbox');if(!el)return;
+  const pending=tickets.filter(t=>t.status==='pending');
+  const recent=tickets.filter(t=>t.status!=='pending').slice(-10).reverse();
+  if(!pending.length&&!recent.length){el.innerHTML='<div style="text-align:center;padding:1.5rem;color:var(--muted);font-size:13px;">No tickets yet.</div>';return;}
+  const renderCard=t=>`<div class="ticket-card ${t.status}">
+    <div class="ticket-hdr">
+      <span class="ticket-player" style="color:${t.team==='red'?'#fca5a5':'#93c5fd'};">${t.playerName}</span>
+      <span class="ticket-amount">+${t.amount}</span>
+    </div>
+    <div class="ticket-desc">${t.description}</div>
+    <div class="ticket-meta">${fmtTime(t.ts)} · ${t.status==='pending'?'⏳ Pending':t.status==='approved'?'✅ Approved':'❌ Rejected'}</div>
+    ${t.status==='pending'?`<div class="ticket-actions"><button class="tapprove" onclick="approveTicket(${t.id})">Approve</button><button class="treject" onclick="rejectTicket(${t.id})">Reject</button></div>`:''}
+  </div>`;
+  el.innerHTML=(pending.length?`<div style="font-size:11px;color:var(--accent);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">Pending (${pending.length})</div>${pending.map(renderCard).join('')}`:'')
+    +(recent.length?`<div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin:12px 0 8px;">Recent</div>${recent.map(renderCard).join('')}`:'');
 }
 
 // ── ADMIN ─────────────────────────────────────────────────────────────────────
