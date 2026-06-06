@@ -1058,7 +1058,7 @@ function updateMpUI(status,label){
 }
 
 function mpConnect(){
-  if(socket&&socket.connected)return;
+  if(socket)return;
   if(window.location.protocol==='file:'){toast('Open via Flask (python server.py) for multiplayer.');return;}
   socket=io({
     query: suToken?{su:suToken}:{},
