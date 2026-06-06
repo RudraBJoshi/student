@@ -6,7 +6,8 @@ import random, json, time, os
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'worldgame-2025'
-socketio = SocketIO(app, cors_allowed_origins='*')
+socketio = SocketIO(app, cors_allowed_origins='*', async_mode='eventlet',
+                   ping_interval=25, ping_timeout=60)
 
 # Only this token grants superuser access — set it here, never exposed client-side.
 # Pass it at connection time via query string: io('http://...', {query: {su: TOKEN}})
