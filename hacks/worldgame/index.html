@@ -244,7 +244,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);pad
 </style>
 
 <div class="app-title"><span class="r">RED</span> vs <span class="b">BLUE</span></div>
-<div class="app-sub" id="maplabel">Asia &amp; Oceania — Electoral Investment Map</div>
+<div class="app-sub" id="maplabel">Asia, Russia &amp; Oceania — Electoral Investment Map</div>
 <div class="save-status">
   <div class="save-dot" id="save-dot"></div>
   <span id="save-status-text">Loading...</span>
@@ -294,8 +294,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);pad
   <div id="mapbox">
     <div class="map-controls">
       <span class="mc-label">Map:</span>
-      <button class="mc-btn on" id="mc-asia" onclick="switchMap('asia')">Asia / Oceania</button>
-      <button class="mc-btn" id="mc-us" onclick="switchMap('us')">United States</button>
+      <button class="mc-btn on" id="mc-asia">Asia / Oceania &amp; Russia</button>
       <span class="mc-label" style="margin-left:8px;">View:</span>
       <button class="mc-btn on" id="mc-mapv" onclick="switchView('map')">Map</button>
       <button class="mc-btn" id="mc-listv" onclick="switchView('list')">List</button>
@@ -393,6 +392,11 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);pad
 <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 <script>
 const ASIA=[
+  {name:"Russia",territories:[
+    {id:"ru-w",name:"Russia — West Siberia",votes:8,type:"clip",iso:643,clip:[60,50,100,75]},
+    {id:"ru-e",name:"Russia — East Siberia",votes:8,type:"clip",iso:643,clip:[100,50,145,75]},
+    {id:"ru-fe",name:"Russia — Far East",votes:6,type:"clip",iso:643,clip:[145,42,180,75]}
+  ]},
   {name:"East Asia",territories:[
     {id:"cn-e",name:"China — East Coast",votes:42,type:"clip",iso:156,clip:[108,18,135,54]},
     {id:"cn-i",name:"China — Interior",votes:35,type:"clip",iso:156,clip:[95,28,108,54]},
@@ -444,25 +448,18 @@ const ASIA=[
     {id:"pac",name:"Pacific Islands",votes:3,type:"list-only",iso:[]}
   ]}
 ];
-const US=[
-  {name:"Northeast",territories:[{id:"me",name:"Maine",votes:4,fips:"23"},{id:"nh",name:"New Hampshire",votes:4,fips:"33"},{id:"vt",name:"Vermont",votes:3,fips:"50"},{id:"ma",name:"Massachusetts",votes:11,fips:"25"},{id:"ri",name:"Rhode Island",votes:4,fips:"44"},{id:"ct",name:"Connecticut",votes:7,fips:"09"},{id:"ny",name:"New York",votes:28,fips:"36"},{id:"nj",name:"New Jersey",votes:14,fips:"34"},{id:"pa",name:"Pennsylvania",votes:19,fips:"42"}]},
-  {name:"Southeast",territories:[{id:"de",name:"Delaware",votes:3,fips:"10"},{id:"md",name:"Maryland",votes:10,fips:"24"},{id:"va",name:"Virginia",votes:13,fips:"51"},{id:"wv",name:"West Virginia",votes:4,fips:"54"},{id:"nc",name:"North Carolina",votes:16,fips:"37"},{id:"sc",name:"South Carolina",votes:9,fips:"45"},{id:"ga",name:"Georgia",votes:16,fips:"13"},{id:"fl",name:"Florida",votes:30,fips:"12"},{id:"ky",name:"Kentucky",votes:8,fips:"21"},{id:"tn",name:"Tennessee",votes:11,fips:"47"},{id:"al",name:"Alabama",votes:9,fips:"01"},{id:"ms",name:"Mississippi",votes:6,fips:"28"},{id:"dc",name:"D.C.",votes:3,fips:"11"}]},
-  {name:"Midwest",territories:[{id:"oh",name:"Ohio",votes:17,fips:"39"},{id:"mi",name:"Michigan",votes:15,fips:"26"},{id:"in2",name:"Indiana",votes:11,fips:"18"},{id:"wi",name:"Wisconsin",votes:10,fips:"55"},{id:"il",name:"Illinois",votes:19,fips:"17"},{id:"mn2",name:"Minnesota",votes:10,fips:"27"},{id:"ia",name:"Iowa",votes:6,fips:"19"},{id:"mo",name:"Missouri",votes:10,fips:"29"},{id:"nd",name:"North Dakota",votes:3,fips:"38"},{id:"sd",name:"South Dakota",votes:3,fips:"46"},{id:"ne",name:"Nebraska",votes:5,fips:"31"},{id:"ks",name:"Kansas",votes:6,fips:"20"}]},
-  {name:"South & Southwest",territories:[{id:"ar",name:"Arkansas",votes:6,fips:"05"},{id:"la2",name:"Louisiana",votes:8,fips:"22"},{id:"ok",name:"Oklahoma",votes:7,fips:"40"},{id:"tx",name:"Texas",votes:40,fips:"48"},{id:"nm",name:"New Mexico",votes:5,fips:"35"},{id:"az",name:"Arizona",votes:11,fips:"04"},{id:"co",name:"Colorado",votes:10,fips:"08"},{id:"ut",name:"Utah",votes:6,fips:"49"}]},
-  {name:"West",territories:[{id:"mt",name:"Montana",votes:4,fips:"30"},{id:"id2",name:"Idaho",votes:4,fips:"16"},{id:"wy",name:"Wyoming",votes:3,fips:"56"},{id:"nv",name:"Nevada",votes:6,fips:"32"},{id:"wa",name:"Washington",votes:12,fips:"53"},{id:"or",name:"Oregon",votes:8,fips:"41"},{id:"ca",name:"California",votes:54,fips:"06"},{id:"ak",name:"Alaska",votes:3,fips:"02"},{id:"hi",name:"Hawaii",votes:4,fips:"15"}]}
-];
-const SPLIT_ISOS=new Set([156,356,36,360]);
+const SPLIT_ISOS=new Set([156,356,36,360,643]);
 const DIVIDERS=[
   {iso:156,lines:[{pts:[[95,-10],[95,60]]},{pts:[[108,-10],[108,60]]}]},
   {iso:356,lines:[{pts:[[60,22],[100,22]]},{pts:[[87,20],[87,32]]}]},
-  {iso:36,lines:[{pts:[[138,-45],[138,0]]}]}
+  {iso:36,lines:[{pts:[[138,-45],[138,0]]}]},
+  {iso:643,lines:[{pts:[[100,45],[100,78]]},{pts:[[145,40],[145,78]]}]}
 ];
 
 // ── STATE ─────────────────────────────────────────────────────────────────────
-let curMap='asia',curView='map',curTab='map',tlFilter='all';
+let curView='map',curTab='map',tlFilter='all';
 const sA={},sU={};
 ASIA.forEach(r=>r.territories.forEach(t=>{sA[t.id]={red:0,blue:0};}));
-US.forEach(r=>r.territories.forEach(t=>{sU[t.id]={red:0,blue:0};}));
 const players={red:[],blue:[]};
 let nextPid=1;
 const timeline=[];
@@ -556,8 +553,8 @@ function fmtDate(iso){const d=new Date(iso);return d.toLocaleDateString('en-US',
 function fmtTime(iso){const d=new Date(iso);return d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});}
 function dayKey(iso){return iso.slice(0,10);}
 function teamPool(t){return players[t].reduce((s,p)=>s+p.balance,0);}
-function getReg(){return curMap==='asia'?ASIA:US;}
-function getSt(){return curMap==='asia'?sA:sU;}
+function getReg(){return ASIA;}
+function getSt(){return sA;}
 function winner(id){const s=getSt()[id];if(!s||(!s.red&&!s.blue))return null;return s.red>s.blue?'red':s.blue>s.red?'blue':null;}
 function cFor(w){return w==='red'?'#7f1d1d':w==='blue'?'#1e3a8a':'#22263a';}
 function sFor(w){return w==='red'?'#dc2626':w==='blue'?'#2563eb':'rgba(255,255,255,0.18)';}
@@ -576,7 +573,7 @@ function territoryStroke(id){
 }
 function calcVotes(){
   let rv=0,bv=0,rt=0,bt=0;
-  [...ASIA,...US].forEach(r=>r.territories.forEach(t=>{
+  ASIA.forEach(r=>r.territories.forEach(t=>{
     const w=winner(t.id);
     if(w==='red'){rv+=t.votes;rt++;}
     if(w==='blue'){bv+=t.votes;bt++;}
@@ -964,7 +961,7 @@ function renderEvent(e){
 
 // ── EXPORT / IMPORT / RESET ───────────────────────────────────────────────────
 function exportSave(){
-  const data=JSON.stringify({v:5,asia:sA,us:sU,players,nextPid,timeline,nextEid,totalScore,lastScoredDate,gameStartDate});
+  const data=JSON.stringify(getFullState());
   document.getElementById('mroot').innerHTML=`<div class="bdrop" id="bd" onclick="if(event.target.id==='bd')closeModal()"><div class="modal"><div class="mtitle">Export save</div><div class="msub">Copy this code to back up or share your save across devices.</div><textarea id="st" readonly onclick="this.select()" style="width:100%;height:110px;padding:10px;border-radius:8px;border:1px solid var(--border);background:rgba(255,255,255,0.04);color:var(--text);font-size:11px;resize:none;outline:none;margin-bottom:1rem;">${data}</textarea><div class="mbtns"><button class="bcnl" onclick="closeModal()">Close</button><button class="bsav" onclick="navigator.clipboard.writeText(document.getElementById('st').value).then(()=>{toast('Copied!');closeModal();})">Copy to clipboard</button></div></div></div>`;
   setTimeout(()=>{const el=document.getElementById('st');if(el)el.select();},100);
 }
@@ -986,7 +983,6 @@ function confirmReset(){
 }
 async function doReset(){
   Object.keys(sA).forEach(k=>{sA[k]={red:0,blue:0};});
-  Object.keys(sU).forEach(k=>{sU[k]={red:0,blue:0};});
   players.red=[];players.blue=[];nextPid=1;
   timeline.length=0;nextEid=1;
   totalScore={red:0,blue:0};lastScoredDate='';gameStartDate=null;
@@ -1000,7 +996,7 @@ async function doReset(){
 }
 
 // ── MAP ───────────────────────────────────────────────────────────────────────
-let wTopo=null,uTopo=null;
+let wTopo=null;
 function loadScript(src){
   return new Promise((res,rej)=>{const s=document.createElement('script');s.src=src;s.onload=res;s.onerror=()=>rej(new Error('Failed to load '+src));document.head.appendChild(s);});
 }
@@ -1009,22 +1005,16 @@ async function doLoadMap(){
   try{
     if(typeof d3==='undefined'){document.getElementById('mstmsg').textContent='Loading map libraries...';await loadScript('https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js');}
     if(typeof topojson==='undefined'){await loadScript('https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js');}
-    if(curMap==='asia'){
-      if(!wTopo){document.getElementById('mstmsg').textContent='Downloading world map...';const r=await fetch('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-50m.json');if(!r.ok)throw new Error('HTTP '+r.status);wTopo=await r.json();}
-      document.getElementById('mst').style.display='none';buildAsia(wTopo);
-    }else{
-      if(!uTopo){document.getElementById('mstmsg').textContent='Downloading US map...';const r=await fetch('https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json');if(!r.ok)throw new Error('HTTP '+r.status);uTopo=await r.json();}
-      document.getElementById('mst').style.display='none';buildUS(uTopo);
-    }
+    if(!wTopo){document.getElementById('mstmsg').textContent='Downloading world map...';const r=await fetch('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-50m.json');if(!r.ok)throw new Error('HTTP '+r.status);wTopo=await r.json();}
+    document.getElementById('mst').style.display='none';buildAsia(wTopo);
   }catch(e){document.getElementById('mstmsg').textContent='Map failed: '+e.message+'. Use List view.';}
 }
 function buildAsia(topo){
   const c=document.getElementById('msvg');c.innerHTML='';
-  const W=900,H=520,all=topojson.feature(topo,topo.objects.countries).features;
+  const W=900,H=580,all=topojson.feature(topo,topo.objects.countries).features;
   const mapISOs=new Set();
   ASIA.forEach(r=>r.territories.forEach(t=>{if(t.type==='list-only')return;const isos=Array.isArray(t.iso)?t.iso:[t.iso];isos.forEach(i=>{if(i)mapISOs.add(i);});}));
-  const inPlay=all.filter(d=>mapISOs.has(+d.id));
-  const proj=d3.geoMercator().center([100,15]).scale(310).translate([W/2,H/2]);
+  const proj=d3.geoMercator().center([112,22]).scale(230).translate([W/2,H/2]);
   const path=d3.geoPath(proj);
   const svg=d3.select(c).append('svg').attr('viewBox',`0 0 ${W} ${H}`).attr('width','100%');
   svg.append('rect').attr('width',W).attr('height',H).attr('fill','#0d1019');
@@ -1032,34 +1022,17 @@ function buildAsia(topo){
   ASIA.forEach(r=>r.territories.forEach(t=>{if(t.type!=='clip')return;const [w,s,e,n]=t.clip;const pts=[[w,s],[e,s],[e,n],[w,n],[w,s]].map(p=>proj(p));if(pts.some(p=>!p))return;defs.append('clipPath').attr('id','cl-'+t.id).append('polygon').attr('points',pts.map(p=>p.join(',')).join(' '));}));
   SPLIT_ISOS.forEach(iso=>{const f=all.find(d=>+d.id===iso);if(f)defs.append('clipPath').attr('id','cc-'+iso).append('path').attr('d',path(f));});
   const tt=document.getElementById('tt');
-  function tip(e,t){const w=winner(t.id),s=(curMap==='asia'?sA:sU)[t.id]||{red:0,blue:0};document.getElementById('ttn').textContent=t.name;document.getElementById('ttv').textContent=t.votes+' pts/day · R:'+s.red+' B:'+s.blue;const ti=document.getElementById('tti');ti.className='tti '+(w||'neutral');ti.textContent=w?w[0].toUpperCase()+w.slice(1)+' controlled':'Uninvested — click to invest';tt.style.display='block';tt.style.left=(e.clientX+14)+'px';tt.style.top=(e.clientY-55)+'px';}
+  function tip(e,t){const w=winner(t.id),s=sA[t.id]||{red:0,blue:0};document.getElementById('ttn').textContent=t.name;document.getElementById('ttv').textContent=t.votes+' pts/day · R:'+s.red+' B:'+s.blue;const ti=document.getElementById('tti');ti.className='tti '+(w||'neutral');ti.textContent=w?w[0].toUpperCase()+w.slice(1)+' controlled':'Uninvested — click to invest';tt.style.display='block';tt.style.left=(e.clientX+14)+'px';tt.style.top=(e.clientY-55)+'px';}
   SPLIT_ISOS.forEach(iso=>{const f=all.find(d=>+d.id===iso);if(f)svg.append('path').datum(f).attr('d',path).attr('fill','#181c2a').attr('stroke','rgba(255,255,255,0.05)').attr('stroke-width',0.4).attr('pointer-events','none');});
   ASIA.forEach(r=>r.territories.forEach(t=>{if(t.type!=='country')return;const isos=Array.isArray(t.iso)?t.iso:[t.iso];const fs=all.filter(d=>isos.includes(+d.id));if(!fs.length)return;const g=svg.append('g').style('cursor','pointer');fs.forEach(f=>g.append('path').datum(f).attr('d',path).attr('fill',territoryFill(t.id)).attr('stroke',territoryStroke(t.id)).attr('stroke-width',0.8));g.on('mousemove',e=>tip(e,t)).on('mouseleave',()=>tt.style.display='none').on('click',()=>{tt.style.display='none';openModal(t.id);});}));
   ASIA.forEach(r=>r.territories.forEach(t=>{if(t.type!=='clip')return;const f=all.find(d=>+d.id===t.iso);if(!f)return;const g=svg.append('g').style('cursor','pointer').attr('clip-path','url(#cl-'+t.id+')');g.append('path').datum(f).attr('d',path).attr('fill',territoryFill(t.id)).attr('stroke',territoryStroke(t.id)).attr('stroke-width',1);g.on('mousemove',e=>tip(e,t)).on('mouseleave',()=>tt.style.display='none').on('click',()=>{tt.style.display='none';openModal(t.id);});}));
   DIVIDERS.forEach(({iso,lines})=>{const g=svg.append('g').attr('clip-path','url(#cc-'+iso+')').attr('pointer-events','none');lines.forEach(({pts})=>{const pp=pts.map(p=>proj(p)).filter(Boolean);if(pp.length<2)return;g.append('path').attr('d','M'+pp.map(p=>p.join(',')).join('L')).attr('fill','none').attr('stroke','rgba(255,255,255,0.5)').attr('stroke-width',1.2).attr('stroke-dasharray','4,3');});});
 }
-function buildUS(topo){
-  const c=document.getElementById('msvg');c.innerHTML='';
-  const W=900,H=540,proj=d3.geoAlbersUsa().scale(1060).translate([W/2,H/2]),path=d3.geoPath(proj);
-  const svg=d3.select(c).append('svg').attr('viewBox',`0 0 ${W} ${H}`).attr('width','100%');
-  svg.append('rect').attr('width',W).attr('height',H).attr('fill','#0d1019');
-  const fMap={};US.forEach(r=>r.territories.forEach(t=>{if(t.fips)fMap[t.fips]=t;}));
-  const feats=topojson.feature(topo,topo.objects.states).features,tt=document.getElementById('tt');
-  svg.selectAll('path').data(feats).join('path')
-    .attr('d',path)
-    .attr('fill',d=>{const f=String(d.id).padStart(2,'0');const t=fMap[f];return t?territoryFill(t.id):'#181c2a';})
-    .attr('stroke',d=>{const f=String(d.id).padStart(2,'0');const t=fMap[f];return t?territoryStroke(t.id):'rgba(255,255,255,0.05)';})
-    .attr('stroke-width',0.8).style('cursor',d=>fMap[String(d.id).padStart(2,'0')]?'pointer':'default')
-    .on('mousemove',function(e,d){const f=String(d.id).padStart(2,'0');const t=fMap[f];if(!t)return;const w=winner(t.id);const s=sU[t.id]||{red:0,blue:0};document.getElementById('ttn').textContent=t.name;document.getElementById('ttv').textContent=t.votes+' votes · R:'+s.red+' B:'+s.blue;const ti=document.getElementById('tti');ti.className='tti '+(w||'neutral');ti.textContent=w?w[0].toUpperCase()+w.slice(1)+' controlled':'Uninvested — click to invest';tt.style.display='block';tt.style.left=(e.clientX+14)+'px';tt.style.top=(e.clientY-55)+'px';})
-    .on('mouseleave',()=>tt.style.display='none')
-    .on('click',function(e,d){const f=String(d.id).padStart(2,'0');const t=fMap[f];if(!t)return;tt.style.display='none';openModal(t.id);});
-}
-function refresh(){if(curView==='map'){if(curMap==='asia'&&wTopo)buildAsia(wTopo);else if(curMap==='us'&&uTopo)buildUS(uTopo);}else renderListView();}
-function switchMap(m){curMap=m;document.getElementById('mc-asia').className='mc-btn'+(m==='asia'?' on':'');document.getElementById('mc-us').className='mc-btn'+(m==='us'?' on':'');document.getElementById('maplabel').innerHTML=m==='asia'?'Asia &amp; Oceania — Electoral Investment Map':'United States — Electoral Investment Map';if(curView==='map'){document.getElementById('mst').style.display='flex';document.getElementById('msvg').innerHTML='';document.getElementById('listcontent').style.display='none';doLoadMap();}else renderListView();updSB();}
-function switchView(v){curView=v;document.getElementById('mc-mapv').className='mc-btn'+(v==='map'?' on':'');document.getElementById('mc-listv').className='mc-btn'+(v==='list'?' on':'');document.getElementById('msvg').style.display=v==='map'?'':'none';document.getElementById('listcontent').style.display=v==='list'?'':'none';if(v==='map'){document.getElementById('mst').style.display='none';if((curMap==='asia'&&wTopo)||(curMap==='us'&&uTopo))refresh();else{document.getElementById('mst').style.display='flex';doLoadMap();}}else renderListView();}
+function refresh(){if(curView==='map'&&wTopo)buildAsia(wTopo);else renderListView();}
+function switchView(v){curView=v;document.getElementById('mc-mapv').className='mc-btn'+(v==='map'?' on':'');document.getElementById('mc-listv').className='mc-btn'+(v==='list'?' on':'');document.getElementById('msvg').style.display=v==='map'?'':'none';document.getElementById('listcontent').style.display=v==='list'?'':'none';if(v==='map'){document.getElementById('mst').style.display='none';if(wTopo)refresh();else{document.getElementById('mst').style.display='flex';doLoadMap();}}else renderListView();}
 function renderCard(t){const s=getSt()[t.id]||{red:0,blue:0};const w=winner(t.id);const tot=s.red+s.blue,rp=tot?Math.round(s.red/tot*100):0,bp=tot?Math.round(s.blue/tot*100):0;const cls='tcard'+(w==='red'?' rh':w==='blue'?' bh':'');const inv=tot?'R:'+s.red+' B:'+s.blue:'uninvested';return'<div class="'+cls+'" onclick="openModal(\''+t.id+'\')"><div class="tcn">'+t.name+'</div><div class="tcb"><span class="tcv">'+t.votes+' pts</span><span class="tci">'+inv+'</span></div><div class="tbar"><div class="tbr" style="width:'+rp+'%"></div><div class="tbb" style="width:'+bp+'%"></div></div></div>';}
 function renderListView(){const el=document.getElementById('listcontent');el.style.display='';let h='';getReg().forEach(r=>{const tot=r.territories.reduce((s,t)=>s+t.votes,0);h+='<div class="rsec"><div class="rhdr"><span class="rname">'+r.name+'</span><span class="rpts">'+tot+' pts / day</span></div><div class="tgrid">'+r.territories.map(renderCard).join('')+'</div></div>';});el.innerHTML=h;}
-function findT(id){for(const r of [...ASIA,...US]){const t=r.territories.find(x=>x.id===id);if(t)return t;}}
+function findT(id){for(const r of ASIA){const t=r.territories.find(x=>x.id===id);if(t)return t;}}
 function closeModal(){document.getElementById('mroot').innerHTML='';}
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2800);}
 
@@ -1132,9 +1105,7 @@ function mpConnect(){
   });
   socket.on('state_update',data=>{
     _mpApplying=true;
-    // Always wipe map state before applying so ghost investments can't bleed through
     Object.keys(sA).forEach(k=>{sA[k]={red:0,blue:0};});
-    Object.keys(sU).forEach(k=>{sU[k]={red:0,blue:0};});
     if(data){
       applyLoadedData(data);
     } else {
@@ -1248,7 +1219,6 @@ function scheduleNextSeason(){
 function startNewSeason(){
   // Reset game for new season — keep players, clear everything else
   Object.keys(sA).forEach(k=>{sA[k]={red:0,blue:0};});
-  Object.keys(sU).forEach(k=>{sU[k]={red:0,blue:0};});
   totalScore={red:0,blue:0};
   timeline.length=0;nextEid=1;
   tickets.length=0;nextTicketId=1;
