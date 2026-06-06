@@ -1088,6 +1088,7 @@ function mpConnect(){
   if(window.location.protocol==='file:'){toast('Open via Flask (python server.py) for multiplayer.');return;}
   socket=io({
     query: suToken?{su:suToken}:{},
+    transports: ['websocket'],
     reconnection: true,
     reconnectionDelay: 1000,
     reconnectionAttempts: Infinity
@@ -1104,13 +1105,12 @@ function mpConnect(){
   socket.on('disconnect',()=>{
     if(mpRoom)updateMpUI('mp-connecting','Reconnecting to '+mpRoom+'...');
   });
-  socket.on('reconnect',()=>{
+  socket.io.on('reconnect',()=>{
     if(mpRoom){
       const code=mpRoom,wasHost=mpIsHost;
       if(wasHost)socket.emit('create_room',{code,data:getFullState()});
       else socket.emit('join_room',{code});
     }
-    if(suToken){}// superuser_ok re-fires automatically on reconnect via connect handler
   });
   socket.on('room_created',data=>{
     mpRoom=data.code;mpIsHost=true;
