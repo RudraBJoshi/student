@@ -1132,7 +1132,20 @@ function mpConnect(){
   });
   socket.on('state_update',data=>{
     _mpApplying=true;
-    applyLoadedData(data);checkMissedDays();
+    // Always wipe map state before applying so ghost investments can't bleed through
+    Object.keys(sA).forEach(k=>{sA[k]={red:0,blue:0};});
+    Object.keys(sU).forEach(k=>{sU[k]={red:0,blue:0};});
+    if(data){
+      applyLoadedData(data);
+    } else {
+      // Null = room was reset by host — clear everything
+      players.red=[];players.blue=[];nextPid=1;
+      timeline.length=0;nextEid=1;
+      totalScore={red:0,blue:0};lastScoredDate='';gameStartDate=null;
+      tickets.length=0;nextTicketId=1;
+      gameState='active';nextStartDate=null;endedAt=null;
+    }
+    checkMissedDays();
     refresh();renderPlayers();updSB();scheduleSave();
     if(curTab==='timeline')renderTimeline();
     if(curTab==='admin'){renderAdminInbox();renderAdminSeasonControls();}
