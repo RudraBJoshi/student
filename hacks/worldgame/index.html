@@ -213,6 +213,15 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);pad
 .ao-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:.5rem;}
 .ao-input{width:100%;padding:7px 9px;border-radius:7px;font-family:'Bebas Neue',sans-serif;font-size:18px;outline:none;}
 .ao-btn{width:100%;padding:8px;border-radius:8px;border:1px solid rgba(245,158,11,0.3);background:rgba(245,158,11,0.08);color:var(--accent);font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;}
+.su-bar{text-align:center;font-size:11px;color:var(--accent);margin-bottom:.5rem;display:flex;align-items:center;justify-content:center;gap:6px;}
+.su-dot{width:7px;height:7px;border-radius:50%;background:var(--accent);flex-shrink:0;}
+.admin-room-row{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-radius:10px;margin-bottom:6px;}
+.admin-room-code{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:3px;color:var(--accent);min-width:90px;}
+.admin-room-meta{flex:1;font-size:12px;color:var(--muted);}
+.admin-room-actions{display:flex;gap:6px;}
+.admin-room-actions button{padding:5px 12px;border-radius:7px;border:1px solid var(--border);background:transparent;font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;}
+.admin-room-actions .del{border-color:rgba(220,38,38,0.3);color:#fca5a5;}
+.admin-room-actions .rst{border-color:rgba(245,158,11,0.3);color:var(--accent);}
 </style>
 
 <div class="app-title"><span class="r">RED</span> vs <span class="b">BLUE</span></div>
@@ -220,6 +229,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);pad
 <div class="save-status">
   <div class="save-dot" id="save-dot"></div>
   <span id="save-status-text">Loading...</span>
+</div>
+<div class="su-bar" id="su-bar" style="display:none;">
+  <div class="su-dot"></div>
+  <span>Superuser active</span>
 </div>
 <div class="mp-bar" id="mp-bar">
   <div class="mp-dot" id="mp-dot"></div>
@@ -231,6 +244,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);pad
   <button class="tab-btn active" id="tab-map" onclick="showTab('map')">Map</button>
   <button class="tab-btn" id="tab-players" onclick="showTab('players')">Players</button>
   <button class="tab-btn" id="tab-timeline" onclick="showTab('timeline')">Timeline</button>
+  <button class="tab-btn" id="tab-admin" onclick="showTab('admin')" style="display:none;color:var(--accent);">Admin</button>
 </div>
 
 <div class="countdown-banner">
@@ -315,6 +329,19 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);pad
     <button class="cbtn save" onclick="openScoreSnapshot()" style="padding:7px 12px;font-size:12px;"><i class="ti ti-camera"></i> Snapshot</button>
   </div>
   <div id="timeline-container"></div>
+</div>
+
+<div id="tab-admin-content" style="display:none;">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:8px;">
+    <div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px;color:var(--accent);">Admin Panel</div>
+      <div style="font-size:11px;color:var(--muted);">Superuser access — not visible to others</div>
+    </div>
+    <button class="cbtn save" onclick="adminRefresh()" style="padding:7px 14px;">↻ Refresh rooms</button>
+  </div>
+  <div id="admin-rooms-list">
+    <div style="text-align:center;padding:2rem;color:var(--muted);font-size:13px;">Click Refresh to load all active rooms.</div>
+  </div>
 </div>
 
 <div id="mroot"></div>
@@ -482,6 +509,19 @@ function getSt(){return curMap==='asia'?sA:sU;}
 function winner(id){const s=getSt()[id];if(!s||(!s.red&&!s.blue))return null;return s.red>s.blue?'red':s.blue>s.red?'blue':null;}
 function cFor(w){return w==='red'?'#7f1d1d':w==='blue'?'#1e3a8a':'#22263a';}
 function sFor(w){return w==='red'?'#dc2626':w==='blue'?'#2563eb':'rgba(255,255,255,0.18)';}
+function _lerp(a,b,t){return Math.round(a+(b-a)*t);}
+function territoryFill(id){
+  const s=getSt()[id]||{red:0,blue:0};const tot=s.red+s.blue;
+  if(!tot)return '#22263a';
+  const t=s.red/tot;// 1=all red, 0=all blue
+  return`rgb(${_lerp(30,127,t)},${_lerp(58,29,t)},${_lerp(138,29,t)})`;
+}
+function territoryStroke(id){
+  const s=getSt()[id]||{red:0,blue:0};const tot=s.red+s.blue;
+  if(!tot)return 'rgba(255,255,255,0.18)';
+  const t=s.red/tot;
+  return`rgb(${_lerp(37,220,t)},${_lerp(99,38,t)},${_lerp(235,38,t)})`;
+}
 function calcVotes(){
   let rv=0,bv=0,rt=0,bt=0;
   [...ASIA,...US].forEach(r=>r.territories.forEach(t=>{
@@ -576,9 +616,12 @@ function updSB(){
 // ── TABS ──────────────────────────────────────────────────────────────────────
 function showTab(t){
   curTab=t;
-  ['map','players','timeline'].forEach(x=>{
-    document.getElementById('tab-'+x).classList.toggle('active',x===t);
-    document.getElementById('tab-'+x+'-content').style.display=x===t?'':'none';
+  const tabs=['map','players','timeline',...(isSuperuser?['admin']:[])];
+  tabs.forEach(x=>{
+    const btn=document.getElementById('tab-'+x);
+    const cnt=document.getElementById('tab-'+x+'-content');
+    if(btn)btn.classList.toggle('active',x===t);
+    if(cnt)cnt.style.display=x===t?'':'none';
   });
   if(t==='players')renderPlayers();
   if(t==='timeline')renderTimeline();
@@ -602,7 +645,6 @@ function renderPlayers(){
         <div class="player-avatar ${team}">${p.name.charAt(0).toUpperCase()}</div>
         <div class="player-info"><div class="player-name">${p.name}${p.admin?'<span class="admin-badge">ADMIN</span>':''}</div><div class="player-balance ${team}">${p.balance.toLocaleString()} coins</div></div>
         <div class="player-actions">
-          <button class="pact-btn${p.admin?' admin-on':''}" title="${p.admin?'Revoke admin':'Grant admin'}" onclick="toggleAdmin(${p.id},'${team}')">★</button>
           <button class="pact-btn" title="Earn coins" onclick="openEarn(${p.id},'${team}')"><i class="ti ti-plus"></i></button>
           <button class="pact-btn" title="Adjust" onclick="openAdjust(${p.id},'${team}')"><i class="ti ti-coin"></i></button>
           <button class="pact-btn" onclick="removePlayer(${p.id},'${team}')" style="font-size:16px;">×</button>
@@ -821,8 +863,8 @@ function buildAsia(topo){
   const tt=document.getElementById('tt');
   function tip(e,t){const w=winner(t.id),s=(curMap==='asia'?sA:sU)[t.id]||{red:0,blue:0};document.getElementById('ttn').textContent=t.name;document.getElementById('ttv').textContent=t.votes+' pts/day · R:'+s.red+' B:'+s.blue;const ti=document.getElementById('tti');ti.className='tti '+(w||'neutral');ti.textContent=w?w[0].toUpperCase()+w.slice(1)+' controlled':'Uninvested — click to invest';tt.style.display='block';tt.style.left=(e.clientX+14)+'px';tt.style.top=(e.clientY-55)+'px';}
   SPLIT_ISOS.forEach(iso=>{const f=all.find(d=>+d.id===iso);if(f)svg.append('path').datum(f).attr('d',path).attr('fill','#181c2a').attr('stroke','rgba(255,255,255,0.05)').attr('stroke-width',0.4).attr('pointer-events','none');});
-  ASIA.forEach(r=>r.territories.forEach(t=>{if(t.type!=='country')return;const isos=Array.isArray(t.iso)?t.iso:[t.iso];const fs=all.filter(d=>isos.includes(+d.id));if(!fs.length)return;const g=svg.append('g').style('cursor','pointer');fs.forEach(f=>g.append('path').datum(f).attr('d',path).attr('fill',cFor(winner(t.id))).attr('stroke',sFor(winner(t.id))).attr('stroke-width',0.8));g.on('mousemove',e=>tip(e,t)).on('mouseleave',()=>tt.style.display='none').on('click',()=>{tt.style.display='none';openModal(t.id);});}));
-  ASIA.forEach(r=>r.territories.forEach(t=>{if(t.type!=='clip')return;const f=all.find(d=>+d.id===t.iso);if(!f)return;const g=svg.append('g').style('cursor','pointer').attr('clip-path','url(#cl-'+t.id+')');g.append('path').datum(f).attr('d',path).attr('fill',cFor(winner(t.id))).attr('stroke',sFor(winner(t.id))).attr('stroke-width',1);g.on('mousemove',e=>tip(e,t)).on('mouseleave',()=>tt.style.display='none').on('click',()=>{tt.style.display='none';openModal(t.id);});}));
+  ASIA.forEach(r=>r.territories.forEach(t=>{if(t.type!=='country')return;const isos=Array.isArray(t.iso)?t.iso:[t.iso];const fs=all.filter(d=>isos.includes(+d.id));if(!fs.length)return;const g=svg.append('g').style('cursor','pointer');fs.forEach(f=>g.append('path').datum(f).attr('d',path).attr('fill',territoryFill(t.id)).attr('stroke',territoryStroke(t.id)).attr('stroke-width',0.8));g.on('mousemove',e=>tip(e,t)).on('mouseleave',()=>tt.style.display='none').on('click',()=>{tt.style.display='none';openModal(t.id);});}));
+  ASIA.forEach(r=>r.territories.forEach(t=>{if(t.type!=='clip')return;const f=all.find(d=>+d.id===t.iso);if(!f)return;const g=svg.append('g').style('cursor','pointer').attr('clip-path','url(#cl-'+t.id+')');g.append('path').datum(f).attr('d',path).attr('fill',territoryFill(t.id)).attr('stroke',territoryStroke(t.id)).attr('stroke-width',1);g.on('mousemove',e=>tip(e,t)).on('mouseleave',()=>tt.style.display='none').on('click',()=>{tt.style.display='none';openModal(t.id);});}));
   DIVIDERS.forEach(({iso,lines})=>{const g=svg.append('g').attr('clip-path','url(#cc-'+iso+')').attr('pointer-events','none');lines.forEach(({pts})=>{const pp=pts.map(p=>proj(p)).filter(Boolean);if(pp.length<2)return;g.append('path').attr('d','M'+pp.map(p=>p.join(',')).join('L')).attr('fill','none').attr('stroke','rgba(255,255,255,0.5)').attr('stroke-width',1.2).attr('stroke-dasharray','4,3');});});
 }
 function buildUS(topo){
@@ -834,8 +876,8 @@ function buildUS(topo){
   const feats=topojson.feature(topo,topo.objects.states).features,tt=document.getElementById('tt');
   svg.selectAll('path').data(feats).join('path')
     .attr('d',path)
-    .attr('fill',d=>{const f=String(d.id).padStart(2,'0');const t=fMap[f];return t?cFor(winner(t.id)):'#181c2a';})
-    .attr('stroke',d=>{const f=String(d.id).padStart(2,'0');const t=fMap[f];return t?sFor(winner(t.id)):'rgba(255,255,255,0.05)';})
+    .attr('fill',d=>{const f=String(d.id).padStart(2,'0');const t=fMap[f];return t?territoryFill(t.id):'#181c2a';})
+    .attr('stroke',d=>{const f=String(d.id).padStart(2,'0');const t=fMap[f];return t?territoryStroke(t.id):'rgba(255,255,255,0.05)';})
     .attr('stroke-width',0.8).style('cursor',d=>fMap[String(d.id).padStart(2,'0')]?'pointer':'default')
     .on('mousemove',function(e,d){const f=String(d.id).padStart(2,'0');const t=fMap[f];if(!t)return;const w=winner(t.id);const s=sU[t.id]||{red:0,blue:0};document.getElementById('ttn').textContent=t.name;document.getElementById('ttv').textContent=t.votes+' votes · R:'+s.red+' B:'+s.blue;const ti=document.getElementById('tti');ti.className='tti '+(w||'neutral');ti.textContent=w?w[0].toUpperCase()+w.slice(1)+' controlled':'Uninvested — click to invest';tt.style.display='block';tt.style.left=(e.clientX+14)+'px';tt.style.top=(e.clientY-55)+'px';})
     .on('mouseleave',()=>tt.style.display='none')
@@ -852,6 +894,8 @@ function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t
 
 // ── MULTIPLAYER (Flask-SocketIO) ──────────────────────────────────────────────
 let socket=null,mpRoom=null,mpIsHost=false,_mpApplying=false;
+let isSuperuser=false;
+const suToken=new URLSearchParams(window.location.search).get('su')||'';
 
 function mpBroadcast(){
   if(_mpApplying||!socket||!mpRoom)return;
@@ -868,7 +912,15 @@ function updateMpUI(status,label){
 function mpConnect(){
   if(socket&&socket.connected)return;
   if(window.location.protocol==='file:'){toast('Open via Flask (python server.py) for multiplayer.');return;}
-  socket=io();
+  socket=io(suToken?{query:{su:suToken}}:{});
+  socket.on('superuser_ok',()=>{
+    isSuperuser=true;
+    document.getElementById('su-bar').style.display='flex';
+    document.getElementById('tab-admin').style.display='';
+  });
+  socket.on('admin_rooms',data=>renderAdminRooms(data.rooms));
+  socket.on('admin_ok',data=>toast(data.message));
+  socket.on('admin_error',data=>toast('Admin: '+data.message));
   socket.on('disconnect',()=>{
     if(mpRoom){mpRoom=null;mpIsHost=false;updateMpUI('disconnected','Server disconnected');toast('Server disconnected.');}
   });
@@ -971,6 +1023,41 @@ function doJoinFromModal(){
   if(code)closeModal();
 }
 
+// ── ADMIN ─────────────────────────────────────────────────────────────────────
+function adminRefresh(){
+  if(!isSuperuser){toast('Not authorized.');return;}
+  if(!socket||!socket.connected){mpConnect();socket.once('connect',()=>socket.emit('admin_list_rooms'));}
+  else socket.emit('admin_list_rooms');
+}
+function adminDelete(code){
+  if(!confirm('Delete room '+code+'? This cannot be undone.'))return;
+  socket.emit('admin_delete_room',{code});
+  setTimeout(adminRefresh,300);
+}
+function adminReset(code){
+  if(!confirm('Reset room '+code+'? All state will be cleared.'))return;
+  socket.emit('admin_reset_room',{code});
+  setTimeout(adminRefresh,300);
+}
+function renderAdminRooms(rooms){
+  const el=document.getElementById('admin-rooms-list');
+  const entries=Object.entries(rooms);
+  if(!entries.length){el.innerHTML='<div style="text-align:center;padding:2rem;color:var(--muted);font-size:13px;">No active rooms.</div>';return;}
+  entries.sort((a,b)=>b[1].ts-a[1].ts);
+  el.innerHTML=entries.map(([code,r])=>{
+    const ago=Math.round((Date.now()/1000-r.ts)/60);
+    const agoStr=ago<1?'just now':ago<60?ago+'m ago':Math.round(ago/60)+'h ago';
+    return`<div class="admin-room-row">
+      <div class="admin-room-code">${code}</div>
+      <div class="admin-room-meta">${r.players} player${r.players!==1?'s':''} · last active ${agoStr}</div>
+      <div class="admin-room-actions">
+        <button class="rst" onclick="adminReset('${code}')">Reset</button>
+        <button class="del" onclick="adminDelete('${code}')">Delete</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
 // ── STARTUP ───────────────────────────────────────────────────────────────────
 async function init(){
   document.getElementById('mstmsg').textContent='Loading saved game...';
@@ -984,6 +1071,10 @@ async function init(){
     setSaveStatus('none');
   }
   doLoadMap();
+  // Auto-connect superuser (token in URL ?su=)
+  if(suToken&&window.location.protocol!=='file:'){
+    mpConnect();
+  }
   // Auto-rejoin saved room
   const savedCode=localStorage.getItem('wg-mp-room');
   if(savedCode&&window.location.protocol!=='file:'){
