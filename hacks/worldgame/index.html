@@ -259,6 +259,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);pad
   <button class="mp-btn" onclick="openMpModal()">Multiplayer</button>
 </div>
 
+<div id="season-banner" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1rem;text-align:center;"></div>
+
 <div class="tab-nav">
   <button class="tab-btn active" id="tab-map" onclick="showTab('map')">Map</button>
   <button class="tab-btn" id="tab-players" onclick="showTab('players')">Players</button>
@@ -373,6 +375,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);pad
     </div>
     <button class="cbtn save" onclick="adminRefresh()" style="padding:7px 14px;">↻ Refresh rooms</button>
   </div>
+  <div id="admin-season-controls" style="margin-bottom:1.5rem;"></div>
   <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;margin-bottom:10px;">Coin Requests</div>
   <div id="admin-inbox" style="margin-bottom:1.5rem;">
     <div style="text-align:center;padding:1.5rem;color:var(--muted);font-size:13px;">No tickets yet.</div>
@@ -469,6 +472,9 @@ let lastScoredDate='';
 let gameStartDate=null;
 const tickets=[];
 let nextTicketId=1;
+let gameState='active'; // 'active' | 'ended' | 'scheduled'
+let nextStartDate=null; // ISO string for next season start
+let endedAt=null;
 
 // ── AUTO-SAVE ─────────────────────────────────────────────────────────────────
 const SAVE_KEY='redvblue-game-v1';
@@ -490,7 +496,7 @@ function setSaveStatus(state){
 
 async function autoSave(){
   setSaveStatus('saving');
-  const data={v:5,asia:sA,us:sU,players,nextPid,timeline,nextEid,totalScore,lastScoredDate,gameStartDate,tickets,nextTicketId};
+  const data={v:5,asia:sA,us:sU,players,nextPid,timeline,nextEid,totalScore,lastScoredDate,gameStartDate,tickets,nextTicketId,gameState,nextStartDate,endedAt};
   const json=JSON.stringify(data);
   try{
     if(window.storage?.set)await window.storage.set(SAVE_KEY,json);
@@ -539,6 +545,9 @@ function applyLoadedData(data){
   if(data.gameStartDate)gameStartDate=data.gameStartDate;
   if(data.tickets){tickets.length=0;data.tickets.forEach(t=>tickets.push(t));}
   if(data.nextTicketId)nextTicketId=data.nextTicketId;
+  if(data.gameState)gameState=data.gameState;
+  if(data.nextStartDate!==undefined)nextStartDate=data.nextStartDate;
+  if(data.endedAt!==undefined)endedAt=data.endedAt;
 }
 
 // ── HELPERS ───────────────────────────────────────────────────────────────────
@@ -619,12 +628,35 @@ function checkMissedDays(){
 let lastCheckedDate=getPTDateStr();
 function midnightPoll(){
   const ptNow=getPTDateStr();
+  // Check if scheduled season should start
+  if(gameState==='scheduled'&&nextStartDate&&new Date()>=new Date(nextStartDate)){
+    startNewSeason();return;
+  }
+  if(gameState!=='active')return;
   if(ptNow!==lastCheckedDate&&ptNow>lastScoredDate){lastCheckedDate=ptNow;applyDailyScore(ptNow,false);}
 }
 setInterval(midnightPoll,10000);
 
 // ── COUNTDOWN ─────────────────────────────────────────────────────────────────
 function updateCountdown(){
+  if(gameState==='ended'){
+    document.getElementById('cd-timer').textContent='--:--:--';
+    document.getElementById('cd-progress').style.width='100%';
+    document.getElementById('cd-day').textContent='Ended';
+    document.querySelector('.cd-label').textContent='Season ended';
+    return;
+  }
+  if(gameState==='scheduled'&&nextStartDate){
+    const ms=Math.max(0,new Date(nextStartDate)-new Date());
+    const s=Math.floor(ms/1000),h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sec=s%60;
+    const p=n=>String(n).padStart(2,'0');
+    document.getElementById('cd-timer').textContent=p(h)+':'+p(m)+':'+p(sec);
+    document.getElementById('cd-progress').style.width=Math.max(0,(1-ms/Math.max(1,new Date(nextStartDate)-new Date(endedAt)))*100)+'%';
+    document.querySelector('.cd-label').textContent='Next season starts';
+    document.getElementById('cd-day').textContent='Soon';
+    return;
+  }
+  document.querySelector('.cd-label').textContent='Next score addition — midnight PT';
   const ms=getMsUntilMidnightPT();
   const s=Math.floor(ms/1000);
   const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sec=s%60;
@@ -669,7 +701,7 @@ function showTab(t){
   if(t==='players')renderPlayers();
   if(t==='timeline')renderTimeline();
   if(t==='guide')renderGuide();
-  if(t==='admin'){renderAdminInbox();}
+  if(t==='admin'){renderAdminInbox();renderAdminSeasonControls();}
 }
 
 const GUIDE=[
@@ -959,6 +991,7 @@ async function doReset(){
   timeline.length=0;nextEid=1;
   totalScore={red:0,blue:0};lastScoredDate='';gameStartDate=null;
   tickets.length=0;nextTicketId=1;
+  gameState='active';nextStartDate=null;endedAt=null;
   try{if(window.storage?.delete)await window.storage.delete(SAVE_KEY);else localStorage.removeItem(SAVE_KEY);}catch(e){}
   closeModal();refresh();renderPlayers();updSB();setSaveStatus('none');
   if(curTab==='timeline')renderTimeline();
@@ -1037,7 +1070,7 @@ const suToken=new URLSearchParams(window.location.search).get('su')||'';
 
 function mpBroadcast(){
   if(_mpApplying||!socket||!mpRoom)return;
-  socket.emit('state_update',{room:mpRoom,data:{v:5,asia:sA,us:sU,players,nextPid,timeline,nextEid,totalScore,lastScoredDate,gameStartDate,tickets,nextTicketId}});
+  socket.emit('state_update',{room:mpRoom,data:{v:5,asia:sA,us:sU,players,nextPid,timeline,nextEid,totalScore,lastScoredDate,gameStartDate,tickets,nextTicketId,gameState,nextStartDate,endedAt}});
 }
 
 function updateMpUI(status,label){
@@ -1098,8 +1131,8 @@ function mpConnect(){
     applyLoadedData(data);checkMissedDays();
     refresh();renderPlayers();updSB();scheduleSave();
     if(curTab==='timeline')renderTimeline();
-    if(curTab==='admin')renderAdminInbox();
-    updateTicketBadge();
+    if(curTab==='admin'){renderAdminInbox();renderAdminSeasonControls();}
+    renderSeasonBanner();updateTicketBadge();
     _mpApplying=false;
   });
   socket.on('player_count',data=>{
@@ -1178,6 +1211,76 @@ function doJoinFromModal(){
   const code=(document.getElementById('mp-code-input').value||'').trim();
   joinGame(code);
   if(code)closeModal();
+}
+
+// ── SEASON / GAME STATE ───────────────────────────────────────────────────────
+function stopGame(){
+  if(!confirm('End the season? Scoring will stop and the winner will be announced.'))return;
+  gameState='ended';endedAt=now();
+  scheduleSave();renderSeasonBanner();renderAdminSeasonControls();
+  toast('Season ended.');
+}
+function scheduleNextSeason(){
+  const val=document.getElementById('next-start-input').value;
+  if(!val){toast('Pick a date and time.');return;}
+  nextStartDate=new Date(val).toISOString();
+  gameState='scheduled';
+  scheduleSave();renderSeasonBanner();renderAdminSeasonControls();
+  toast('Next season scheduled!');
+}
+function startNewSeason(){
+  // Reset game for new season — keep players, clear everything else
+  Object.keys(sA).forEach(k=>{sA[k]={red:0,blue:0};});
+  Object.keys(sU).forEach(k=>{sU[k]={red:0,blue:0};});
+  totalScore={red:0,blue:0};
+  timeline.length=0;nextEid=1;
+  tickets.length=0;nextTicketId=1;
+  gameStartDate=nextStartDate;
+  lastScoredDate=new Date(nextStartDate).toISOString().slice(0,10);
+  lastCheckedDate=lastScoredDate;
+  gameState='active';nextStartDate=null;endedAt=null;
+  scheduleSave();refresh();renderPlayers();updSB();renderSeasonBanner();
+  if(curTab==='timeline')renderTimeline();
+  if(curTab==='admin'){renderAdminInbox();renderAdminSeasonControls();}
+  toast('New season started!');
+}
+function renderSeasonBanner(){
+  const el=document.getElementById('season-banner');if(!el)return;
+  if(gameState==='active'){el.style.display='none';return;}
+  el.style.display='';
+  const winner=totalScore.red>totalScore.blue?'red':totalScore.blue>totalScore.red?'blue':null;
+  const winnerColor=winner==='red'?'#fca5a5':winner==='blue'?'#93c5fd':'var(--accent)';
+  const winnerText=winner?winner[0].toUpperCase()+winner.slice(1)+' Team Wins!':'It\'s a Tie!';
+  const topPlayers=[...players.red.map(p=>({...p,team:'red'})),...players.blue.map(p=>({...p,team:'blue'}))].sort((a,b)=>b.balance-a.balance).slice(0,5);
+  el.innerHTML=`
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:11px;letter-spacing:2px;color:var(--muted);margin-bottom:6px;">${gameState==='scheduled'?'SEASON ENDED — NEXT SEASON SCHEDULED':'SEASON ENDED'}</div>
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:3px;color:${winnerColor};margin-bottom:8px;">${winnerText}</div>
+    <div style="display:flex;justify-content:center;gap:32px;margin-bottom:${gameState==='scheduled'?'12px':'0'};">
+      <div><div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:#fca5a5;">${totalScore.red.toLocaleString()}</div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;">Red</div></div>
+      <div style="display:flex;align-items:center;font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--muted);">VS</div>
+      <div><div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:#93c5fd;">${totalScore.blue.toLocaleString()}</div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;">Blue</div></div>
+    </div>
+    ${topPlayers.length?`<div style="margin-top:10px;display:flex;justify-content:center;gap:8px;flex-wrap:wrap;">${topPlayers.map((p,i)=>`<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:5px 12px;font-size:12px;"><span style="color:var(--muted);margin-right:4px;">#${i+1}</span><span style="color:${p.team==='red'?'#fca5a5':'#93c5fd'};">${p.name}</span> <span style="font-family:'Bebas Neue',sans-serif;">${p.balance.toLocaleString()}</span></div>`).join('')}</div>`:''}
+    ${gameState==='scheduled'?`<div style="margin-top:12px;font-size:12px;color:var(--muted);">Next season: <strong style="color:var(--accent);">${new Date(nextStartDate).toLocaleString()}</strong></div>`:''}`;
+}
+function renderAdminSeasonControls(){
+  const el=document.getElementById('admin-season-controls');if(!el)return;
+  if(gameState==='active'){
+    el.innerHTML=`<button class="bsav red-btn" onclick="stopGame()" style="width:100%;padding:11px;font-size:14px;">⏹ End Season</button>`;
+  } else {
+    const minDate=new Date();minDate.setMinutes(minDate.getMinutes()+5);
+    const minStr=minDate.toISOString().slice(0,16);
+    const curVal=nextStartDate?new Date(nextStartDate).toISOString().slice(0,16):'';
+    el.innerHTML=`
+      <div style="background:rgba(245,158,11,0.06);border:1px solid rgba(245,158,11,0.2);border-radius:10px;padding:12px 14px;">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:1.5px;color:var(--accent);margin-bottom:8px;">Schedule Next Season</div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <input type="datetime-local" id="next-start-input" min="${minStr}" value="${curVal}" style="flex:1;padding:8px 10px;border-radius:8px;border:1px solid rgba(245,158,11,0.3);background:rgba(245,158,11,0.06);color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;outline:none;"/>
+          <button class="bsav" onclick="scheduleNextSeason()" style="padding:8px 16px;background:rgba(245,158,11,0.15);color:var(--accent);">Set Date</button>
+        </div>
+        ${gameState==='scheduled'?`<div style="font-size:11px;color:var(--muted);margin-top:6px;">Scheduled: ${new Date(nextStartDate).toLocaleString()} — players will auto-join next season</div>`:''}
+      </div>`;
+  }
 }
 
 // ── TICKET SYSTEM ────────────────────────────────────────────────────────────
@@ -1291,6 +1394,7 @@ async function init(){
   } else {
     setSaveStatus('none');
   }
+  renderSeasonBanner();
   doLoadMap();
   // Auto-connect superuser (token in URL ?su=)
   if(suToken&&window.location.protocol!=='file:'){
