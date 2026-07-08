@@ -107,15 +107,50 @@ const SCRIPT_RANGES = [
   ["Hangul",   [0xAC00,0xD7A3]],
 ];
 
+// Digit-to-letter substitutions checked with context (see findDigitHits)
+// minPrefix = min letters before the digit to count as a word embedding
+// Leet-speak digits — context-checked (need 2+ preceding letters to avoid false positives like w3c)
+const DIGIT_LOOKS = {
+  '3':{ looks:'E', minPrefix:2 },
+  '4':{ looks:'A', minPrefix:2 },
+  '5':{ looks:'S', minPrefix:2 },
+  '6':{ looks:'G', minPrefix:2 },
+  '8':{ looks:'B', minPrefix:2 },
+};
+
+function findDigitHits(label) {
+  const hits = [];
+  for (let i = 0; i < label.length; i++) {
+    const conf = DIGIT_LOOKS[label[i]];
+    if (!conf) continue;
+    // Count consecutive letters immediately before this digit
+    let prefix = 0;
+    for (let j = i - 1; j >= 0 && /[a-zA-Z]/.test(label[j]); j--) prefix++;
+    // Digit must be followed by a letter or be end-of-label (not another digit)
+    const next = label[i + 1];
+    if (prefix >= conf.minPrefix && (!next || /[a-zA-Z]/.test(next)))
+      hits.push({ pos: i, looksLike: conf.looks });
+  }
+  return hits;
+}
+
 const CONFUSABLES = {
+  // True near-identical digit homoglyphs — always flag regardless of context
+  0x0030:"O",  // 0 ≈ O
+  0x0031:"l",  // 1 ≈ l
+  // Cyrillic
   0x0430:"a", 0x0435:"e", 0x043E:"o", 0x0440:"p", 0x0441:"c",
   0x0445:"x", 0x0455:"s", 0x0456:"i", 0x0458:"j", 0x0443:"y",
   0x0410:"A", 0x0412:"B", 0x0415:"E", 0x041A:"K", 0x041C:"M",
   0x041D:"H", 0x041E:"O", 0x0420:"P", 0x0421:"C", 0x0422:"T",
-  0x0425:"X", 0x03B1:"a", 0x03BF:"o", 0x0391:"A", 0x0392:"B",
+  0x0425:"X",
+  // Greek
+  0x03B1:"a", 0x03BF:"o", 0x0391:"A", 0x0392:"B",
   0x0395:"E", 0x0397:"H", 0x0399:"I", 0x039A:"K", 0x039C:"M",
   0x039D:"N", 0x039F:"O", 0x03A1:"P", 0x03A4:"T", 0x03A5:"Y",
-  0x03A7:"X", 0x0501:"d", 0x051B:"q", 0x0561:"n",
+  0x03A7:"X",
+  // Other
+  0x0501:"d", 0x051B:"q", 0x0561:"n",
 };
 
 function scriptOf(cp) {
@@ -189,6 +224,29 @@ function decodePunyLabels(host) {
   });
 }
 
+// Bigrams that visually read as a different single letter in sans-serif fonts
+const BIGRAMS = { "rn":"m", "cl":"d", "vv":"w", "nn":"m", "li":"h", "ri":"n" };
+
+function scanBigrams(host) {
+  const hits = [];
+  const h = host.toLowerCase();
+  for (const [bg, looks] of Object.entries(BIGRAMS)) {
+    let i = h.indexOf(bg);
+    while (i !== -1) {
+      hits.push({ bigram: bg, looksLike: looks, pos: i });
+      i = h.indexOf(bg, i + 1);
+    }
+  }
+  return hits;
+}
+
+// Mark character positions covered by a bigram hit
+function bigramPositions(host, bigramHits) {
+  const covered = new Set();
+  for (const h of bigramHits) { covered.add(h.pos); covered.add(h.pos + 1); }
+  return covered;
+}
+
 function runAnalyze() {
   const raw = document.getElementById("nomo-input").value;
   if (!raw.trim()) return;
@@ -197,6 +255,7 @@ function runAnalyze() {
   const punyLabels = decodePunyLabels(host);
   const displayHost = punyLabels.map(([lbl, dec]) => dec || lbl).join(".");
 
+  // Per-character analysis
   const rows = [];
   for (const ch of displayHost) {
     const cp = ch.codePointAt(0);
@@ -205,11 +264,37 @@ function runAnalyze() {
     rows.push({ ch, cp, script, looksLike });
   }
 
+  // Context-aware digit substitution check — run on each label separately
+  // so position counts are relative to the label, not the full host
+  let labelOffset = 0;
+  for (const [lbl, dec] of punyLabels) {
+    const label = dec || lbl;
+    for (const hit of findDigitHits(label)) {
+      const idx = labelOffset + hit.pos;
+      if (idx < rows.length && !rows[idx].looksLike)
+        rows[idx].looksLike = hit.looksLike;
+    }
+    labelOffset += label.length + 1; // +1 for the dot
+  }
+
+  // Bigram scan on the SLD (label before TLD) — bigrams in TLD are false positives
+  const labels = displayHost.split(".");
+  const sld = labels.length >= 2 ? labels[labels.length - 2] : displayHost;
+  const sldOffset = displayHost.lastIndexOf(sld + ".") >= 0
+    ? displayHost.lastIndexOf(sld + ".")
+    : displayHost.indexOf(sld);
+  const bigramHits = scanBigrams(sld).map(h => ({ ...h, pos: h.pos + sldOffset }));
+  const bigramCovered = bigramPositions(displayHost, bigramHits);
+
+  // Hyphen-stuffed subdomain: 2+ hyphens in the SLD signals brand-keyword abuse
+  const hyphenCount = (sld.match(/-/g) || []).length;
+  const hasExcessHyphens = hyphenCount >= 2;
+
   const hasConfusable = rows.some(r => r.looksLike);
   const scripts = new Set(rows.map(r => r.script).filter(s => s !== "Common" && s !== "Other"));
   const isMixed = scripts.size > 1;
   const hasPuny = punyLabels.some(([,dec]) => dec);
-  const suspicious = hasConfusable || isMixed || hasPuny;
+  const suspicious = hasConfusable || isMixed || hasPuny || bigramHits.length > 0 || hasExcessHyphens;
 
   // Verdict
   const vEl = document.getElementById("verdict");
@@ -219,29 +304,38 @@ function runAnalyze() {
   // Table
   const tbody = document.getElementById("nomo-tbody");
   tbody.innerHTML = "";
-  for (const r of rows) {
+  rows.forEach((r, idx) => {
     const tr = document.createElement("tr");
-    if (r.looksLike) tr.className = "flag-row";
+    const isBigram = bigramCovered.has(idx);
+    if (r.looksLike || isBigram) tr.className = "flag-row";
     const hex = "U+" + r.cp.toString(16).toUpperCase().padStart(4, "0");
+    const bigramNote = bigramHits.filter(h => h.pos === idx)
+      .map(h => `'${h.bigram}'→'${h.looksLike}' ⚠`).join(" ");
     tr.innerHTML = `
       <td>${r.ch}</td>
       <td>${hex}</td>
       <td>${r.script}</td>
       <td style="font-size:0.78rem">${charName(r.cp)}</td>
-      <td>${r.looksLike ? `'${r.looksLike}' ⚠` : ""}</td>
+      <td>${r.looksLike ? `'${r.looksLike}' ⚠` : bigramNote}</td>
     `;
     tbody.appendChild(tr);
-  }
+  });
 
   // Flags
   const flags = document.getElementById("nomo-flags");
   flags.innerHTML = "";
   if (hasPuny)
-    flags.innerHTML += `<p class="warn">⚠ Punycode label detected — renders differently in browser address bar.</p>`;
+    flags.innerHTML += `<p class="warn">⚠ Punycode label — Unicode characters disguised as ASCII in the address bar.</p>`;
   if (isMixed)
-    flags.innerHTML += `<p class="warn">⚠ Multiple scripts mixed in hostname: ${[...scripts].join(", ")}.</p>`;
+    flags.innerHTML += `<p class="warn">⚠ Mixed scripts in hostname: ${[...scripts].join(", ")}.</p>`;
   if (hasConfusable)
-    flags.innerHTML += `<p class="warn">⚠ Character(s) that visually mimic Latin letters found.</p>`;
+    flags.innerHTML += `<p class="warn">⚠ Character(s) that visually mimic Latin letters.</p>`;
+  if (bigramHits.length > 0) {
+    const desc = [...new Set(bigramHits.map(h => `"${h.bigram}" → "${h.looksLike}"`))].join(", ");
+    flags.innerHTML += `<p class="warn">⚠ Letter-combo substitution: ${desc} — reads as a different letter in most fonts.</p>`;
+  }
+  if (hasExcessHyphens)
+    flags.innerHTML += `<p class="warn">⚠ Hyphen-stuffed domain (${hyphenCount} hyphens) — common pattern for faking official-looking subdomains.</p>`;
 
   document.getElementById("nomo-out").style.display = "block";
 }
