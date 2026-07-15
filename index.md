@@ -392,7 +392,7 @@ permalink: /
 // ── Typewriter ──
 (function () {
   const roles = [
-    'High School GNC Orientation Student',
+    'High School GNC Orientated Student',
     'ML Enthusiast',
     'Independent Researcher',
     'Python Developer',
