@@ -1,5 +1,5 @@
 ---
-layout: opencs 
+layout: default
 title: GameBuilder
 description: Helping programmers understand how to create a game
 permalink: /gamebuilderv1-1

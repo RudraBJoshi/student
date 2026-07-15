@@ -1,5 +1,5 @@
 ---
-layout: opencs
+layout: default
 title: Fortune Finders
 permalink: /gamify/fortuneFindersv1-1
 ---

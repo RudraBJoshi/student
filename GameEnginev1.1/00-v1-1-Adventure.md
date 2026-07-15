@@ -1,5 +1,5 @@
 ---
-layout: opencs
+layout: default
 title: Adventure Game
 permalink: /gamify/adventureGamev1-1
 ---

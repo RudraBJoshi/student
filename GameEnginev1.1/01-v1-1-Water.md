@@ -1,5 +1,5 @@
 ---
-layout: opencs
+layout: default
 title: RPG Water Example 
 permalink: /gamify/waterv1-1
 ---
