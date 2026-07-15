@@ -34,6 +34,14 @@ permalink: /
     padding: .35rem 1.2rem;
     margin-top: .5rem;
   }
+  .tagline {
+    margin-top: .9rem;
+    font-size: clamp(.8rem, 1.6vw, .95rem);
+    font-style: italic;
+    color: rgba(0,255,65,.75);
+    opacity: .85;
+    letter-spacing: .01em;
+  }
   #typed-cursor {
     display: inline-block;
     width: 2px;
@@ -269,6 +277,7 @@ permalink: /
   <div class="typewriter-wrap">
     <span id="typed-text"></span><span id="typed-cursor"></span>
   </div>
+  <div class="tagline">When problems are inevitable, I engineer the path forward</div>
 </div>
 
 <!-- ── STATS ── -->
