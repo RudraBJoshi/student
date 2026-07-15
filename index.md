@@ -392,10 +392,10 @@ permalink: /
 // ── Typewriter ──
 (function () {
   const roles = [
-    'High School Software Developer',
+    'High School GNC Orientation Student',
     'ML Enthusiast',
     'Independent Researcher',
-    'Space Fan',
+    'Python Developer',
     'Cybersecurity Fanatic',
     'Aerospace Student',
   ];
